@@ -1,0 +1,10 @@
+{
+  "name": "ashen-vale",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A browser soulslike foundation built on three.js.",
+  "type": "module",
+  "scripts": {
+    "start": "npx http-server -c-1 -p 8080 ."
+  }
+}

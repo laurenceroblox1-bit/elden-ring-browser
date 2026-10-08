@@ -1,0 +1,216 @@
+// Hollow sentries: the Vale's common foe. A small state machine that's easy to copy for new enemies:
+// idle -> alert -> chase <-> attack -> circle, plus hurt, return (leash) and dead.
+import { Actor } from './Actor.js';
+import { buildSentry } from '../models/characters.js';
+import { pose, copyPose, applyPose, attackPose, addGait } from '../models/pose.js';
+import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
+
+const MOVES = {
+  slash: { windup: 0.62, active: 0.16, recover: 0.62, dmg: 16, poise: 18, reach: 2.3, arc: 0.9, lunge: 2.5, track: 5, pose: 'slash' },
+  thrust: { windup: 0.78, active: 0.14, recover: 0.75, dmg: 20, poise: 22, reach: 3.0, arc: 0.4, lunge: 6, track: 3.5, pose: 'thrust' },
+};
+
+const POSES = {
+  rest: pose({ sRx: -0.2, eR: -0.5, hRx: 1.2, sLx: -0.6, eL: -0.9, torsoX: 0.12, headX: -0.1 }),
+  slash: [pose({ sRx: -2.6, eR: -0.6, hRx: 0.9, torsoY: -0.35, sLx: -0.6, eL: -0.9, torsoX: -0.1 }),
+    pose({ sRx: -0.5, eR: 0, hRx: 1.1, torsoY: 0.3, torsoX: 0.3, sLx: -0.4, eL: -0.9 })],
+  thrust: [pose({ sRx: -0.5, eR: -1.6, hRx: 2.0, torsoY: -0.45, sLx: -0.8, eL: -1.0 }),
+    pose({ sRx: -1.55, eR: 0, hRx: 1.55, torsoY: 0.3, torsoX: 0.25, hipsH: -0.1, lRx: -0.6, kR: 0.4, lLx: 0.4 })],
+  hurt: pose({ torsoX: -0.4, headX: -0.3, sRz: -0.5, sLz: 0.5, hRx: 1.1, hipsH: -0.06 }),
+  dead: pose({ pivotX: -1.45, pivotH: -0.72, sRz: -1.1, sLz: 1.0, lRx: -0.3 }),
+};
+
+export class Sentry extends Actor {
+  constructor(game, spawn) {
+    super(game);
+    this.spawn = spawn;
+    this.captain = spawn.kind === 'captain';
+    this.tag = 'sentry';
+    this.name = this.captain ? 'Hollow Captain' : 'Hollow Sentry';
+    this.model = buildSentry(this.captain);
+    game.scene.add(this.model.root);
+    this.maxHp = this.captain ? 170 : 62;
+    this.maxPoise = this.captain ? 45 : 22;
+    this.ash = this.captain ? 260 : 70;
+    this.radius = this.captain ? 0.55 : 0.45;
+    this.height = this.captain ? 2.1 : 1.8;
+    this.lockHeight = this.captain ? 1.5 : 1.3;
+    this.speedMul = this.captain ? 0.92 : 1;
+    this.dmgMul = this.captain ? 1.4 : 1;
+    this.poseBuf = pose();
+    this.gait = 0;
+    game.combat.register(this);
+    this.reset();
+  }
+
+  reset() {
+    const s = this.spawn;
+    this.pos.set(s.x, this.game.world.getHeight(s.x, s.z), s.z);
+    this.vel.set(0, 0, 0);
+    this.yaw = s.yaw;
+    this.hp = this.maxHp;
+    this.poise = this.maxPoise;
+    this.alive = true;
+    this.state = 'idle';
+    this.t = 0;
+    this.cooldown = 0;
+    this.strafe = 1;
+    this.model.root.visible = true;
+    this.model.pivot.rotation.x = 0;
+    copyPose(this.poseBuf, POSES.rest);
+    applyPose(this.model, this.poseBuf, 1);
+    this._sync();
+  }
+
+  takeHit(hit) {
+    if (!this.alive) return false;
+    this.hp -= hit.dmg;
+    if (this.hp <= 0) {
+      this.hp = 0;
+      this.alive = false;
+      this.state = 'dead';
+      this.t = 0;
+      this.vel.set(hit.dirX * 3, 0, hit.dirZ * 3);
+      this.game.onEnemyKilled(this);
+      return true;
+    }
+    this.poise -= hit.poise;
+    this.poiseTimer = 3;
+    if (this.state === 'idle' || this.state === 'return') this.state = 'chase';
+    if (this.poise <= 0) {
+      this.poise = this.maxPoise;
+      this.state = 'hurt';
+      this.t = 0;
+      this.hurtDur = hit.heavy ? 1.0 : 0.6;
+      this.vel.set(hit.dirX * 4, 0, hit.dirZ * 4);
+    }
+    return true;
+  }
+
+  update(dt) {
+    this.t += dt;
+    const p = this.game.player;
+    const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z;
+    const dist = Math.hypot(dx, dz);
+    const toP = Math.atan2(dx, dz);
+    const fromHome = Math.hypot(this.pos.x - this.spawn.x, this.pos.z - this.spawn.z);
+    if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
+    let want = { x: 0, z: 0 };
+
+    switch (this.state) {
+      case 'idle': {
+        const seen = dist < 15 && Math.abs(angleDiff(this.yaw, toP)) < 1.9;
+        if (p.alive && (seen || dist < 5)) { this.state = 'alert'; this.t = 0; }
+        break;
+      }
+      case 'alert':
+        this.turnTo(toP, 6, dt);
+        if (this.t > 0.35) this.state = 'chase';
+        break;
+      case 'chase': {
+        if (!p.alive || fromHome > 38) { this.state = 'return'; break; }
+        this.turnTo(toP, 5, dt);
+        if (dist > 2.1) want = { x: Math.sin(toP) * 3.7, z: Math.cos(toP) * 3.7 };
+        if ((this.cooldown -= dt) <= 0 && dist < 3.1) {
+          this._startMove(dist > 2.4 || Math.random() < 0.3 ? 'thrust' : 'slash');
+        }
+        break;
+      }
+      case 'circle': {
+        if (!p.alive) { this.state = 'return'; break; }
+        this.turnTo(toP, 5, dt);
+        const side = toP + (Math.PI / 2) * this.strafe;
+        const back = dist < 2.6 ? -1.2 : dist > 4 ? 1.2 : 0;
+        want = { x: Math.sin(side) * 1.5 + Math.sin(toP) * back, z: Math.cos(side) * 1.5 + Math.cos(toP) * back };
+        if ((this.cooldown -= dt) <= 0) this.state = 'chase';
+        break;
+      }
+      case 'attack': this._attack(dt, toP); break;
+      case 'hurt':
+        this.vel.multiplyScalar(Math.exp(-6 * dt));
+        if (this.t >= this.hurtDur) { this.state = 'chase'; this.cooldown = 0.2; }
+        break;
+      case 'return': {
+        const hy = yawTo(this.pos.x, this.pos.z, this.spawn.x, this.spawn.z);
+        this.turnTo(hy, 5, dt);
+        want = { x: Math.sin(hy) * 3, z: Math.cos(hy) * 3 };
+        this.hp = Math.min(this.maxHp, this.hp + 30 * dt);
+        if (fromHome < 1.5) { this.state = 'idle'; this.turnTo(this.spawn.yaw, 10, 1); }
+        else if (p.alive && dist < 8 && fromHome < 30) this.state = 'chase';
+        break;
+      }
+      case 'dead':
+        this.vel.multiplyScalar(Math.exp(-5 * dt));
+        if (this.t > 2.2 && this.t < 3.6 && Math.random() < 0.5) {
+          this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 0.3, z: this.pos.z, count: 3, speed: 0.6, up: 1.5, color: 0x4a4540, color2: 0xb0a090, life: [0.8, 1.4], size: [0.1, 0.2], jitter: 0.6 });
+        }
+        if (this.t > 3.6) this.model.root.visible = false;
+        break;
+    }
+
+    if (this.state !== 'attack' && this.state !== 'hurt' && this.state !== 'dead') {
+      this.vel.x = damp(this.vel.x, want.x * this.speedMul, 8, dt);
+      this.vel.z = damp(this.vel.z, want.z * this.speedMul, 8, dt);
+    }
+    if (this.state !== 'dead' || this.t < 3.6) this.integrate(dt);
+    this._animate(dt);
+  }
+
+  _startMove(name) {
+    const m = MOVES[name];
+    const sp = this.captain ? 0.85 : 1;
+    this.move = { ...m, windup: m.windup * sp, recover: m.recover * sp };
+    this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * (this.captain ? 1.12 : 1), arc: m.arc };
+    this.hitSet = new Set();
+    this.state = 'attack';
+    this.t = 0;
+    this.swung = false;
+  }
+
+  _attack(dt, toP) {
+    const m = this.move;
+    const tw = m.windup, ta = tw + m.active;
+    if (this.t < tw) this.turnTo(toP, m.track, dt);
+    const lunge = this.t > tw * 0.7 && this.t < ta ? m.lunge : 0;
+    this.vel.x = damp(this.vel.x, Math.sin(this.yaw) * lunge, 14, dt);
+    this.vel.z = damp(this.vel.z, Math.cos(this.yaw) * lunge, 14, dt);
+    if (!this.swung && this.t >= tw) { this.swung = true; this.game.audio.play('swing'); }
+    if (this.t >= tw && this.t < ta) this.game.combat.melee(this, this.hit, this.hitSet);
+    if (this.t >= ta + m.recover) {
+      this.state = 'circle';
+      this.t = 0;
+      this.cooldown = 0.6 + Math.random() * 1.1;
+      this.strafe = Math.random() < 0.5 ? -1 : 1;
+    }
+  }
+
+  _animate(dt) {
+    const p = this.poseBuf;
+    let k = dampK(12, dt);
+    switch (this.state) {
+      case 'attack': {
+        const m = this.move;
+        const [wind, strike] = POSES[m.pose];
+        attackPose(p, POSES.rest, wind, strike, this.t, m.windup, m.active, m.recover, easeOut);
+        k = dampK(28, dt);
+        break;
+      }
+      case 'hurt': copyPose(p, POSES.hurt); k = dampK(20, dt); break;
+      case 'dead': copyPose(p, POSES.dead); k = dampK(6, dt); p.pivotH -= clamp(this.t - 2.2, 0, 1.4) * 0.5; break;
+      default: {
+        copyPose(p, POSES.rest);
+        const sp = Math.hypot(this.vel.x, this.vel.z);
+        this.gait += dt * (2 + sp * 1.4);
+        addGait(p, this.gait, clamp(sp / 5, 0, 1), 0.35);
+        p.torsoX += Math.sin(this.game.time * 1.7 + this.spawn.x) * 0.03;
+      }
+    }
+    applyPose(this.model, p, k);
+    this._sync();
+  }
+
+  _sync() {
+    this.model.root.position.copy(this.pos);
+    this.model.root.rotation.y = this.yaw;
+  }
+}
