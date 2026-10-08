@@ -1,6 +1,6 @@
 // Wisp, the spectral steed. Low-poly horse with jointed legs for a procedural gait.
 import * as THREE from '../lib/three.js';
-import { mat, mesh, box, cyl, group } from './kit.js';
+import { mat, mesh, box, cyl, group, mergeRig } from './kit.js';
 
 export function buildHorse() {
   const coat = mat(0xc8d0d4, { unique: true, emissive: 0x2a4050, emissiveIntensity: 0.6, roughness: 0.6, opacity: 0.95 });
@@ -51,5 +51,7 @@ export function buildHorse() {
   mkLeg(-0.25, -0.78, Math.PI * 1.5, Math.PI + 0.35);
 
   root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  // 22 meshes become one skinned mesh per material; the gait still just turns the leg groups.
+  mergeRig(root, [body, neck, head, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
   return { root, body, neck, head, tail, legs, materials: [coat, dark, spirit] };
 }

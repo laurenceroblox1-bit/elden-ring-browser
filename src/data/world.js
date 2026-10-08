@@ -56,6 +56,19 @@ export const ENEMY_SPAWNS = [
   { kind: 'sentry', x: 25, z: -44, yaw: 0.2 },
   { kind: 'sentry', x: 12, z: -128, yaw: 0 },
   { kind: 'sentry', x: -217, z: -152, yaw: 2.4 },
+  // Mire Hounds hunt in packs (a shared `pack` id wakes them together): two on Mirelake Shore below
+  // Ilse's camp, three on the road into the Western Moor. Both well clear of the gear spots.
+  { kind: 'hound', pack: 'shore', x: -160, z: -42, yaw: 0.6 },
+  { kind: 'hound', pack: 'shore', x: -164, z: -46, yaw: 0.9 },
+  { kind: 'hound', pack: 'moor', x: -210, z: -127, yaw: 0.5 },
+  { kind: 'hound', pack: 'moor', x: -213, z: -131, yaw: 0.8 },
+  { kind: 'hound', pack: 'moor', x: -207, z: -133, yaw: 0.3 },
+  // Lantern Acolytes: two at the Watch Ruins tower, two on the rises either side of the graveyard
+  // approach (off the road, well short of the mist gate and the Gatehouse Shrine).
+  { kind: 'acolyte', x: 147, z: 4, yaw: -0.55 },
+  { kind: 'acolyte', x: 153, z: 24, yaw: -1.3 },
+  { kind: 'acolyte', x: -20, z: -168, yaw: 0.9 },
+  { kind: 'acolyte', x: 24, z: -150, yaw: -0.7 },
 ];
 
 export const PICKUPS = [

@@ -1,6 +1,6 @@
 // Character models built from the shared humanoid rig. All original designs.
 import * as THREE from '../lib/three.js';
-import { buildHumanoid } from './humanoid.js';
+import { buildHumanoid, mergeHumanoid } from './humanoid.js';
 import { mat, mesh, box, cyl, cone, group, glowSprite } from './kit.js';
 import { equipModel } from './weapons.js';
 
@@ -43,6 +43,8 @@ export function buildPlayer() {
   flask.visible = false;
   r.armL.hand.add(flask);
 
+  // The cloak sways and the flask blinks in and out, so they stay separate; gear goes in after the merge.
+  mergeHumanoid(r, [cloak, flask]);
   const out = { ...r, cloak, flask };
   equipModel(out, 'wayfarer_blade', null);
   return out;
@@ -80,6 +82,7 @@ export function buildSentry(captain = false) {
   shield.position.y = -0.18;
 
   if (captain) r.root.scale.setScalar(1.15);
+  mergeHumanoid(r); // sword and shield never leave a sentry's hands, so they merge too
   return { ...r, markers };
 }
 
@@ -126,6 +129,8 @@ export function buildWarden() {
   r.armR.hand.add(maul);
 
   r.root.scale.setScalar(2.15);
+  // The eye and the maul head animate through their own (unique) materials, which merging keeps.
+  mergeHumanoid(r);
   return { ...r, eye, headMat, maulHead: head, lantern };
 }
 
@@ -137,7 +142,7 @@ export function buildBrannoc() {
   r.head.add(mesh(cyl(0.15, 0.17, 0.16, 8), mat(0x3a2c1f), { y: 0.38 }));
   r.head.add(mesh(box(0.2, 0.16, 0.06), mat(0x9a9590), { y: 0.06, z: 0.13 }));
   r.hips.add(mesh(cyl(0.26, 0.36, 0.55, 8, true), mat(0x5b4630, { side: THREE.DoubleSide }), { y: -0.26 }));
-  return r;
+  return mergeHumanoid(r);
 }
 
 // Sister Ilse: a pilgrim in pale robes with a hand-bell staff.
@@ -150,5 +155,46 @@ export function buildIlse() {
   staff.add(mesh(cyl(0.025, 0.025, 1.7, 5), mat(0x5a4632), { rx: Math.PI / 2, z: 0.2 }));
   staff.add(mesh(cyl(0.05, 0.09, 0.1, 6), mat(0x8c6a3c, { metalness: 0.6 }), { z: 1.08 }));
   r.armL.hand.add(staff);
-  return r;
+  return mergeHumanoid(r);
+}
+
+// Lantern Acolytes: hollowed keepers of the old lantern rites, hooded in ash-pale robes with a faceless
+// dark under the cowl. Each carries a hooked lantern-staff and flings its fire. The flame material is
+// unique per acolyte so a cast can brighten its own lantern.
+export function buildAcolyte() {
+  const robe = mat(0x9a8f7c, { side: THREE.DoubleSide });
+  const hood = mat(0x5e554a, { side: THREE.DoubleSide });
+  const skin = mat(0x8a8f7c);
+  const rope = mat(0xc9b48a);
+  const wood = mat(0x3e3226);
+  const bronze = mat(0x8c6a3c, { metalness: 0.7, roughness: 0.38 });
+  const flame = mat(0xffd08a, { unique: true, emissive: 0xff8a2a, emissiveIntensity: 1.6 });
+  const r = buildHumanoid({ skin, body: robe, arms: robe, legs: hood, boots: wood, hands: skin },
+    { chestW: 0.46, waistW: 0.4, shoulderW: 0.31, armW: 0.13 });
+
+  // Deep cowl over a face of shadow, two pinpricks of ember for eyes.
+  r.head.add(mesh(cone(0.25, 0.5, 6), hood, { y: 0.26, z: -0.05, rx: -0.12 }));
+  r.head.add(mesh(box(0.2, 0.18, 0.04), mat(0x17130f), { y: 0.13, z: 0.12, shadow: false }));
+  for (const x of [0.045, -0.045]) r.head.add(mesh(box(0.03, 0.02, 0.02), mat(0xffc070, { emissive: 0xff9030, emissiveIntensity: 2 }), { x, y: 0.15, z: 0.145, shadow: false }));
+  // Mantle, rope belt with a dangling lantern charm, long robe.
+  r.torso.add(mesh(cyl(0.2, 0.38, 0.26, 7), hood, { y: 0.5 }));
+  r.torso.add(mesh(box(0.44, 0.05, 0.3), rope, { y: 0.04 }));
+  r.hips.add(mesh(cyl(0.24, 0.42, 0.9, 7, true), robe, { y: -0.42 }));
+  r.hips.add(mesh(box(0.05, 0.3, 0.02), rope, { x: 0.12, y: -0.18, z: 0.16 }));
+
+  // The lantern-staff: a crooked haft with a caged flame hung from its hook.
+  const staff = group();
+  staff.add(mesh(cyl(0.025, 0.03, 1.5, 5), wood, { rx: Math.PI / 2, z: 0.4 }));
+  staff.add(mesh(box(0.04, 0.04, 0.2), wood, { z: 1.2, y: -0.06, rx: 0.9 }));
+  const lantern = group({ z: 1.25, y: -0.22 });
+  lantern.add(mesh(box(0.15, 0.03, 0.15), bronze, { y: 0.1 }));
+  lantern.add(mesh(box(0.15, 0.03, 0.15), bronze, { y: -0.1 }));
+  lantern.add(mesh(box(0.1, 0.16, 0.1), flame, { shadow: false }));
+  const glow = glowSprite(0xffa040, 0.8, 0.75);
+  lantern.add(glow);
+  staff.add(lantern);
+  r.armR.hand.add(staff);
+
+  mergeHumanoid(r);
+  return { ...r, lantern, glow, flame };
 }

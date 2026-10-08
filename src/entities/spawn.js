@@ -2,10 +2,14 @@
 // New enemy types register here; every class must offer the Sentry interface
 // (pos, radius, height, alive, lockable, lockPoint, takeHit, reset, update, model.root, spawn, ash, tag).
 import { Sentry } from './Sentry.js';
+import { Hound } from './Hound.js';
+import { Acolyte } from './Acolyte.js';
 
 const KINDS = {
   sentry: Sentry,
   captain: Sentry,
+  hound: Hound, // packs share a `pack` id: they wake together and take turns to lunge
+  acolyte: Acolyte,
 };
 
 export function createEnemy(game, spawn) {

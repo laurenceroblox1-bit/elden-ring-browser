@@ -1,7 +1,7 @@
 // Shared humanoid rig. Every character (player, sentries, NPCs, the Warden) dresses this skeleton.
 // root (feet on ground) > pivot (body centre, used for rolls and falls) > rig > hips > torso > head/arms, hips > legs
 import * as THREE from '../lib/three.js';
-import { box, mesh } from './kit.js';
+import { box, mesh, mergeRig } from './kit.js';
 
 export function buildHumanoid(m, dims = {}) {
   const d = {
@@ -70,4 +70,18 @@ export function buildHumanoid(m, dims = {}) {
     armR: arm(-1), armL: arm(1), legR: leg(-1), legL: leg(1),
     base: { pivot: 0.9, hips: 0.9 },
   };
+}
+
+// The groups a pose moves, i.e. the bones a merged humanoid is skinned to.
+export const humanoidBones = (r) => [
+  r.hips, r.torso, r.head,
+  r.armR.shoulder, r.armR.elbow, r.armR.hand, r.armL.shoulder, r.armL.elbow, r.armL.hand,
+  r.legR.hip, r.legR.knee, r.legL.hip, r.legL.knee,
+];
+
+// Call once a character is fully dressed (and before gear that can be swapped goes in its hands):
+// its static meshes become a few skinned meshes, one per material. `keep` subtrees stay as they are.
+export function mergeHumanoid(r, keep = []) {
+  r.merged = mergeRig(r.root, humanoidBones(r), { keep });
+  return r;
 }
