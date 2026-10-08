@@ -193,7 +193,7 @@ export class World {
     full.computeVertexNormals();
     const nAttr = full.getAttribute('normal');
     full.dispose();
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }); // smooth hills
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 });
     this.terrain = new THREE.Group();
     const span = SEG / TILES;
     for (let tz = 0; tz < TILES; tz++) {

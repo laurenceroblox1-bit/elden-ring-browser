@@ -11,6 +11,7 @@ import { Effects } from '../effects/Effects.js';
 import { Projectiles } from '../effects/Projectiles.js';
 import { Combat } from '../systems/Combat.js';
 import { BossIntro, BOSS_INTRO_LENGTH } from './Cutscene.js';
+import { PostFX } from './PostFX.js';
 import { Quests } from '../systems/Quests.js';
 import { Interactions } from '../systems/Interactions.js';
 import { Save, newGameState, mergeSave, levelOf, levelCost } from '../systems/Save.js';
@@ -54,6 +55,7 @@ export class Game {
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer = r;
+    this.post = new PostFX(r);
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(60, 1, 0.1, 2400);
 
@@ -150,6 +152,7 @@ export class Game {
     const pr = Math.min(devicePixelRatio || 1, this.quality === 'high' ? 1.75 : 1) * (this.resScale ?? 1);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
+    this.post.setSize(Math.round(w * pr), Math.round(h * pr));
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.particles.setViewport(h * pr, this.camera.fov);
@@ -159,6 +162,7 @@ export class Game {
     this.quality = q;
     Save.pref('quality', q);
     this.sky.sun.castShadow = q === 'high';
+    this.post.enabled = q === 'high';
     this.resize();
   }
 
@@ -677,7 +681,7 @@ export class Game {
     this.world.update(dt * this.timeScale, this.time);
     this.sky.update(this.camera.position, this.player.pos);
     this.hud.update(dt);
-    this.renderer.render(this.scene, this.camera);
+    this.post.render(this.scene, this.camera);
     this.input.endFrame();
   }
 

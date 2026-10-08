@@ -377,8 +377,8 @@ export class Scenery {
 
   _build() {
     const scene = this.world.scene;
-    this.bigMat = windPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88 }));
-    this.smallMat = windPatch(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { fadeNear: SMALL_FAR - 45, fadeFar: SMALL_FAR - 12 });
+    this.bigMat = windPatch(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.88 }));
+    this.smallMat = windPatch(new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 }), { fadeNear: SMALL_FAR - 45, fadeFar: SMALL_FAR - 12 });
     this.bigChunks = this.big.build(this.bigMat, { castShadow: true, receiveShadow: true, depthMaterial: windDepthMaterial(), pad: 1 });
     this.smallChunks = this.small.build(this.smallMat, { castShadow: false, receiveShadow: true, pad: 0.6 });
     for (const c of [...this.bigChunks, ...this.smallChunks]) scene.add(c.mesh);

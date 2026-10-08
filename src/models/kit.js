@@ -3,14 +3,14 @@ import * as THREE from '../lib/three.js';
 
 const matCache = new Map();
 
-// Smooth-shaded standard material (soft, rounded look; pass flat: true for a faceted one).
+// Faceted (flat-shaded) standard material: the Vale's blocky look. Pass smooth: true to opt out.
 // Cached by look unless `unique` (needed when a material animates).
 export function mat(color, o = {}) {
-  const key = [color, o.metalness ?? 0, o.roughness ?? 0.85, o.emissive ?? 0, o.emissiveIntensity ?? 1, o.opacity ?? 1, o.side ?? 0, o.flat ? 1 : 0].join('|');
+  const key = [color, o.metalness ?? 0, o.roughness ?? 0.85, o.emissive ?? 0, o.emissiveIntensity ?? 1, o.opacity ?? 1, o.side ?? 0, o.smooth ? 1 : 0].join('|');
   if (!o.unique && matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshStandardMaterial({
     color,
-    flatShading: !!o.flat,
+    flatShading: !o.smooth,
     roughness: o.roughness ?? 0.85,
     metalness: o.metalness ?? 0,
     emissive: o.emissive ?? 0x000000,
@@ -28,10 +28,10 @@ const cached = (key, make) => {
   if (!geoCache.has(key)) geoCache.set(key, make());
   return geoCache.get(key);
 };
-// Boxes get rounded edges (radius ~32% of the thinnest side) with smooth normals, so armour, robes
-// and props read as soft carved shapes instead of sharp blocks. plainBox() keeps hard edges for
+// Boxes get a slight bevel (8% of the thinnest side): still blocky, but the edges catch the light
+// instead of ending in a hard seam. plainBox() keeps hard edges for
 // geometry that is scaled non-uniformly (instanced walls), where a rounded corner would stretch.
-export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => roundedBox(w, h, d, Math.min(w, h, d) * 0.32));
+export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => roundedBox(w, h, d, Math.min(w, h, d) * 0.08));
 export const plainBox = (w, h, d) => cached(`pb${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
 // Curved shapes get enough segments to read as round under smooth shading.
 export const cyl = (rt, rb, h, seg = 12, open = false) => {
