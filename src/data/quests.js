@@ -2,6 +2,7 @@
 //   { type: 'shrine', id } kindle a shrine     { type: 'boss', id }  defeat a boss
 //   { type: 'item', id }   hold an item         { type: 'kill', tag, count } kill tagged enemies
 //   { type: 'talk', id }   advanced from dialogue (see data/dialogue.js)
+//   { type: 'zone', id }   walk into a named place (data/world.js ZONES)
 // `reward` may hold ash, flask, horse, and gear ids: weapon, shield, rite (see data/weapons.js, abilities.js).
 // `marker` puts a pin on the compass while the stage is current.
 export const QUESTS = {
@@ -48,5 +49,47 @@ export const QUESTS = {
     ],
     reward: { ash: 400, rite: 'lantern_bolt' },
     doneText: 'The bounty is yours, and the lantern-keeper\'s rite with it: Lantern Bolt. Prepare it in your equipment (I) and cast it with V.',
+  },
+  hounds: {
+    title: 'Teeth in the Mire',
+    giver: 'Sister Ilse, Pilgrim',
+    summary: 'Gaunt grey hounds circle the lake shore after dark, and the moor road is worse. Ilse asks you to thin the packs.',
+    stages: [
+      { text: 'Put down Mire Hounds on the lake shore and the moor road', on: { type: 'kill', tag: 'hound', count: 5 }, marker: [-185, -85] },
+    ],
+    reward: { ash: 350 },
+    doneText: 'The shore is quiet again. Ilse says she slept through the night for the first time in weeks.',
+  },
+  acolytes: {
+    title: 'Snuff the Lanterns',
+    giver: 'Brannoc, Stablemaster',
+    summary: 'Robed hollows carry lanterns that burn without oil and throw fire at anyone on the road. Brannoc wants them gone before more travellers die.',
+    stages: [
+      { text: 'Put down Lantern Acolytes at the Watch Ruins and along the graveyard road', on: { type: 'kill', tag: 'acolyte', count: 4 }, marker: [150, 14] },
+    ],
+    reward: { ash: 450 },
+    doneText: 'The lanterns are out. The road is darker, and safer for it.',
+  },
+  letter: {
+    title: 'A Letter for Mirelake',
+    giver: 'Brannoc, Stablemaster',
+    summary: 'Brannoc has written to Sister Ilse and won\'t say what about. He is too stiff for the ride, so the letter is yours to carry.',
+    stages: [
+      { text: "Carry Brannoc's letter to Sister Ilse at Mirelake Shore.", on: { type: 'talk', id: 'ilse' }, marker: [-143, -22] },
+    ],
+    reward: { ash: 200 },
+    doneText: 'Ilse read the letter twice and laughed once. Whatever it said, it was kind.',
+  },
+  bell: {
+    title: 'The Cracked Bell',
+    giver: 'Sister Ilse, Pilgrim',
+    summary: 'The chapel on the rise above the lake rang its own bell the night the Warden took the gate, and cracked doing it. Ilse wants to know why.',
+    stages: [
+      { text: 'Climb to the Chapel of the Cracked Bell above Mirelake.', on: { type: 'zone', id: 'chapel' }, marker: [-120, 80] },
+      { text: 'Examine the cracked bell lying in the chapel grass.', on: { type: 'talk', id: 'chapel_bell' }, marker: [-120, 80] },
+      { text: 'Bring the bell shard to Sister Ilse.', on: { type: 'talk', id: 'ilse' }, marker: [-143, -22] },
+    ],
+    reward: { ash: 300, flask: 1 },
+    doneText: 'Ilse ground a little of the shard into your flask. It holds one more draught, and it tastes of bronze.',
   },
 };

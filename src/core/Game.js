@@ -115,6 +115,8 @@ export class Game {
 
   _registerInteractables() {
     const I = this.interactions;
+    const bell = this.world.chapelBell;
+    if (bell) I.add({ x: bell.x, z: bell.z, radius: 3, label: () => 'Examine the cracked bell', action: () => this.talk('chapel_bell') });
     for (const s of this.world.shrines.values()) {
       I.add({ x: s.x, z: s.z, radius: 3.2, label: () => (s.lit ? 'Rest at the lantern' : 'Kindle the lantern'), action: () => (s.lit ? this.rest(s) : this.kindle(s)) });
     }
@@ -826,7 +828,10 @@ export class Game {
     this.zoneT = 0.5;
     const p = this.player.pos;
     const found = this.zoneAt(p.x, p.z);
-    if (found && found !== this.zone && !this.bossFight && this.player.alive) this.hud.banner(ZONES[found].name, '', 'area');
+    if (found && found !== this.zone && this.player.alive) {
+      if (!this.bossFight) this.hud.banner(ZONES[found].name, '', 'area');
+      this.events.emit('zoneEntered', found);
+    }
     if (found) {
       this.zone = found;
       this._discover(found);

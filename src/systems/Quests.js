@@ -14,6 +14,7 @@ export class Quests {
     ev.on('bossDefeated', (id) => this.notify({ type: 'boss', id }));
     ev.on('itemGained', (id) => this.notify({ type: 'item', id }));
     ev.on('enemyKilled', (e) => this.notify({ type: 'kill', tag: e.tag }));
+    ev.on('zoneEntered', (id) => this.notify({ type: 'zone', id }));
   }
 
   load(saved) {

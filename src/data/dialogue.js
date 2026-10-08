@@ -30,6 +30,38 @@ export const DIALOGUE = {
     if (q.status('steed') === 'active') {
       return { name, lines: ['The watch ruins are east of the old road. The captain has my whistle. Red plume.'] };
     }
+    // After the steed: two more favours, one at a time.
+    if (q.status('acolytes') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'You\'ve seen the ones with the lanterns? Robes, hoods, a light that never gutters.',
+          'They were monks once. Rang the hours at the chapel. Now they throw fire at anyone on the road.',
+          'Four of them, last I counted. Two in the ruins, two by the graves near the gate. Put the lights out.',
+        ],
+        effect: () => q.start('acolytes'),
+      };
+    }
+    if (q.status('letter') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'One more thing, and don\'t make a face.',
+          'There\'s a sister camped by the lake. Ilse. I wrote her something. My knees won\'t take the ride and Wisp won\'t carry an old man anymore.',
+          'Don\'t read it. I\'ll know.',
+        ],
+        effect: () => {
+          q.start('letter');
+          g.giveItem('brannoc_letter');
+        },
+      };
+    }
+    if (q.status('letter') === 'active') {
+      return { name, lines: ['The letter. The lake. Go on, before I change my mind about it.'] };
+    }
+    if (q.status('acolytes') === 'active') {
+      return { name, lines: ['The lantern monks are still out there. The ruins, and the graves by the gate.'] };
+    }
     return {
       name,
       lines: [
@@ -71,9 +103,90 @@ export const DIALOGUE = {
     if (q.status('locket') === 'active') {
       return { name, lines: ['The wreck is southwest, on the moor. Be careful. Something was still moving out there.'] };
     }
+    // Hand-ins first, so a visit never wastes a delivery.
+    if (q.status('letter') === 'active' && g.hasItem('brannoc_letter')) {
+      return {
+        name,
+        lines: [
+          'A letter? For me? Nobody has written to me since the gate closed.',
+          'Oh. Oh, the old fool. He remembers the chapel choir. He remembers me singing in it.',
+          'Tell him... no. I\'ll tell him myself. Thank you for carrying it.',
+        ],
+        effect: () => {
+          g.takeItem('brannoc_letter');
+          q.complete('letter');
+        },
+      };
+    }
+    if (q.status('bell') === 'active' && g.hasItem('bell_shard')) {
+      return {
+        name,
+        lines: [
+          'That\'s from the chapel bell. I can hear it. Can you hear it?',
+          'It cracked because it was trying to warn us. The night the Warden came it rang until it broke.',
+          'Give me your flask. A little of this ground into the sunmoss and the draught will last longer. The bell would want to be useful.',
+        ],
+        effect: () => {
+          g.takeItem('bell_shard');
+          q.complete('bell');
+        },
+      };
+    }
+    if (q.status('hounds') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Do you hear them at night? The hounds. Grey things, all ribs and spurs.',
+          'Two of them circle my fire. More on the moor road. They wait for me to fall asleep.',
+          'If you could thin the packs, I might sleep. Five should do it.',
+        ],
+        effect: () => q.start('hounds'),
+      };
+    }
+    if (q.status('bell') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'There\'s a chapel on the rise north of the lake. Roofless now.',
+          'The night the Warden took the gate, its bell rang by itself until it cracked. I was a novice there. I ran.',
+          'I\'ve never been brave enough to go back. Would you? Tell me what\'s left of it.',
+        ],
+        effect: () => q.start('bell'),
+      };
+    }
+    if (q.status('hounds') === 'active') {
+      return { name, lines: ['The hounds are still out there. The shore and the moor road.'] };
+    }
+    if (q.status('bell') === 'active') {
+      return { name, lines: ['The chapel is on the rise north of the lake. The bell lies in the grass, where it fell.'] };
+    }
     return {
       name,
       lines: [g.state.flags.wardenDead ? 'The bells stopped. Did you do that? Then the road north is open. I might follow, one day.' : 'I\'ll rest here a while longer. The lake is quiet.'],
+    };
+  },
+
+  chapel_bell(g) {
+    const q = g.quests;
+    const name = 'The Cracked Bell';
+    const examining = q.status('bell') === 'active' && q.stageDef('bell')?.on.id === 'chapel_bell';
+    if (examining) {
+      return {
+        name,
+        lines: [
+          'The bell lies on its side in the long grass, taller than you. A crack runs from lip to crown.',
+          'Words are cut around the rim: "I ring for those who cannot." The bronze is warm, though the evening is cold.',
+          'A shard has broken free along the crack. When you lift it, the whole bell hums.',
+        ],
+        effect: () => {
+          g.giveItem('bell_shard');
+          q.advance('bell');
+        },
+      };
+    }
+    return {
+      name,
+      lines: ['The bell lies cracked in the grass. Around the rim: "I ring for those who cannot."'],
     };
   },
 
