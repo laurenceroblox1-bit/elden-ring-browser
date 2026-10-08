@@ -90,6 +90,42 @@ const BUILD = {
     g.add(head);
     return { right: g };
   },
+  // Cinder Saber: a curved blade in three angled blocks, its edge glowing like a coal.
+  cinder_saber() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.2), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.06, 0.06, 0.05), M.iron(), { z: -0.14 }));
+    g.add(mesh(box(0.18, 0.035, 0.04), M.iron(), { z: 0.09 }));
+    g.add(mesh(box(0.06, 0.016, 0.42), M.steel(), { z: 0.32, x: 0 }));
+    g.add(mesh(box(0.06, 0.016, 0.36), M.steel(), { z: 0.67, x: -0.035, ry: 0.16 }));
+    g.add(mesh(box(0.055, 0.016, 0.26), M.steel(), { z: 0.95, x: -0.1, ry: 0.36 }));
+    g.add(mesh(box(0.012, 0.018, 0.62), M.ember(), { z: 0.6, x: 0.03, ry: 0.1, shadow: false }));
+    return { right: g };
+  },
+  // Mirewatch Halberd: long ash haft, an axe-blade on one side, a hook on the other, a spike on top.
+  mirewatch_halberd() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.028, 2.5, 6), M.wood(), { rx: Math.PI / 2, z: 0.5 }));
+    g.add(mesh(cyl(0.034, 0.024, 0.08, 6), M.iron(), { rx: Math.PI / 2, z: -0.76 }));
+    g.add(mesh(box(0.05, 0.06, 0.24), M.iron(), { z: 1.62 }));
+    g.add(mesh(box(0.03, 0.34, 0.26), M.ashSteel(), { z: 1.6, y: 0.2 })); // axe-blade
+    g.add(mesh(box(0.03, 0.16, 0.06), M.iron(), { z: 1.62, y: -0.12, rx: 0.5 })); // hook
+    const spike = mesh(cone(0.05, 0.34, 4), M.steel(), { rx: Math.PI / 2, z: 1.9 });
+    spike.scale.set(1, 1, 0.5);
+    g.add(spike);
+    return { right: g };
+  },
+  // Captain's Cleaver: a broad square-ended slab with a riveted spine.
+  captains_cleaver() {
+    const g = group();
+    g.add(mesh(box(0.05, 0.05, 0.24), M.leather(), { z: -0.04 }));
+    g.add(mesh(box(0.08, 0.08, 0.06), M.iron(), { z: -0.18 }));
+    g.add(mesh(box(0.24, 0.05, 0.05), M.iron(), { z: 0.1 }));
+    g.add(mesh(box(0.2, 0.022, 0.84), M.ashSteel(), { z: 0.55, x: 0.04 }));
+    g.add(mesh(box(0.03, 0.03, 0.82), M.iron(), { z: 0.55, x: -0.07 })); // spine
+    for (let i = 0; i < 4; i++) g.add(mesh(box(0.02, 0.03, 0.02), M.trim(), { z: 0.25 + i * 0.2, x: -0.07, y: 0.012 }));
+    return { right: g };
+  },
 };
 
 const BUILD_SHIELD = {

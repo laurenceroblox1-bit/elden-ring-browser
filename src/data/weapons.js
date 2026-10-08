@@ -105,6 +105,62 @@ export const WEAPONS = {
       rolling: { stamina: 26, dmg: 36, poise: 32, windup: 0.3, active: 0.18, recover: 0.6, lunge: 3.0, reach: 2.9, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
     },
   },
+
+  cinder_saber: {
+    name: 'Cinder Saber',
+    type: 'Curved sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 0.95,
+    desc: 'A curved blade taken from the lantern monks, its edge still glowing like a coal. Light in the hand and quick to the next cut.',
+    art: 'ember_arc',
+    riposte: { dmg: 22 },
+    guard: { name: 'saber', absorb: 0.55, cost: 1.55, parryWindow: 0.22, raiseTime: 0.08, arc: 1.75 },
+    moves: {
+      light1: { stamina: 11, dmg: 14, poise: 10, windup: 0.12, active: 0.13, recover: 0.28, lunge: 2.8, reach: 2.3, arc: 1.15, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 11, dmg: 14, poise: 10, windup: 0.11, active: 0.13, recover: 0.28, lunge: 2.8, reach: 2.3, arc: 1.15, pose: 'slashL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 11, dmg: 15, poise: 11, windup: 0.11, active: 0.13, recover: 0.3, lunge: 2.8, reach: 2.3, arc: 1.15, pose: 'slashR', next: 'light4', sfx: 'swing' },
+      light4: { stamina: 15, dmg: 22, poise: 18, windup: 0.2, active: 0.12, recover: 0.42, lunge: 3.8, reach: 2.7, arc: 0.5, pose: 'thrust', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 26, dmg: 36, poise: 40, windup: 0.44, active: 0.15, recover: 0.48, lunge: 3.4, reach: 2.6, arc: 0.7, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 11, dmg: 15, poise: 10, windup: 0.08, active: 0.13, recover: 0.3, lunge: 3.4, reach: 2.4, arc: 0.8, pose: 'slashL', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  mirewatch_halberd: {
+    name: 'Mirewatch Halberd',
+    type: 'Halberd',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.25,
+    desc: 'The polearm of the lake\'s old watch: an axe-blade, a spike and a hook on a long ash haft. It keeps hounds and worse at a respectful distance.',
+    art: 'lunging_pierce',
+    riposte: { dmg: 30 },
+    guard: { name: 'halberd', absorb: 0.65, cost: 1.35, parryWindow: 0.14, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 26, poise: 24, windup: 0.32, active: 0.2, recover: 0.5, lunge: 2.0, reach: 3.9, arc: 1.3, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 18, dmg: 22, poise: 18, windup: 0.24, active: 0.14, recover: 0.42, lunge: 2.4, reach: 4.0, arc: 0.36, pose: 'sThrustHi', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 34, dmg: 48, poise: 50, windup: 0.62, active: 0.16, recover: 0.6, lunge: 5.0, reach: 4.2, arc: 0.34, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 22, poise: 18, windup: 0.16, active: 0.14, recover: 0.44, lunge: 3.2, reach: 3.9, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  captains_cleaver: {
+    name: "Captain's Cleaver",
+    type: 'Heavy blade',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.2,
+    desc: 'A broad, square-ended blade that a captain of the old watch carried instead of a sword. It does not cut so much as arrive.',
+    art: 'toll_of_silence',
+    riposte: { dmg: 30 },
+    guard: { name: 'cleaver', absorb: 0.68, cost: 1.35, parryWindow: 0.16, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 19, dmg: 25, poise: 26, windup: 0.26, active: 0.15, recover: 0.46, lunge: 2.4, reach: 2.4, arc: 1.05, pose: 'slashR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 19, dmg: 25, poise: 26, windup: 0.24, active: 0.15, recover: 0.46, lunge: 2.4, reach: 2.4, arc: 1.05, pose: 'slashL', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 54, poise: 64, windup: 0.62, active: 0.16, recover: 0.6, lunge: 3.0, reach: 2.6, arc: 0.6, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 17, dmg: 22, poise: 22, windup: 0.14, active: 0.15, recover: 0.44, lunge: 3.0, reach: 2.4, arc: 0.7, pose: 'thrust', next: 'light2', sfx: 'heavySwing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.

@@ -16,6 +16,10 @@ export const LOOT = [
   { gear: 'mending_light', x: -148, z: -26.5 },
   // Among the graves on the last stretch of road before the Gate.
   { gear: 'ward_of_ash', x: -10, z: -178 },
+  // Lying on the moor road among the hound packs, where the old lake watch fell.
+  { gear: 'mirewatch_halberd', x: -197, z: -112 },
+  // Propped against the cracked bell in the chapel.
+  { gear: 'captains_cleaver', x: -114, z: 86 },
   // Propped against the Gatehouse Shrine, for whoever means to face the Warden.
   { gear: 'gatewarden_greatshield', x: 20.5, z: -190 },
 ];

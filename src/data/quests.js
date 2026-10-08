@@ -67,8 +67,8 @@ export const QUESTS = {
     stages: [
       { text: 'Put down Lantern Acolytes at the Watch Ruins and along the graveyard road', on: { type: 'kill', tag: 'acolyte', count: 4 }, marker: [150, 14] },
     ],
-    reward: { ash: 450 },
-    doneText: 'The lanterns are out. The road is darker, and safer for it.',
+    reward: { ash: 450, weapon: 'cinder_saber' },
+    doneText: 'The lanterns are out. One of the monks\' curved blades still glows: the Cinder Saber is yours.',
   },
   letter: {
     title: 'A Letter for Mirelake',

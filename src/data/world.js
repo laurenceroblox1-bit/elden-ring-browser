@@ -86,6 +86,8 @@ export const KEEP_CLEAR = [
   { x: -148, z: -26.5, r: 3 }, // the Mirelake Shore cairn
   { x: -10, z: -178, r: 3 }, // among the graves
   { x: 20.5, z: -190, r: 3 }, // the Gatehouse Shrine
+  { x: -197, z: -112, r: 3 }, // the moor road (Mirewatch Halberd)
+  { x: -114, z: 86, r: 3 }, // the chapel bell (Captain's Cleaver)
 ];
 
 // Fires get a flickering light (campfires) or just a glow (braziers).
