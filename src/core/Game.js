@@ -37,6 +37,9 @@ const SCREENS = new Set(['pause', 'journal', 'shrine', 'equipment']); // modals 
 const MENU_KEYS = ['interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment', 'map', 'testMenu', 'back', 'confirm', 'whistle', 'flask', 'lockOn'];
 const DPAD = ['Pad12', 'Pad13', 'Pad14', 'Pad15'];
 
+const DRAW_DIST = 150; // metres from the camera beyond which enemies aren't drawn
+const THINK_DIST = 120; // idle enemies further than this from the player don't run their AI
+
 export class Game {
   constructor(app) {
     this.app = app;
@@ -143,7 +146,8 @@ export class Game {
 
   resize() {
     const w = innerWidth, h = innerHeight;
-    const pr = Math.min(devicePixelRatio || 1, this.quality === 'high' ? 1.75 : 1);
+    // resScale drops automatically when frames run slow (see _adaptResolution).
+    const pr = Math.min(devicePixelRatio || 1, this.quality === 'high' ? 1.75 : 1) * (this.resScale ?? 1);
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
@@ -663,6 +667,7 @@ export class Game {
 
   frame() {
     const now = performance.now();
+    this._adaptResolution((now - this.last) / 1000);
     const dt = Math.min(0.05, (now - this.last) / 1000);
     this.last = now;
     this.time += dt;
@@ -674,6 +679,41 @@ export class Game {
     this.hud.update(dt);
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
+  }
+
+  // Dynamic resolution: if the frame rate sags below ~40 fps for a second, render fewer pixels;
+  // when it has headroom again, climb back toward full resolution.
+  _adaptResolution(raw) {
+    if (!(raw > 0) || raw > 0.5) return; // tab switches and first frames aren't real frame times
+    this.frameAvg = this.frameAvg ? this.frameAvg + (raw - this.frameAvg) * 0.05 : raw;
+    this.resScale ??= 1;
+    if ((this.resT = (this.resT ?? 0) + raw) < 1.5) return;
+    this.resT = 0;
+    const before = this.resScale;
+    if (this.frameAvg > 1 / 40 && this.resScale > 0.55) this.resScale = Math.max(0.55, this.resScale - 0.1);
+    else if (this.frameAvg < 1 / 57 && this.resScale < 1) this.resScale = Math.min(1, this.resScale + 0.05);
+    if (this.resScale !== before) this.resize();
+  }
+
+  // Enemies far from the player that are only standing guard skip their AI, and anything beyond
+  // the draw distance from the camera isn't drawn at all (frustum culling already skips what's
+  // behind the camera). Foes (hounds, acolytes) manage their own draw distance.
+  _updateEnemies(dt) {
+    const c = this.camera.position, p = this.player.pos;
+    for (const e of this.enemies) {
+      const d = Math.hypot(e.pos.x - p.x, e.pos.z - p.z);
+      if (!(d > THINK_DIST && e.state === 'idle')) e.update(dt);
+      if (e.shown !== undefined) continue;
+      const far = Math.hypot(e.pos.x - c.x, e.pos.z - c.z) > DRAW_DIST;
+      const root = e.model.root;
+      if (far && root.visible) {
+        root.visible = false;
+        e.culled = true;
+      } else if (!far && e.culled) {
+        e.culled = false;
+        if (e.alive) root.visible = true;
+      }
+    }
   }
 
   _title(dt) {
@@ -725,7 +765,7 @@ export class Game {
       this._cheats();
       this.horse.update(sdt);
       if (!this.cheats.freeze) {
-        for (const e of this.enemies) e.update(sdt);
+        this._updateEnemies(sdt);
         this.boss.update(sdt);
       }
       this._separate();
