@@ -26,6 +26,11 @@ const M = {
   fang: () => mat(0xdfe6ee, { metalness: 0.7, roughness: 0.3, emissive: 0x24384a, emissiveIntensity: 0.6 }),
   pilgrimCloth: () => mat(0xb0473a),
   teal: () => mat(0x34504e),
+  midnight: () => mat(0x1f2c4a),
+  silver: () => mat(0xc9ced6, { metalness: 0.7, roughness: 0.3 }),
+  ice: () => mat(0xcfefff, { emissive: 0x3a90d8, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.1 }),
+  rimeSteel: () => mat(0x6d7c8a, { metalness: 0.6, roughness: 0.4 }),
+  frostRim: () => mat(0xe8f4fa, { roughness: 0.6 }),
 };
 
 // ---------- weapon models ----------
@@ -133,6 +138,49 @@ const BUILD = {
     g.add(mesh(box(0.02, 0.075, 0.8), M.ember(), { z: 0.8, x: 0.02, ry: -0.1, shadow: false }));
     return { right: g };
   },
+  // Dunmarrow Longsword: a long straight blade, silver crossguard, the grip wound in midnight blue.
+  dunmarrow_longsword() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.26), M.midnight(), { z: -0.04 }));
+    g.add(mesh(box(0.07, 0.07, 0.06), M.silver(), { z: -0.2 }));
+    g.add(mesh(box(0.3, 0.04, 0.05), M.silver(), { z: 0.12 }));
+    g.add(mesh(box(0.07, 0.018, 1.08), M.steel(), { z: 0.7 }));
+    const tip = mesh(cone(0.05, 0.16, 4), M.steel(), { z: 1.3, rx: Math.PI / 2, ry: Math.PI / 4 });
+    tip.scale.set(1, 1, 0.3);
+    g.add(tip);
+    return { right: g };
+  },
+  // Icicle Estoc: a needle of ice that never thaws, with a guard of frost.
+  icicle_estoc() {
+    const g = group();
+    g.add(mesh(box(0.04, 0.04, 0.22), M.leather(), { z: -0.03 }));
+    g.add(mesh(box(0.2, 0.05, 0.06), M.ice(), { z: 0.11 }));
+    const blade = mesh(cone(0.04, 1.15, 4), M.ice(), { rx: Math.PI / 2, z: 0.73 });
+    blade.scale.set(1, 1, 0.6);
+    g.add(blade);
+    return { right: g };
+  },
+  // Rime Glaive: a black iron haft with a crescent of blue ice grown around the old blade.
+  rime_glaive() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.03, 2.3, 6), M.iron(), { rx: Math.PI / 2, z: 0.45 }));
+    g.add(mesh(cyl(0.04, 0.04, 0.1, 6), M.silver(), { rx: Math.PI / 2, z: 1.55 }));
+    g.add(mesh(box(0.035, 0.18, 0.42), M.ice(), { z: 1.82, y: 0.05 }));
+    g.add(mesh(box(0.03, 0.14, 0.26), M.ice(), { z: 2.08, y: 0.13, rx: -0.5 }));
+    g.add(mesh(box(0.03, 0.1, 0.18), M.ice(), { z: 1.62, y: 0.15, rx: 0.6 }));
+    return { right: g };
+  },
+  // Trollbone Club: a huge thighbone knotted with ice and bound in hide.
+  trollbone_club() {
+    const g = group();
+    g.add(mesh(box(0.08, 0.08, 0.4), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.1, 0.1, 0.7), M.bone(), { z: 0.5 }));
+    g.add(mesh(box(0.2, 0.18, 0.34), M.bone(), { z: 1.0 }));
+    g.add(mesh(box(0.16, 0.24, 0.22), M.bone(), { z: 1.18, y: 0.03 }));
+    g.add(mesh(box(0.12, 0.08, 0.14), M.ice(), { z: 1.05, y: 0.12, x: 0.06 }));
+    g.add(mesh(box(0.08, 0.1, 0.1), M.ice(), { z: 0.86, y: -0.09, x: -0.05 }));
+    return { right: g };
+  },
   captains_cleaver() {
     const g = group();
     g.add(mesh(box(0.05, 0.05, 0.24), M.leather(), { z: -0.04 }));
@@ -152,6 +200,18 @@ const BUILD_SHIELD = {
     g.add(mesh(cyl(0.25, 0.25, 0.03, 10), M.leather(), { rz: Math.PI / 2, x: -0.012 }));
     g.add(mesh(cyl(0.23, 0.23, 0.04, 10), M.wood(), { rz: Math.PI / 2 }));
     g.add(mesh(cone(0.08, 0.09, 8), M.trim(), { rz: -Math.PI / 2, x: 0.06 }));
+    return g;
+  },
+  // Rimeguard Greatshield: a blue-grey tower shield, rimed white at the edges, an ice-crystal boss.
+  rimeguard_greatshield() {
+    const g = group({ x: 0.09, y: -0.12 });
+    g.add(mesh(box(0.05, 0.98, 0.58), M.rimeSteel()));
+    g.add(mesh(box(0.07, 0.06, 0.62), M.frostRim(), { y: 0.47 }));
+    g.add(mesh(box(0.07, 0.06, 0.62), M.frostRim(), { y: -0.47 }));
+    g.add(mesh(box(0.065, 0.98, 0.05), M.frostRim(), { z: 0.28 }));
+    g.add(mesh(box(0.065, 0.98, 0.05), M.frostRim(), { z: -0.28 }));
+    const boss = mesh(cone(0.1, 0.24, 4), M.ice(), { rz: -Math.PI / 2, x: 0.08 });
+    g.add(boss);
     return g;
   },
   // Gatewarden Greatshield: a tall iron-banded door of a shield with the Gate's bell on its face.

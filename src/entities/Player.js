@@ -244,7 +244,7 @@ export class Player extends Actor {
     this.t = 0;
     this.hitSet = new Set();
     this.swung = false;
-    this.hit = { dmg: def.dmg * this.dmgMult, poise: def.poise, reach: def.reach, arc: def.arc, heavy: def.heavy, height: def.height, yawOffset: def.yawOffset };
+    this.hit = { dmg: def.dmg * this.dmgMult, poise: def.poise, reach: def.reach, arc: def.arc, heavy: def.heavy, height: def.height, yawOffset: def.yawOffset, frost: def.frost ?? WEAPONS[this.weaponId]?.frost };
     if (!this.mounted) {
       const lock = this.game.lockTarget;
       if (lock) this.yaw = yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z);

@@ -135,6 +135,50 @@ export const ARTS = {
     },
   },
 
+  // Icicle Estoc: three quick thrusts on the spot, each leaving frost in the wound.
+  winters_edge: {
+    name: "Winter's Edge",
+    desc: 'Three needle-quick thrusts in a heartbeat, each one leaving frost behind. Two flurries frostbite most foes.',
+    focus: 12, stamina: 20, cooldown: 2.4,
+    time: 0.98, track: 0.6, cancel: 0.75,
+    keys: [[0, 'rest'], [0.1, 'pierceCrouch'], [0.2, 'pierceDrive'], [0.3, 'pierceCrouch'], [0.42, 'pierceDrive'], [0.52, 'pierceCrouch'], [0.64, 'pierceDrive'], [0.98, 'rest']],
+    events: [0.2, 0.42, 0.64].map((t) => [t, (p) => {
+      const g = p.game;
+      g.audio.play('swing');
+      g.combat.melee(p, { dmg: 15 * p.dmgMult, poise: 12, reach: 3.0, arc: 0.45, frost: 22 }, new Set());
+      const f = front(p, 1.8, 1.2);
+      g.particles.emit({ x: f.x, y: f.y, z: f.z, count: 8, speed: 2, up: 0.5, color: 0xdff4ff, color2: 0x8fd0ff, life: [0.2, 0.45], size: [0.05, 0.12], drag: 2 });
+    }]),
+    move(p, act, dt) {
+      const t = p.t;
+      const sp = (t > 0.18 && t < 0.24) || (t > 0.4 && t < 0.46) || (t > 0.62 && t < 0.68) ? 5 : 0;
+      p.vel.x = sp ? p.forwardX * sp : p.vel.x * Math.exp(-12 * dt);
+      p.vel.z = sp ? p.forwardZ * sp : p.vel.z * Math.exp(-12 * dt);
+    },
+  },
+
+  // Rime Glaive: draw back and hurl a lance of ice that pierces through everything in a line.
+  glacial_lance: {
+    name: 'Glacial Lance',
+    desc: 'Draw the glaive back and hurl a lance of blue ice. It flies straight through every foe in its path and leaves them half-frozen.',
+    focus: 16, stamina: 20, cooldown: 3,
+    time: 1.0, track: 0.5, cancel: 0.8,
+    keys: [[0, 'rest'], [0.24, 'pierceCrouch'], [0.46, 'pierceCrouch'], [0.56, 'pierceDrive'], [1.0, 'rest']],
+    events: [
+      [0.2, (p) => p.game.audio.play('cast')],
+      [0.56, (p) => {
+        const g = p.game;
+        const f = front(p, 1.0, 1.35);
+        const a = aim(p, f.x, f.y, f.z, 30, 0.3);
+        g.projectiles.spawn(p, {
+          kind: 'shard', x: f.x, y: f.y, z: f.z, dirX: a.x, dirY: a.y * 0.6, dirZ: a.z, speed: 30, life: 1.3, radius: 0.6,
+          pierce: true, scale: 2.4, sound: 'shard', hit: { dmg: 40 * p.dmgMult, poise: 34, frost: 50 },
+        });
+        g.audio.play('shard');
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',
@@ -274,6 +318,21 @@ export const RITES = {
         p.ward = { t: act.def.duration, reduce: act.def.reduce };
         p.game.audio.play('ward');
         p.game.particles.emit({ x: p.pos.x, y: p.pos.y + 0.4, z: p.pos.z, count: 40, speed: 3, up: 1.5, color: 0xcfc2a8, color2: 0xffe0a0, life: [0.5, 1.1], size: [0.08, 0.16], drag: 2, jitter: 0.6 });
+      }],
+    ],
+  },
+  frost_nova: {
+    name: 'Frost Nova',
+    type: 'Frost rite',
+    desc: 'Breathe out the cold of the Rimewold. A ring of frost bursts from you, harming and half-freezing everything it passes. Roll-proof foes beware; it never misses at your feet.',
+    focus: 28, cooldown: 7,
+    time: 0.9, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.7,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.6, maxR: 8, speed: 14, color: 0xbfe8ff, hit: { dmg: 26 * p.riteMult, poise: 30, frost: 55 } });
+        g.audio.play('frostbite');
+        g.particles.emit({ x: p.pos.x, y: p.pos.y + 1, z: p.pos.z, count: 40, speed: 5, up: 1.2, color: 0xdff4ff, color2: 0x7cc8ff, life: [0.3, 0.8], size: [0.08, 0.18], drag: 2 });
       }],
     ],
   },

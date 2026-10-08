@@ -163,6 +163,83 @@ export const WEAPONS = {
     },
   },
 
+  dunmarrow_longsword: {
+    name: 'Dunmarrow Longsword',
+    type: 'Longsword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.1,
+    desc: 'The sword of a knight of Castle Dunmarrow: long, straight and silver-hilted, the grip still wound in the castle\'s midnight blue. A little slower than a pilgrim\'s blade, and it reaches further.',
+    art: 'lunging_pierce',
+    riposte: { dmg: 28 },
+    guard: { name: 'longsword', absorb: 0.62, cost: 1.45, parryWindow: 0.19, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 15, dmg: 21, poise: 17, windup: 0.18, active: 0.15, recover: 0.38, lunge: 2.8, reach: 2.7, arc: 1.0, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 15, dmg: 21, poise: 17, windup: 0.16, active: 0.15, recover: 0.38, lunge: 2.8, reach: 2.7, arc: 1.0, pose: 'slashL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 19, dmg: 28, poise: 24, windup: 0.24, active: 0.13, recover: 0.46, lunge: 4.0, reach: 3.1, arc: 0.45, pose: 'thrust', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 32, dmg: 48, poise: 52, windup: 0.54, active: 0.16, recover: 0.54, lunge: 3.4, reach: 3.0, arc: 0.6, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 15, dmg: 18, poise: 12, windup: 0.11, active: 0.14, recover: 0.38, lunge: 3.2, reach: 2.8, arc: 0.6, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  icicle_estoc: {
+    name: 'Icicle Estoc',
+    type: 'Thrusting sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.05,
+    frost: 14, // every hit builds frostbite
+    desc: 'Eskil cut it from the ice under the Hall of the Winter Lantern and it has never thawed. Long and needle-thin; every thrust leaves a little of the cold behind in the wound.',
+    art: 'winters_edge',
+    riposte: { dmg: 26 },
+    guard: { name: 'estoc', absorb: 0.52, cost: 1.6, parryWindow: 0.24, raiseTime: 0.08, arc: 1.75 },
+    moves: {
+      light1: { stamina: 12, dmg: 16, poise: 10, windup: 0.13, active: 0.12, recover: 0.3, lunge: 3.2, reach: 2.9, arc: 0.4, pose: 'thrust', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 12, dmg: 16, poise: 10, windup: 0.12, active: 0.12, recover: 0.3, lunge: 3.2, reach: 2.9, arc: 0.4, pose: 'thrust', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 14, dmg: 19, poise: 14, windup: 0.15, active: 0.13, recover: 0.36, lunge: 2.6, reach: 2.5, arc: 0.95, pose: 'slashR', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 28, dmg: 40, poise: 36, windup: 0.46, active: 0.14, recover: 0.5, lunge: 5.0, reach: 3.2, arc: 0.36, pose: 'thrust', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 12, dmg: 16, poise: 10, windup: 0.1, active: 0.12, recover: 0.32, lunge: 3.6, reach: 2.9, arc: 0.4, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  rime_glaive: {
+    name: 'Rime Glaive',
+    type: 'Glaive',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.35,
+    frost: 16,
+    desc: 'Saelith\'s glaive: a long haft of black iron and a crescent of blue ice that the cold of the Winter Lantern grew around the old steel. Its weapon art throws a lance of that same ice.',
+    art: 'glacial_lance',
+    riposte: { dmg: 34 },
+    guard: { name: 'glaive', absorb: 0.68, cost: 1.3, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 29, poise: 24, windup: 0.3, active: 0.2, recover: 0.48, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 18, dmg: 25, poise: 20, windup: 0.22, active: 0.14, recover: 0.42, lunge: 2.6, reach: 4.1, arc: 0.36, pose: 'sThrustHi', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 22, dmg: 31, poise: 28, windup: 0.32, active: 0.2, recover: 0.52, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 54, poise: 54, windup: 0.6, active: 0.16, recover: 0.6, lunge: 5.0, reach: 4.3, arc: 0.36, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 24, poise: 18, windup: 0.16, active: 0.14, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  trollbone_club: {
+    name: 'Trollbone Club',
+    type: 'Great club',
+    hands: 2,
+    stance: 'maul',
+    scale: 1.55,
+    desc: 'A thighbone from something that lived on the Howling Field before the troll did, knotted with ice and bound in hide. Slow, very slow, and whatever it lands on stays down.',
+    art: 'quake',
+    riposte: { dmg: 36 },
+    guard: { name: 'club', absorb: 0.7, cost: 1.3, parryWindow: 0.1, raiseTime: 0.12, arc: 1.75, speed: 1.9 },
+    moves: {
+      light1: { stamina: 32, dmg: 48, poise: 50, windup: 0.62, active: 0.18, recover: 0.7, lunge: 2.4, reach: 3.0, arc: 1.3, pose: 'mSwing', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 32, dmg: 46, poise: 48, windup: 0.6, active: 0.16, recover: 0.72, lunge: 2.4, reach: 2.9, arc: 0.75, pose: 'mOverhead', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 48, dmg: 88, poise: 85, windup: 1.0, active: 0.18, recover: 0.9, lunge: 2.6, reach: 3.0, arc: 0.6, pose: 'mOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 28, dmg: 38, poise: 36, windup: 0.32, active: 0.18, recover: 0.62, lunge: 3.0, reach: 2.9, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
+    },
+  },
+
   captains_cleaver: {
     name: "Captain's Cleaver",
     type: 'Heavy blade',
@@ -191,6 +268,12 @@ export const SHIELDS = {
     type: 'Small shield',
     desc: 'A little round shield of oak and leather, left by the notice board for whoever answers it. It stops most of a blow, and it turns one aside beautifully if you time it.',
     guard: { name: 'buckler', absorb: 0.8, cost: 0.95, parryWindow: 0.24, raiseTime: 0.07, arc: 1.75 },
+  },
+  rimeguard_greatshield: {
+    name: 'Rimeguard Greatshield',
+    type: 'Greatshield',
+    desc: 'A tower shield of blue-grey steel from the old Rime-Watch, rimed white at the edges. Lighter than it looks, and the cold that soaks into it never reaches the arm behind it.',
+    guard: { name: 'greatshield', absorb: 1, cost: 0.68, parryWindow: 0.14, raiseTime: 0.1, arc: 1.95, speed: 1.8 },
   },
   gatewarden_greatshield: {
     name: 'Gatewarden Greatshield',
