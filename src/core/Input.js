@@ -7,7 +7,8 @@ export const BINDINGS = {
   sprint: ['ShiftLeft', 'ShiftRight'],
   roll: ['Space'],
   light: ['Mouse0'],
-  heavy: ['Mouse2', 'KeyF'],
+  heavy: ['KeyF'],
+  guard: ['Mouse2'], // hold to guard; a fresh press opens a short parry window
   lockOn: ['KeyQ', 'Mouse1'],
   flask: ['KeyR'],
   interact: ['KeyE'],

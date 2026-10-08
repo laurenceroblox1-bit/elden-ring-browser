@@ -1,8 +1,10 @@
 // Hollow sentries: the Vale's common foe. A small state machine that's easy to copy for new enemies:
 // idle -> alert -> chase <-> attack -> circle, plus hurt, return (leash) and dead.
+// Shield play: guard (raised when the player swings at their front), broken (guard smashed),
+// parried (their swing was parried), riposted (held for the player's riposte) and knockdown.
 import { Actor } from './Actor.js';
 import { buildSentry } from '../models/characters.js';
-import { pose, copyPose, applyPose, attackPose, addGait } from '../models/pose.js';
+import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
 
 const MOVES = {
@@ -18,7 +20,18 @@ const POSES = {
     pose({ sRx: -1.55, eR: 0, hRx: 1.55, torsoY: 0.3, torsoX: 0.25, hipsH: -0.1, lRx: -0.6, kR: 0.4, lLx: 0.4 })],
   hurt: pose({ torsoX: -0.4, headX: -0.3, sRz: -0.5, sLz: 0.5, hRx: 1.1, hipsH: -0.06 }),
   dead: pose({ pivotX: -1.45, pivotH: -0.72, sRz: -1.1, sLz: 1.0, lRx: -0.3 }),
+  // Shield turned to face forward (sLy) and lifted across the chest, sword cocked to answer.
+  guard: pose({ sLx: -1.2, sLy: -1.1, eL: -1.0, sRx: -0.6, eR: -1.0, hRx: 1.5, torsoX: 0.18, headX: -0.15, lRx: 0.2, lLx: -0.3, kL: 0.3, hipsH: -0.06 }),
+  shieldHit: pose({ sLx: -1.0, sLy: -1.1, eL: -1.15, sRx: -0.4, eR: -0.9, hRx: 1.4, torsoX: -0.12, headX: -0.25, lRx: 0.4, kR: 0.2, lLx: -0.2, kL: 0.4, hipsH: -0.1 }),
+  parried: pose({ sRx: -2.6, sRz: -0.6, eR: -0.3, hRx: 1.0, torsoX: -0.45, headX: -0.4, sLx: -0.2, sLz: 0.6, eL: -0.6, hipsH: -0.1, lRx: 0.4, kR: 0.3, lLx: -0.3 }),
+  broken: pose({ sLz: 1.3, sLx: -0.6, eL: -0.2, torsoX: -0.35, headX: -0.3, sRx: 0.1, sRz: -0.5, eR: -0.4, hRx: 1.1, hipsH: -0.08, lLx: 0.35, kL: 0.3, lRx: -0.2 }),
+  riposted: pose({ torsoX: 0.55, headX: 0.35, sRx: -0.3, sRz: -0.4, eR: -0.2, hRx: 1.0, sLx: -0.4, sLz: 0.4, eL: -0.4, hipsH: -0.12, kR: 0.3, kL: 0.3, lRx: -0.2, lLx: -0.2 }),
 };
+
+const KNOCKDOWN_TIME = 2.1;
+const KNOCKDOWN_KEYS = [[0, POSES.riposted], [0.35, POSES.dead], [KNOCKDOWN_TIME - 0.75, POSES.dead], [KNOCKDOWN_TIME, POSES.rest]];
+// States in which the AI doesn't steer (scripted motion or reactions).
+const NO_STEER = new Set(['attack', 'hurt', 'dead', 'parried', 'broken', 'riposted', 'knockdown']);
 
 export class Sentry extends Actor {
   constructor(game, spawn) {
@@ -37,6 +50,8 @@ export class Sentry extends Actor {
     this.lockHeight = this.captain ? 1.5 : 1.3;
     this.speedMul = this.captain ? 0.92 : 1;
     this.dmgMul = this.captain ? 1.4 : 1;
+    this.guardChance = this.captain ? 0.5 : 0.35; // chance to raise the shield against a swing at its front
+    this.guardMax = this.captain ? 90 : 55; // shield stamina: light hits drain it, heavies break it outright
     this.poseBuf = pose();
     this.gait = 0;
     game.combat.register(this);
@@ -55,6 +70,11 @@ export class Sentry extends Actor {
     this.t = 0;
     this.cooldown = 0;
     this.strafe = 1;
+    this.openT = 0;
+    this.guardHp = this.guardMax;
+    this.guardHold = 0;
+    this.shieldHit = 0;
+    this.seenAtk = this.game.player?.atkSeq ?? 0;
     this.model.root.visible = true;
     this.model.pivot.rotation.x = 0;
     copyPose(this.poseBuf, POSES.rest);
@@ -62,18 +82,80 @@ export class Sentry extends Actor {
     this._sync();
   }
 
+  // ---------- combat hooks ----------
+
+  isOpen() {
+    return this.alive && this.openT > 0 && this.state !== 'riposted' && this.state !== 'knockdown';
+  }
+
+  onParried(by) {
+    if (!this.alive || this.state !== 'attack') return;
+    this.state = 'parried';
+    this.t = 0;
+    this.hurtDur = 1.6;
+    this.openT = 1.8;
+    const dx = this.pos.x - by.pos.x, dz = this.pos.z - by.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    this.vel.set((dx / d) * 2.2, 0, (dz / d) * 2.2);
+  }
+
+  onRiposte(by) {
+    if (!this.isOpen()) return false;
+    this.state = 'riposted';
+    this.t = 0;
+    this.openT = 0;
+    this.vel.set(0, 0, 0);
+    this.yaw = yawTo(this.pos.x, this.pos.z, by.pos.x, by.pos.z);
+    return true;
+  }
+
+  _die(hit) {
+    this.hp = 0;
+    this.alive = false;
+    this.state = 'dead';
+    this.t = 0;
+    this.openT = 0;
+    this.vel.set(hit.dirX * 3, 0, hit.dirZ * 3);
+    this.game.onEnemyKilled(this);
+    return true;
+  }
+
+  // Blocked on the shield: a little chip damage and shield stamina, or a broken guard (open to a riposte).
+  _shieldBlock(hit) {
+    this.guardHold = Math.max(this.guardHold, 0.5);
+    this.shieldHit = 0.2;
+    this.guardHp -= hit.dmg * 1.4;
+    const broke = hit.heavy || this.guardHp <= 0;
+    this.hp -= hit.dmg * (broke ? 0.35 : 0.12);
+    if (this.hp <= 0) return this._die(hit);
+    if (broke) {
+      this.state = 'broken';
+      this.t = 0;
+      this.hurtDur = 1.5;
+      this.openT = 1.8;
+      this.guardHp = this.guardMax;
+      this.vel.set(hit.dirX * 3, 0, hit.dirZ * 3);
+      return 'break';
+    }
+    this.vel.set(hit.dirX * 1.6, 0, hit.dirZ * 1.6);
+    return 'block';
+  }
+
   takeHit(hit) {
     if (!this.alive) return false;
+    const front = Math.abs(angleDiff(this.yaw, Math.atan2(-hit.dirX, -hit.dirZ))) < 1.75;
+    if (this.state === 'guard' && this.t >= 0.1 && front && !hit.unblockable && !hit.riposte) return this._shieldBlock(hit);
     this.hp -= hit.dmg;
-    if (this.hp <= 0) {
-      this.hp = 0;
-      this.alive = false;
-      this.state = 'dead';
+    if (this.hp <= 0) return this._die(hit);
+    if (hit.riposte) {
+      this.state = 'knockdown';
       this.t = 0;
+      this.openT = 0;
       this.vel.set(hit.dirX * 3, 0, hit.dirZ * 3);
-      this.game.onEnemyKilled(this);
       return true;
     }
+    // Already reeling: extra hits hurt but don't restart the reaction.
+    if (this.state === 'riposted' || this.state === 'knockdown' || this.state === 'parried' || this.state === 'broken') return true;
     this.poise -= hit.poise;
     this.poiseTimer = 3;
     if (this.state === 'idle' || this.state === 'return') this.state = 'chase';
@@ -95,6 +177,9 @@ export class Sentry extends Actor {
     const toP = Math.atan2(dx, dz);
     const fromHome = Math.hypot(this.pos.x - this.spawn.x, this.pos.z - this.spawn.z);
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
+    if (this.openT > 0) this.openT -= dt;
+    if (this.shieldHit > 0) this.shieldHit -= dt;
+    if (this.state !== 'guard') this.guardHp = Math.min(this.guardMax, this.guardHp + 15 * dt);
     let want = { x: 0, z: 0 };
 
     switch (this.state) {
@@ -109,6 +194,7 @@ export class Sentry extends Actor {
         break;
       case 'chase': {
         if (!p.alive || fromHome > 38) { this.state = 'return'; break; }
+        if (this._maybeGuard(p, dist, toP)) break;
         this.turnTo(toP, 5, dt);
         if (dist > 2.1) want = { x: Math.sin(toP) * 3.7, z: Math.cos(toP) * 3.7 };
         if ((this.cooldown -= dt) <= 0 && dist < 3.1) {
@@ -118,6 +204,7 @@ export class Sentry extends Actor {
       }
       case 'circle': {
         if (!p.alive) { this.state = 'return'; break; }
+        if (this._maybeGuard(p, dist, toP)) break;
         this.turnTo(toP, 5, dt);
         const side = toP + (Math.PI / 2) * this.strafe;
         const back = dist < 2.6 ? -1.2 : dist > 4 ? 1.2 : 0;
@@ -126,9 +213,29 @@ export class Sentry extends Actor {
         break;
       }
       case 'attack': this._attack(dt, toP); break;
+      case 'guard': {
+        if (!p.alive) { this.state = 'return'; break; }
+        this.turnTo(toP, 8, dt);
+        const side = toP + (Math.PI / 2) * this.strafe;
+        const back = dist < 2.2 ? -1 : 0;
+        want = { x: Math.sin(side) * 0.8 + Math.sin(toP) * back, z: Math.cos(side) * 0.8 + Math.cos(toP) * back };
+        // Lowering the shield goes straight into a counter if the player is close.
+        if ((this.guardHold -= dt) <= 0) { this.state = 'chase'; this.cooldown = 0.15; }
+        break;
+      }
       case 'hurt':
+      case 'parried':
+      case 'broken':
         this.vel.multiplyScalar(Math.exp(-6 * dt));
         if (this.t >= this.hurtDur) { this.state = 'chase'; this.cooldown = 0.2; }
+        break;
+      case 'riposted':
+        this.vel.multiplyScalar(Math.exp(-10 * dt));
+        if (this.t > 2) { this.state = 'chase'; this.cooldown = 0.3; } // the blow never came
+        break;
+      case 'knockdown':
+        this.vel.multiplyScalar(Math.exp(-4 * dt));
+        if (this.t >= KNOCKDOWN_TIME) { this.state = 'chase'; this.cooldown = 0.6; }
         break;
       case 'return': {
         const hy = yawTo(this.pos.x, this.pos.z, this.spawn.x, this.spawn.z);
@@ -148,12 +255,25 @@ export class Sentry extends Actor {
         break;
     }
 
-    if (this.state !== 'attack' && this.state !== 'hurt' && this.state !== 'dead') {
+    if (!NO_STEER.has(this.state)) {
       this.vel.x = damp(this.vel.x, want.x * this.speedMul, 8, dt);
       this.vel.z = damp(this.vel.z, want.z * this.speedMul, 8, dt);
     }
     if (this.state !== 'dead' || this.t < 3.6) this.integrate(dt);
     this._animate(dt);
+  }
+
+  // Once per player swing: a swing started at our front may get the shield.
+  _maybeGuard(p, dist, toP) {
+    if (p.atkSeq === this.seenAtk) return false;
+    this.seenAtk = p.atkSeq;
+    if (p.state !== 'attack' || dist > 5 || Math.abs(angleDiff(this.yaw, toP)) > 1.2) return false;
+    if (Math.random() >= this.guardChance) return false;
+    this.state = 'guard';
+    this.t = 0;
+    this.guardHold = 0.9 + Math.random() * 0.6;
+    this.strafe = Math.random() < 0.5 ? -1 : 1;
+    return true;
   }
 
   _startMove(name) {
@@ -196,6 +316,22 @@ export class Sentry extends Actor {
         break;
       }
       case 'hurt': copyPose(p, POSES.hurt); k = dampK(20, dt); break;
+      case 'guard': {
+        copyPose(p, this.shieldHit > 0 ? POSES.shieldHit : POSES.guard);
+        const sp = Math.hypot(this.vel.x, this.vel.z);
+        this.gait += dt * (2 + sp * 1.6);
+        addGait(p, this.gait, clamp(sp / 3, 0, 0.5), 0);
+        k = dampK(this.t < 0.15 || this.shieldHit > 0 ? 30 : 14, dt);
+        break;
+      }
+      case 'parried':
+      case 'broken':
+        copyPose(p, POSES[this.state]);
+        p.torsoZ += Math.sin(this.t * 8) * 0.07 * Math.max(0, 1 - this.t / this.hurtDur);
+        k = dampK(this.t < 0.2 ? 24 : 6, dt);
+        break;
+      case 'riposted': copyPose(p, POSES.riposted); k = dampK(14, dt); break;
+      case 'knockdown': framePose(p, KNOCKDOWN_KEYS, this.t, easeOut); k = dampK(12, dt); break;
       case 'dead': copyPose(p, POSES.dead); k = dampK(6, dt); p.pivotH -= clamp(this.t - 2.2, 0, 1.4) * 0.5; break;
       default: {
         copyPose(p, POSES.rest);

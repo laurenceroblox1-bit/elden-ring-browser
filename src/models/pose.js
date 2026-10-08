@@ -32,6 +32,20 @@ export function attackPose(out, rest, wind, strike, t, windup, active, recover, 
   return mixPose(out, strike, rest, ease(Math.min(1, (t - windup - active) / recover)));
 }
 
+// Keyframed pose track for scripted moves (ripostes, recoils): keys are [time, pose] in ascending time.
+// Holds the first pose before the first key and the last pose after the last one.
+export function framePose(out, keys, t, ease = (x) => x) {
+  if (t <= keys[0][0]) return copyPose(out, keys[0][1]);
+  for (let i = 1; i < keys.length; i++) {
+    const [t1, p1] = keys[i];
+    if (t < t1) {
+      const [t0, p0] = keys[i - 1];
+      return mixPose(out, p0, p1, ease((t - t0) / (t1 - t0)));
+    }
+  }
+  return copyPose(out, keys[keys.length - 1][1]);
+}
+
 export function applyPose(r, p, k) {
   const s = (o, key, v) => { o[key] += (v - o[key]) * k; };
   s(r.pivot.rotation, 'x', p.pivotX);

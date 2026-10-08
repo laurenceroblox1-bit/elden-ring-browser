@@ -108,6 +108,34 @@ export class AudioFx {
         this._tone({ freq: 1250, type: 'square', dur: 0.12, gain: 0.08 });
         this._bell(620, 0.06, 0.6);
         break;
+      // Guarding: steel on steel for the sword, a duller knock for a shield, a bright ring for a parry.
+      case 'block':
+        this._noise({ dur: 0.12, freq: 2400, q: 2, gain: 0.35 });
+        this._tone({ freq: 880, type: 'square', dur: 0.07, gain: 0.05 });
+        this._bell(540, 0.05, 0.45);
+        this._tone({ freq: 130, to: 70, type: 'triangle', dur: 0.14, gain: 0.3 });
+        break;
+      case 'shield':
+        this._noise({ dur: 0.13, type: 'lowpass', freq: 900, gain: 0.5 });
+        this._tone({ freq: 170, to: 90, type: 'triangle', dur: 0.13, gain: 0.32 });
+        this._tone({ freq: 720, type: 'square', dur: 0.05, gain: 0.035 });
+        break;
+      case 'parry':
+        this._noise({ dur: 0.08, type: 'highpass', freq: 4200, gain: 0.35 });
+        this._bell(1046, 0.13, 1.3);
+        this._bell(1568, 0.07, 1.0);
+        this._tone({ freq: 2093, dur: 0.7, gain: 0.05, attack: 0.002 });
+        break;
+      case 'guardBreak':
+        this._noise({ dur: 0.36, freq: 1800, to: 300, q: 1.5, gain: 0.5 });
+        this._tone({ freq: 420, to: 140, type: 'square', dur: 0.3, gain: 0.07 });
+        this._tone({ freq: 90, to: 40, dur: 0.42, gain: 0.42 });
+        break;
+      case 'riposte':
+        this._noise({ dur: 0.42, type: 'lowpass', freq: 900, to: 200, gain: 0.75 });
+        this._tone({ freq: 110, to: 38, dur: 0.5, gain: 0.6 });
+        this._tone({ freq: 220, to: 80, type: 'sawtooth', dur: 0.18, gain: 0.12 });
+        break;
       case 'roll': this._noise({ dur: 0.35, freq: 300, to: 120, q: 0.6, gain: 0.25 }); break;
       case 'step': this._noise({ dur: 0.06, type: 'lowpass', freq: 380, gain: 0.08 }); break;
       case 'slam':

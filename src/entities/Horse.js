@@ -33,7 +33,7 @@ export class Horse {
     if (!g.state.flags.horse) return 'You have no way to call a steed.';
     if (g.bossFight) return 'Wisp will not come here.';
     if (g.world.inArena(g.player.pos.x, g.player.pos.z, 4)) return 'Wisp will not come here.';
-    if (!['move'].includes(g.player.state)) return '';
+    if (!['move', 'guard'].includes(g.player.state)) return '';
     return null;
   }
 

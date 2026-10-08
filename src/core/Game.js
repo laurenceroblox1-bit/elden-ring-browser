@@ -76,6 +76,7 @@ export class Game {
     this.npcs = NPCS.map((d) => new NPC(this, d));
     this.cam = new CameraRig(this);
     this._registerInteractables();
+    this._combatTips();
 
     this.input.onLockChange = (locked) => this._onLockChange(locked);
     addEventListener('resize', () => this.resize());
@@ -104,6 +105,18 @@ export class Game {
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
     const cd = this.world.castleDoor;
     I.add({ x: cd.x, z: cd.z + 3, radius: 5, label: () => 'Examine the doors', action: () => this.talk('castle') });
+  }
+
+  // One-time hints the first time the player meets each guard mechanic (per page session).
+  _combatTips() {
+    const shown = new Set();
+    const tip = (event, text) => this.events.on(event, () => {
+      if (shown.has(event)) return;
+      shown.add(event);
+      this.after(0.4, () => this.hud.toast(text));
+    });
+    tip('parry', 'A clean parry. Strike while your foe reels to riposte.');
+    tip('guardBreak', 'Your guard broke. Blocking costs stamina, and a sword alone stops little.');
   }
 
   resize() {
@@ -476,7 +489,7 @@ export class Game {
         break;
     }
     // The key that closes a menu or dialogue must not also act in the world this frame.
-    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'pause', 'journal']) i.consume(a);
+    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'guard', 'pause', 'journal']) i.consume(a);
   }
 
   // ---------- loop ----------
@@ -525,6 +538,7 @@ export class Game {
       this._separate();
       for (const n of this.npcs) n.update(sdt);
       this.effects.update(sdt);
+      this.combat.update(dt);
       this.interactions.update();
       this._timers(sdt);
       this._zones(dt);

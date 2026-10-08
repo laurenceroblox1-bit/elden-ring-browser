@@ -20,7 +20,16 @@ export class Actor {
     this.invuln = false;
     this.lockable = true;
     this.lockHeight = 1.3;
+    this.openT = 0; // seconds left in which a riposte can land (after a parry or a guard break)
   }
+
+  // Combat hooks. Enemies override these; the defaults make any actor safe to parry or riposte-check.
+  // isOpen(): true while a riposte can start on this actor.
+  isOpen() { return false; }
+  // onParried(by, hit): this actor's parryable swing was parried.
+  onParried() {}
+  // onRiposte(by): a riposte has started on this actor; hold still until the blow lands. Return false to refuse.
+  onRiposte() { return false; }
 
   get forwardX() { return Math.sin(this.yaw); }
   get forwardZ() { return Math.cos(this.yaw); }

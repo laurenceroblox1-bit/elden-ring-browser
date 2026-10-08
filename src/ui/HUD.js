@@ -9,8 +9,9 @@ export const CONTROLS = [
   ['Mouse', 'Look (arrow keys also work)'],
   ['Shift', 'Sprint, or gallop on Wisp'],
   ['Space', 'Roll · backstep (no direction) · horse jump'],
-  ['Left click', 'Light attack, up to three in a chain'],
-  ['Right click / F', 'Heavy attack'],
+  ['Left click', 'Light attack, up to three in a chain · riposte a reeling foe'],
+  ['Hold right click', 'Guard · raise it just as a blow lands to parry'],
+  ['F', 'Heavy attack'],
   ['Q / middle click', 'Lock on to an enemy'],
   ['R', 'Drink from your flask'],
   ['E', 'Talk, pick up, rest, pass the mist'],
@@ -35,6 +36,7 @@ const TEMPLATE = `
 <div class="toasts" role="status" aria-live="polite"></div>
 <div class="prompt" hidden></div>
 <div class="lock" hidden></div>
+<div class="riposte-hint" hidden><kbd>Left click</kbd> Riposte</div>
 <div class="hint" hidden>Click to take control of the camera</div>
 <div class="banner" hidden><div class="banner-text"></div><div class="banner-sub"></div></div>
 <section class="bossbar" hidden>
@@ -120,7 +122,7 @@ export class HUD {
       stBar: $('.bar.st'), stFill: $('.bar.st .fill'),
       flaskN: $('.flask-n'), flask: $('.flask'), ashN: $('.ash-n'),
       tracker: $('.tracker'), compass: $('.compass-track'), toasts: $('.toasts'), prompt: $('.prompt'),
-      lock: $('.lock'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
+      lock: $('.lock'), riposte: $('.riposte-hint'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
       boss: $('.bossbar'), bossName: $('.boss-name'), bossFill: $('.boss-fill'), bossLag: $('.boss-lag'), bossDmg: $('.boss-dmg'),
       dlg: $('.dialogue'), dlgName: $('.dlg-name'), dlgText: $('.dlg-text'), fps: $('.fps'),
       title: $('.title-screen'), pause: $('.pause-screen'), journal: $('.journal-screen'), shrine: $('.shrine-screen'),
@@ -317,6 +319,7 @@ export class HUD {
     e.hpLag.style.transform = `scaleX(${this.hpLag})`;
     e.stFill.style.transform = `scaleX(${Math.max(0, p.stamina / p.maxStamina)})`;
     e.stBar.classList.toggle('winded', !!p.winded);
+    e.stBar.classList.toggle('guarding', p.state === 'guard');
     e.flaskN.textContent = p.flasks;
     e.flask.classList.toggle('empty', p.flasks === 0);
 
@@ -399,16 +402,27 @@ export class HUD {
     this.el.boss.classList.toggle('phase2', b.phase === 2);
   }
 
+  // Lock reticle (red while the locked foe is reeling and open to a riposte) and the riposte hint.
   _lock() {
     const g = this.game;
     const t = g.lockTarget;
-    if (!t) {
-      if (!this.el.lock.hidden) this.el.lock.hidden = true;
+    const foe = g.player.riposteCandidate;
+    this._pin(this.el.lock, t, 0);
+    if (t) this.el.lock.classList.toggle('open', t.isOpen());
+    this._pin(this.el.riposte, foe, -0.9);
+  }
+
+  // Shows `el` over an actor's lock point (lowered by `dy` metres), or hides it.
+  _pin(el, actor, dy) {
+    if (!actor) {
+      if (!el.hidden) el.hidden = true;
       return;
     }
-    t.lockPoint(tmp).project(g.camera);
+    actor.lockPoint(tmp);
+    tmp.y += dy;
+    tmp.project(this.game.camera);
     const vis = tmp.z < 1;
-    this.el.lock.hidden = !vis;
-    if (vis) this.el.lock.style.transform = `translate(${((tmp.x + 1) / 2) * innerWidth}px, ${((1 - tmp.y) / 2) * innerHeight}px)`;
+    if (el.hidden === vis) el.hidden = !vis;
+    if (vis) el.style.transform = `translate(${((tmp.x + 1) / 2) * innerWidth}px, ${((1 - tmp.y) / 2) * innerHeight}px)`;
   }
 }

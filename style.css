@@ -42,6 +42,8 @@ kbd {
 .bar.hp .lag { background: var(--blood-lag); opacity: 0.8; }
 .bar.st .fill { background: linear-gradient(var(--moss), #485e2a); }
 .bar.st.winded .fill { filter: saturate(0.3) brightness(0.8); }
+/* Guard up: the stamina bar is what the guard spends, so it gets a steel edge. */
+.bar.st.guarding { border-color: #c9cdd2; box-shadow: 0 0 8px rgba(201, 205, 210, 0.45); }
 
 /* ---------- compass ---------- */
 .compass {
@@ -94,6 +96,13 @@ kbd {
 .hint { position: absolute; left: 50%; top: 42%; transform: translateX(-50%); padding: 6px 14px; background: var(--panel); border: 1px solid var(--panel-edge); color: var(--muted); font-size: 0.95rem; }
 .lock { position: absolute; left: 0; top: 0; width: 0; height: 0; }
 .lock::before { content: ''; position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--gold-hi); box-shadow: 0 0 10px rgba(242, 213, 143, 0.9); }
+.lock.open::before { border-color: #ff6a4a; box-shadow: 0 0 12px rgba(255, 90, 60, 0.95); animation: lock-open 0.5s ease-in-out infinite alternate; }
+@keyframes lock-open { to { transform: scale(1.35); } }
+.riposte-hint {
+  position: absolute; left: 0; top: 0; translate: -50% 0; padding: 3px 10px; white-space: nowrap;
+  background: rgba(40, 8, 4, 0.72); border: 1px solid rgba(255, 106, 74, 0.7); color: #ffd2c4; font-size: 0.9rem; pointer-events: none;
+}
+.riposte-hint kbd { color: #ffd2c4; border-color: rgba(255, 106, 74, 0.6); }
 .fps { position: absolute; left: var(--gutter); bottom: 12px; font: 12px/1 ui-monospace, monospace; color: var(--muted); }
 
 /* ---------- banners ---------- */

@@ -1,6 +1,8 @@
 // Odran, the Bell-Warden: the Vale's first great foe, keeper of the Shattered Gate.
 // Phase 1: maul sweeps, a delayed overhead slam with a shockwave, and a leaping strike.
 // Phase 2 (below half health): faster, toll rings you must roll through, and spectral bells from the sky.
+// Guarding: the sweeps can be parried; the slam and the leap can only be blocked; anything spectral blue
+// (the toll ring, the falling bells, the phase-change wave) goes through any guard and must be rolled.
 import { Actor } from './Actor.js';
 import { buildWarden } from '../models/characters.js';
 import { ARENA } from '../data/world.js';
@@ -11,10 +13,10 @@ import * as THREE from '../lib/three.js';
 const MOVES = {
   sweep: { windup: 0.85, active: 0.26, recover: 0.75, dmg: 30, poise: 60, reach: 5.8, arc: 1.25, lunge: 6, track: 2.6, pose: 'sweep', range: [0, 6.5], weight: 3, follow: 'backsweep', followChance: [0.45, 0.7] },
   backsweep: { windup: 0.42, active: 0.24, recover: 0.85, dmg: 28, poise: 50, reach: 5.8, arc: 1.25, lunge: 4, track: 3.4, pose: 'backsweep', follow: 'slam', followChance: [0.2, 0.6] },
-  slam: { windup: 1.1, hold: 0.4, active: 0.16, recover: 1.05, dmg: 44, poise: 90, heavy: true, reach: 5.0, arc: 0.55, lunge: 3, track: 3.2, pose: 'slam', range: [0, 6], weight: 2, shockwave: { maxR: 10, speed: 13, dmg: 18 } },
+  slam: { windup: 1.1, hold: 0.4, active: 0.16, recover: 1.05, dmg: 44, poise: 90, heavy: true, parryable: false, reach: 5.0, arc: 0.55, lunge: 3, track: 3.2, pose: 'slam', range: [0, 6], weight: 2, shockwave: { maxR: 10, speed: 13, dmg: 18 } },
   leap: { windup: 0.6, air: 0.9, active: 0.15, recover: 1.15, dmg: 40, poise: 90, heavy: true, pose: 'leap', range: [8, 26], weight: 2.4, aoe: 3.6, track: 4 },
-  toll: { windup: 1.35, active: 0.15, recover: 1.0, pose: 'toll', range: [0, 14], weight: 2, phase: 2, ring: { maxR: 22, speed: 12, dmg: 30 }, track: 2 },
-  bells: { windup: 0.95, active: 0.2, recover: 0.9, pose: 'summon', range: [4, 30], weight: 1.6, phase: 2, count: 5, track: 3 },
+  toll: { windup: 1.35, active: 0.15, recover: 1.0, pose: 'toll', range: [0, 14], weight: 2, phase: 2, ring: { maxR: 22, speed: 12, dmg: 30 }, track: 2, unblockable: true },
+  bells: { windup: 0.95, active: 0.2, recover: 0.9, pose: 'summon', range: [4, 30], weight: 1.6, phase: 2, count: 5, track: 3, unblockable: true },
 };
 
 const W = {
@@ -34,7 +36,16 @@ const W = {
   roar: pose({ sRz: -1.3, sLz: 1.3, sRx: -0.4, sLx: -0.4, hRx: 1.4, torsoX: -0.35, headX: -0.6, hipsH: -0.05 }),
   kneel: pose({ hipsH: -0.6, torsoX: 0.75, lRx: -1.45, kR: 1.55, lLx: 0.25, kL: 1.6, sRx: -0.2, eR: -0.3, hRx: 1.5, sLx: -0.6, eL: -0.5, headX: 0.3 }),
   dead: pose({ hipsH: -0.6, torsoX: 0.9, lRx: -1.45, kR: 1.55, lLx: 0.25, kL: 1.6, sRz: -0.9, sLz: 0.9, headX: 0.6, pivotX: 0.35 }),
+  // Parried: the maul rebounds up and back and he rocks onto his heels.
+  recoil: pose({ sRx: -2.5, sRy: 0.5, sRz: -0.3, eR: -0.6, hRx: 1.2, sLx: -0.3, sLz: 0.5, torsoX: -0.4, torsoY: 0.3, headX: -0.45, hipsH: -0.08, lRx: 0.35, kR: 0.3, lLx: -0.2 }),
+  // Riposted on his knees: head snapped back by the blow, then slumping.
+  struck: pose({ hipsH: -0.6, torsoX: 0.2, lRx: -1.45, kR: 1.55, lLx: 0.25, kL: 1.6, sRz: -0.6, sLz: 0.7, sRx: -0.2, eR: -0.3, hRx: 1.5, headX: -0.55 }),
 };
+
+const RECOIL_TIME = 1.0;
+const PARRY_STAGGER = { count: 3, within: 10, poise: 60 }; // three parries inside ten seconds force a stagger
+const RIPOSTED_TIME = 2.3;
+const SPECTRAL = 0x9fd0ff; // the colour that means "unblockable: roll"
 
 const tmpV = new THREE.Vector3();
 
@@ -73,6 +84,8 @@ export class Warden extends Actor {
     this.lastMove = null;
     this.recentDmg = 0;
     this.recentT = 0;
+    this.clock = 0;
+    this.parryTimes = [];
     this.model.root.visible = true;
     this.model.root.scale.setScalar(2.15);
     this.model.pivot.rotation.x = 0;
@@ -114,11 +127,54 @@ export class Warden extends Actor {
     this.model.eye.emissive.setHex(level > 0 ? 0x9fd0ff : 0xff8a20);
   }
 
+  // ---------- combat hooks ----------
+
+  // Only his full stagger opens him to a riposte; a single parry just rocks him back.
+  isOpen() {
+    return this.alive && this.state === 'stagger';
+  }
+
+  onParried() {
+    if (!this.alive || this.state !== 'attack') return;
+    this.parryTimes = this.parryTimes.filter((t) => this.clock - t < PARRY_STAGGER.within);
+    this.parryTimes.push(this.clock);
+    this.poise -= PARRY_STAGGER.poise;
+    this.poiseTimer = 4;
+    this.vel.set(0, 0, 0);
+    if (this.poise <= 0 || this.parryTimes.length >= PARRY_STAGGER.count) {
+      this._stagger();
+      return;
+    }
+    this.state = 'recoil';
+    this.t = 0;
+    this.game.audio.play('clang');
+  }
+
+  onRiposte(by) {
+    if (!this.isOpen()) return false;
+    this.state = 'riposted';
+    this.t = 0;
+    this.struck = false;
+    this.vel.set(0, 0, 0);
+    return true;
+  }
+
+  _stagger() {
+    this.poise = this.maxPoise;
+    this.parryTimes.length = 0;
+    this.state = 'stagger';
+    this.t = 0;
+    this.vel.set(0, 0, 0);
+    this._aura(this.phase === 2 ? 1 : 0); // drop any windup glow the stagger interrupted
+    this.game.audio.play('clang');
+  }
+
   takeHit(hit) {
     if (!this.alive || this.invuln) return false;
-    const mult = this.state === 'stagger' ? 1.5 : 1;
+    const mult = this.state === 'stagger' && !hit.riposte ? 1.5 : 1;
     const dmg = hit.dmg * mult;
     this.hp -= dmg;
+    if (hit.riposte) this.struck = true;
     this.recentDmg = this.recentT > 0 ? this.recentDmg + dmg : dmg;
     this.recentT = 2.2;
     if (this.hp <= 0) {
@@ -132,16 +188,10 @@ export class Warden extends Actor {
       this.game.onBossDefeated(this);
       return true;
     }
-    if (this.state !== 'stagger' && this.state !== 'phase') {
+    if (this.state !== 'stagger' && this.state !== 'phase' && this.state !== 'riposted') {
       this.poise -= hit.poise;
       this.poiseTimer = 4;
-      if (this.poise <= 0) {
-        this.poise = this.maxPoise;
-        this.state = 'stagger';
-        this.t = 0;
-        this.vel.set(0, 0, 0);
-        this.game.audio.play('clang');
-      }
+      if (this.poise <= 0) this._stagger();
     }
     return true;
   }
@@ -149,6 +199,7 @@ export class Warden extends Actor {
   update(dt) {
     if (this.state === 'gone') return;
     this.t += dt;
+    this.clock += dt;
     if (this.recentT > 0) this.recentT -= dt;
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
     const p = this.game.player;
@@ -197,13 +248,19 @@ export class Warden extends Actor {
       case 'stagger':
         if (this.t > 2.4) { this.state = 'engage'; this.cooldown = 0.3; }
         break;
+      case 'recoil':
+        if (this.t > RECOIL_TIME) { this.state = 'engage'; this.cooldown = 0.35; }
+        break;
+      case 'riposted':
+        if (this.t > RIPOSTED_TIME) { this.state = 'engage'; this.cooldown = 0.5; }
+        break;
       case 'phase':
         this._aura(clamp(this.t / 1.5, 0, 1));
         if (Math.random() < 0.7) {
           this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 2.5, z: this.pos.z, count: 4, speed: 4, up: 2, color: 0x9fd0ff, color2: 0xffffff, life: [0.5, 1.2], size: [0.12, 0.28], jitter: 1.2, drag: 1.5 });
         }
         if (this.t > 1.0 && this.t - dt <= 1.0) {
-          this.game.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: 12, speed: 16, color: 0x9fd0ff, hit: { dmg: 10, poise: 30, knock: 6 } });
+          this.game.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: 12, speed: 16, color: SPECTRAL, hit: { dmg: 10, poise: 30, knock: 6, unblockable: true } });
           this.game.cameraShake(0.4, 1);
         }
         if (this.t > 2.4) {
@@ -255,7 +312,7 @@ export class Warden extends Actor {
     const speed = this.phase === 2 ? 0.87 : 1;
     const hold = m.hold ? Math.random() * m.hold : 0;
     this.move = { ...m, name, windup: m.windup * speed + hold, recover: m.recover * speed, airborne: false };
-    this.hit = { dmg: m.dmg, poise: m.poise, reach: m.reach, arc: m.arc, heavy: m.heavy };
+    this.hit = { dmg: m.dmg, poise: m.poise, reach: m.reach, arc: m.arc, heavy: m.heavy, parryable: m.parryable };
     this.hitSet = new Set();
     this.state = 'attack';
     this.t = 0;
@@ -271,6 +328,7 @@ export class Warden extends Actor {
     const tw = m.windup + air, ta = tw + m.active, tr = ta + m.recover;
     const t = this.t;
     if (t < m.windup) this.turnTo(toP, m.track, dt);
+    if (m.unblockable && t < tw) this._spectralTell(t / tw);
 
     // Leap: launch at end of windup, arc onto where the player is heading.
     if (m.name === 'leap') {
@@ -322,9 +380,10 @@ export class Warden extends Actor {
         g.cameraShake(0.35, 1);
         this._dust(hx, hz, 30);
       }
+      if (m.unblockable) this._aura(this.phase === 2 ? 1 : 0); // end the windup glow
       if (m.ring) {
         const hx = this.pos.x + Math.sin(this.yaw) * 4.3, hz = this.pos.z + Math.cos(this.yaw) * 4.3;
-        g.effects.shockwave(this, this.pos.x, this.pos.z, { start: 1.5, maxR: m.ring.maxR, speed: m.ring.speed, thickness: 1.3, color: 0x9fd0ff, hit: { dmg: m.ring.dmg, poise: 60, heavy: true } });
+        g.effects.shockwave(this, this.pos.x, this.pos.z, { start: 1.5, maxR: m.ring.maxR, speed: m.ring.speed, thickness: 1.3, color: SPECTRAL, hit: { dmg: m.ring.dmg, poise: 60, heavy: true, unblockable: true } });
         g.audio.play('bell');
         g.audio.play('slam');
         g.cameraShake(0.45, 1);
@@ -335,7 +394,7 @@ export class Warden extends Actor {
         g.audio.play('bellSmall');
         for (let i = 0; i < m.count; i++) {
           const a = Math.random() * Math.PI * 2, r = i === 0 ? 0 : 2.5 + Math.random() * 4.5;
-          g.effects.bellDrop(this, p.pos.x + Math.sin(a) * r, p.pos.z + Math.cos(a) * r, 1.15 + i * 0.28, { radius: 2.6, hit: { dmg: 32, poise: 60, heavy: true } });
+          g.effects.bellDrop(this, p.pos.x + Math.sin(a) * r, p.pos.z + Math.cos(a) * r, 1.15 + i * 0.28, { radius: 2.6, hit: { dmg: 32, poise: 60, heavy: true, unblockable: true } });
         }
       }
     }
@@ -348,6 +407,18 @@ export class Warden extends Actor {
       }
       this.state = 'engage';
       this.cooldown = this.phase === 2 ? 0.25 + Math.random() * 0.7 : 0.5 + Math.random() * 0.9;
+    }
+  }
+
+  // Windup tell for unblockable moves: the maul head (toll) or the raised hand (bells) gathers
+  // spectral blue light, the same colour as the ring and bells, so "blue means roll".
+  _spectralTell(u) {
+    const g = this.game;
+    this.model.headMat.emissiveIntensity = 1.4 + u * 4 + Math.sin(this.t * 30) * 0.6;
+    if (Math.random() < 0.6) {
+      const src = this.move.name === 'toll' ? this.model.maulHead : this.model.armL.hand;
+      src.getWorldPosition(tmpV);
+      g.particles.emit({ x: tmpV.x, y: tmpV.y, z: tmpV.z, count: 3, speed: 1.5 + u * 2, up: 0.6, color: SPECTRAL, color2: 0xffffff, life: [0.25, 0.5], size: [0.1, 0.22], jitter: 0.35, drag: 3 });
     }
   }
 
@@ -393,6 +464,15 @@ export class Warden extends Actor {
         break;
       }
       case 'stagger': copyPose(p, W.kneel); k = dampK(10, dt); break;
+      case 'recoil':
+        copyPose(p, W.recoil);
+        k = dampK(this.t < 0.25 ? 18 : 5, dt);
+        break;
+      case 'riposted':
+        // Knelt while the blade goes in; the impact snaps his head back, then he slumps and rises.
+        copyPose(p, !this.struck ? W.kneel : this.t < RIPOSTED_TIME - 0.6 ? W.struck : W.stance);
+        k = dampK(this.t < 1 ? 16 : 4, dt);
+        break;
       case 'phase': copyPose(p, W.roar); k = dampK(6, dt); break;
       case 'dead': copyPose(p, W.dead); k = dampK(2.5, dt); break;
     }
