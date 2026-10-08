@@ -1,14 +1,16 @@
 // Test menu (` or Pause > Test menu): teleports, cheats, gear, enemies, the boss, quests and the
 // environment, for trying things out quickly. Lists come from the data modules each time it opens,
 // so new zones, gear, items and enemy kinds show up without touching this file.
-import { ZONES } from '../data/world.js';
+import { ZONES, NPCS } from '../data/world.js';
 import { WEAPONS, SHIELDS } from '../data/weapons.js';
 import { RITES } from '../data/abilities.js';
 import { ITEMS } from '../data/items.js';
-import { ALL_GEAR } from '../data/loot.js';
+import { ALL_GEAR, LOOT, gearOf } from '../data/loot.js';
+import { Save, mergeSave } from '../systems/Save.js';
 import { enemyKinds } from '../entities/spawn.js';
 
 const SCALES = [0.25, 0.5, 1, 2];
+const BOSS_HP = [0.75, 0.5, 0.25, 0.1];
 const NEARBY = 30; // metres, for "kill all nearby"
 
 // The #debug number-key shortcuts (Game._debugKeys), listed at the bottom.
@@ -21,6 +23,10 @@ const DEBUG_KEYS = [
   ['K', 'Kill the Warden (during the fight)'],
   ['Y', 'Every weapon, shield and rite'],
 ];
+
+// Save codes: the save as base64 JSON, so a set-up moment can be copied out and pasted back in.
+const encodeSave = (st) => btoa(unescape(encodeURIComponent(JSON.stringify(st))));
+const decodeSave = (code) => JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
 
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const title = (id) => id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -102,6 +108,36 @@ export class TestMenu {
         note = 'The Warden kneels in the arena again. The mist is sealed and the north gate shut.';
         break;
 
+      case 'tpShrine': {
+        const sh = g.world.shrines.get(arg);
+        close = g.teleport(sh.x, sh.z + 2.5, Math.PI);
+        break;
+      }
+      case 'tpNpc': {
+        const n = NPCS.find((x) => x.id === arg);
+        close = g.teleport(n.x + Math.sin(n.yaw) * 2.5, n.z + Math.cos(n.yaw) * 2.5, n.yaw + Math.PI);
+        break;
+      }
+      case 'tpLoot': {
+        const l = LOOT[Number(arg)];
+        close = g.teleport(l.x, l.z + 2, Math.PI);
+        break;
+      }
+      case 'tpRemnant': {
+        const r = st.remnant;
+        if (!r) { note = 'You have no dropped ash lying anywhere.'; break; }
+        close = g.teleport(r.x, r.z + 2, Math.PI);
+        break;
+      }
+      case 'kindleAll':
+        note = `Kindled ${g.kindleAll()} lantern(s). Fast-travel between them from the map (M).`;
+        break;
+      case 'revealMap':
+        st.discovered = Object.keys(ZONES);
+        g.save();
+        note = 'Every place in the Vale is now named on the map.';
+        break;
+
       // player
       case 'god': p.god = !p.god; break;
       case 'stamina': g.cheats.stamina = !g.cheats.stamina; break;
@@ -168,6 +204,9 @@ export class TestMenu {
         g.removePickupsOf(arg);
         break;
 
+      case 'oneHit': g.cheats.oneHit = !g.cheats.oneHit; break;
+      case 'flasks': g.cheats.flasks = !g.cheats.flasks; break;
+
       // enemies
       case 'kill':
         note = `Felled ${g.killNearby(NEARBY)} within ${NEARBY} m.`;
@@ -177,6 +216,14 @@ export class TestMenu {
         note = 'Every enemy is back at its post; spawned extras are gone.';
         break;
       case 'freeze': g.cheats.freeze = !g.cheats.freeze; break;
+      case 'pack':
+        for (const off of [-0.5, 0, 0.5]) {
+          const e = g.spawnEnemy('hound', 7);
+          e.pos.x += Math.cos(p.yaw) * off * 6;
+          e.pos.z -= Math.sin(p.yaw) * off * 6;
+        }
+        note = 'A pack of three Mire Hounds is circling ahead of you.';
+        break;
       case 'spawn': {
         const e = g.spawnEnemy(arg);
         note = `${e.name ?? title(arg)} spawned 5 m ahead (${g.extras.size} spawned in all).`;
@@ -250,6 +297,75 @@ export class TestMenu {
         break;
       case 'hud': g.hud.setVisible(!g.hud.visible); break;
       case 'perf': g.hud.perf = !g.hud.perf; break;
+
+      // boss extras
+      case 'bossHp': {
+        const b = g.boss;
+        if (!b.alive) { note = 'The Warden is silenced. Revive him first.'; break; }
+        b.hp = b.maxHp * Number(arg);
+        note = `Odran set to ${Math.round(Number(arg) * 100)}% health${Number(arg) <= 0.5 && b.phase === 1 ? ' (phase 2 begins when he next acts)' : ''}.`;
+        break;
+      }
+      case 'rehearse': {
+        if (st.flags.wardenDead) g.reviveWarden();
+        if (!p.alive) { note = 'You have fallen. Wait to rise at the lantern.'; break; }
+        Object.assign(p, { hp: p.maxHp, stamina: p.maxStamina, focus: p.maxFocus, flasks: p.flasksMax, winded: false });
+        close = g.enterBossFight({ cutscene: arg !== 'skip' });
+        break;
+      }
+
+      // debug views
+      case 'hitboxes': g.debugViews.setHitboxes(!g.debugViews.hitboxes); break;
+      case 'colliders': g.debugViews.setColliders(!g.debugViews.colliders); break;
+      case 'freecam':
+        g.debugViews.setFreeCam(!g.debugViews.free);
+        close = !!g.debugViews.free;
+        if (!close) note = 'Back behind your character.';
+        break;
+
+      // saves
+      case 'saveNow':
+        g.save();
+        note = 'Saved.';
+        break;
+      case 'wipeSave':
+        if (this.wipeArmed) {
+          Save.clear();
+          this.wipeArmed = false;
+          note = 'Save wiped. The title screen will offer only a new journey until you play again.';
+        } else {
+          this.wipeArmed = true;
+          note = 'Press "Wipe save" again to delete your progress for good.';
+        }
+        break;
+      case 'copyCode': {
+        g.save();
+        const code = encodeSave(st);
+        const box = this.root.querySelector('.test-code');
+        if (box) box.value = code;
+        const done = () => { this.note = 'Save code copied. Paste it here later to come back to this moment.'; this.render(); };
+        try {
+          navigator.clipboard.writeText(code).then(done, () => { box?.select(); this.note = 'Select the code in the box and copy it.'; this.render(); });
+        } catch {
+          box?.select();
+        }
+        note = 'Save code is in the box below.';
+        this.code = code;
+        break;
+      }
+      case 'loadCode': {
+        const box = this.root.querySelector('.test-code');
+        try {
+          const loaded = mergeSave(decodeSave(box.value));
+          Save.write(loaded);
+          g.closeModal();
+          g.continueGame();
+          return;
+        } catch {
+          note = 'That code could not be read. Copy the whole code, with no spaces missing.';
+        }
+        break;
+      }
     }
     if (close) {
       g.closeModal();
@@ -297,6 +413,14 @@ export class TestMenu {
       group('Travel', row(
         Object.entries(ZONES).map(([id, z]) => btn('zone', esc(z.name), { arg: id })).join('')
       ) + row(
+        btn('tpRemnant', 'Your dropped ash', { disabled: !st.remnant })
+        + btn('kindleAll', 'Kindle every lantern')
+        + btn('revealMap', 'Reveal the whole map')
+      ) + sub('Lanterns, people and gear lying in the Vale:') + row(
+        [...g.world.shrines.values()].map((sh) => btn('tpShrine', esc(sh.name), { arg: sh.id })).join('')
+        + NPCS.map((n) => btn('tpNpc', esc(n.name), { arg: n.id })).join('')
+        + LOOT.map((l, i) => btn('tpLoot', esc(gearOf(l.gear)?.def.name ?? l.gear), { arg: i, disabled: owned(l.gear), cls: owned(l.gear) ? 'owned' : '' })).join('')
+      ) + row(
         btn('mist', 'Mist gate (boss)')
         + (dead ? btn('revive', 'Revive the Warden', { cls: 'warn' }) : btn('bossStart', 'Start the boss fight', { cls: 'warn' }))
       ), 'wide'),
@@ -305,6 +429,8 @@ export class TestMenu {
         toggle('god', 'God mode', p.god)
         + toggle('stamina', 'Infinite stamina', g.cheats.stamina)
         + toggle('focus', 'Infinite focus', g.cheats.focus)
+        + toggle('flasks', 'Infinite flasks', g.cheats.flasks)
+        + toggle('oneHit', 'One-hit kills', g.cheats.oneHit)
       ) + row(
         btn('restore', 'Restore all')
         + btn('ash', '+5,000 ash')
@@ -316,6 +442,7 @@ export class TestMenu {
         btn('kill', `Kill all nearby (${NEARBY} m)`)
         + btn('respawn', 'Respawn all')
         + toggle('freeze', 'Freeze enemy AI', g.cheats.freeze)
+        + btn('pack', 'Spawn a hound pack')
       ) + sub('Spawn 5 m ahead, facing you:') + row(
         enemyKinds().map((k) => btn('spawn', `Spawn ${esc(title(k))}`, { arg: k })).join('')
       )),
@@ -335,7 +462,23 @@ export class TestMenu {
         + btn('stagger', 'Stagger', { disabled: dead || !fighting })
         + btn('bossKill', 'Kill', { disabled: dead || !b.alive, cls: 'warn' })
         + btn('bossReset', dead ? 'Reset (revive)' : 'Reset')
-      )),
+      ) + sub('Health:') + row(BOSS_HP.map((v) => btn('bossHp', `${v * 100}%`, { arg: v, disabled: dead })).join(''))
+        + sub('Rehearsal: full restore, then straight into the fight.') + row(
+          btn('rehearse', 'Rehearse (with cutscene)', { cls: 'warn' }) + btn('rehearse', 'Rehearse (skip cutscene)', { arg: 'skip', cls: 'warn' })
+        )),
+
+      group('Debug views', row(
+        toggle('hitboxes', 'Hitboxes and attack reach', g.debugViews.hitboxes)
+        + toggle('colliders', 'Walls and colliders', g.debugViews.colliders)
+        + toggle('freecam', 'Free camera', !!g.debugViews.free)
+      ) + sub('Free camera: WASD flies, mouse looks, E rises, Q sinks, Shift is fast. Turn it off here.')),
+
+      group('Saves', row(
+        btn('saveNow', 'Save now')
+        + btn('copyCode', 'Copy save code')
+        + btn('loadCode', 'Load save code')
+        + btn('wipeSave', this.wipeArmed ? 'Wipe save: are you sure?' : 'Wipe save', { cls: 'warn' })
+      ) + `<textarea class="test-code" rows="2" spellcheck="false" aria-label="Save code" placeholder="Paste a save code here, then Load save code">${esc(this.code ?? '')}</textarea>`),
 
       group('Quests', sub(`${esc(q.defs[mq].title)}: ${esc(q.status(mq) === 'done' ? 'complete' : q.status(mq) === 'inactive' ? 'not started' : q.objectiveText(mq))}`) + row(
         btn('questAdvance', 'Advance main quest', { disabled: q.status(mq) === 'done' })

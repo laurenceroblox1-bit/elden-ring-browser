@@ -95,6 +95,7 @@ export class Combat {
       ...hit, attacker, parryable, unblockable: !!hit.unblockable,
       dirX: len > 1e-3 ? dx / len : -target.forwardX, dirZ: len > 1e-3 ? dz / len : -target.forwardZ,
     };
+    if (attacker === this.game.player && this.game.cheats?.oneHit) h.dmg = 99999; // test menu
     const result = target.takeHit(h);
     if (!result) return result;
     this.feedback(attacker, target, h, result);

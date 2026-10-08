@@ -12,6 +12,7 @@ import { Projectiles } from '../effects/Projectiles.js';
 import { Combat } from '../systems/Combat.js';
 import { BossIntro, BOSS_INTRO_LENGTH } from './Cutscene.js';
 import { PostFX } from './PostFX.js';
+import { DebugViews } from '../ui/DebugViews.js';
 import { Quests } from '../systems/Quests.js';
 import { Interactions } from '../systems/Interactions.js';
 import { Save, newGameState, mergeSave, levelOf, levelCost } from '../systems/Save.js';
@@ -71,7 +72,7 @@ export class Game {
     this.pickups = [];
     this.remnant = null;
     this.timeScale = 1; // test menu: scales the simulation step
-    this.cheats = { stamina: false, focus: false, freeze: false };
+    this.cheats = { stamina: false, focus: false, freeze: false, oneHit: false, flasks: false };
     this.extras = new Set(); // enemies spawned from the test menu; removed on rest, death and respawn-all
 
     this.events = new Events();
@@ -96,6 +97,7 @@ export class Game {
     this.boss = new Warden(this);
     this.npcs = NPCS.map((d) => new NPC(this, d));
     this.cam = new CameraRig(this);
+    this.debugViews = new DebugViews(this);
     // Full-screen menus that build their own DOM (the others live in HUD's template).
     this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this) };
     this.input.pad.onChange = (on, id) => this._onPad(on, id);
@@ -742,6 +744,18 @@ export class Game {
     i.poll();
     this._padModeSync();
     this._modalKeys();
+    if (this.debugViews.free && !this.modal) {
+      // Free camera (test menu): the world runs on, the player stands still, the camera flies.
+      if (!this.cheats.freeze) {
+        this._updateEnemies(dt);
+        this.boss.update(dt);
+      }
+      this.effects.update(dt);
+      this.projectiles.update(dt);
+      this.debugViews.updateFreeCam(dt);
+      this.debugViews.update(dt);
+      return;
+    }
     if (this.cutscene && !this.modal) {
       // Cutscene: the world keeps breathing (the Warden rises, particles drift) but nobody acts.
       this.boss.update(dt);
@@ -784,6 +798,7 @@ export class Game {
       this._ambient(dt, this.player.pos);
     }
     this.cam.update(dt, !this.modal || this.modal === 'dialogue');
+    this.debugViews.update(dt);
   }
 
   // Keeps the HUD's key glyphs and control lists in step with the device in use.
@@ -799,6 +814,7 @@ export class Game {
       p.winded = false;
     }
     if (c.focus) p.focus = p.maxFocus;
+    if (c.flasks) p.flasks = p.flasksMax;
   }
 
   _timers(dt) {
@@ -942,14 +958,28 @@ export class Game {
     this.world.fogGate.collider.enabled = true;
   }
 
+  // Test menu: light every lantern without the ceremony (quests still hear about it).
+  kindleAll() {
+    let n = 0;
+    for (const s of this.world.shrines.values()) {
+      if (s.lit) continue;
+      s.lit = true;
+      if (!this.state.shrinesLit.includes(s.id)) this.state.shrinesLit.push(s.id);
+      this.events.emit('shrineKindled', s.id);
+      n++;
+    }
+    this.save();
+    return n;
+  }
+
   // Inside the arena, facing Odran, and the fight begins (a fresh one if one was running).
-  enterBossFight() {
+  enterBossFight({ cutscene = true } = {}) {
     if (this.state.flags.wardenDead || !this.player.alive) return false;
     this.endBossFight();
     if (this.boss.state !== 'dormant') this.boss.reset();
     const f = this.world.fogGate;
     this.teleport(f.x, f.z - 5, Math.PI);
-    this.startBossFight();
+    this.startBossFight({ cutscene });
     return true;
   }
 
