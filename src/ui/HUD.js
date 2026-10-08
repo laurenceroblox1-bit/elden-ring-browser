@@ -5,6 +5,7 @@ import { WEAPONS, SHIELDS, speedLabel } from '../data/weapons.js';
 import { ARTS, RITES } from '../data/abilities.js';
 import { levelOf, levelCost } from '../systems/Save.js';
 import { wrapAngle } from '../core/math.js';
+import { EnemyBars } from './EnemyBars.js';
 
 export const CONTROLS = [
   ['W A S D', 'Move'],
@@ -512,7 +513,12 @@ export class HUD {
 
   update(dt) {
     const g = this.game;
-    if (g.mode !== 'playing') return;
+    if (g.mode !== 'playing') {
+      this.enemyBars?.clear();
+      return;
+    }
+    if (!this.enemyBars) this.enemyBars = new EnemyBars(this.root, g);
+    this.enemyBars.update(dt);
     const p = g.player;
     const e = this.el;
 

@@ -390,3 +390,16 @@ kbd {
 .banner.bosstitle { top: 70%; background: none; z-index: 6; }
 .banner.bosstitle .banner-text { color: var(--text); font-size: clamp(1.9rem, 5vw, 3.4rem); letter-spacing: 0.08em; }
 .banner.bosstitle .banner-sub { color: var(--gold); font-style: normal; letter-spacing: 0.2em; text-transform: uppercase; font-size: 0.85rem; }
+
+/* ---------- enemy health bars and damage numbers ---------- */
+.enemy-bars { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.ebar { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.ebar-track { position: absolute; left: -38px; top: -4px; width: 76px; height: 6px; border: 1px solid rgba(201, 164, 92, 0.45); background: rgba(0, 0, 0, 0.6); }
+.ebar-fill, .ebar-lag { position: absolute; inset: 1px; transform-origin: left; }
+.ebar-fill { background: linear-gradient(#b8322a, #6e1c18); }
+.ebar-lag { background: var(--blood-lag); opacity: 0.8; }
+.ebar.open .ebar-track { border-color: #ff6a4a; box-shadow: 0 0 8px rgba(255, 106, 74, 0.7); }
+.ebar-name { position: absolute; left: -90px; width: 180px; top: -22px; text-align: center; font: 0.85rem/1 var(--font-display); color: var(--text); text-shadow: 0 1px 3px #000; white-space: nowrap; }
+.dmg-num { position: absolute; left: 0; top: 0; margin-left: -20px; width: 40px; text-align: center; font: 1.05rem/1 var(--font-display); color: #f2e2c0; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0, 0, 0, 0.8); font-variant-numeric: tabular-nums; }
+.dmg-num.crit { color: var(--gold-hi); font-size: 1.4rem; }
+#hud.cinematic .enemy-bars { opacity: 0; }
