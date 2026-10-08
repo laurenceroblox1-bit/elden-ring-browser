@@ -488,6 +488,18 @@ export class HUD {
     this.el.banner.hidden = true;
   }
 
+  // Cinematic bars for cutscenes; the rest of the HUD fades while they're up.
+  setLetterbox(on) {
+    if (!this.letterbox) {
+      this.letterbox = document.createElement('div');
+      this.letterbox.className = 'letterbox';
+      this.letterbox.innerHTML = '<div class="lb-top"></div><div class="lb-bottom"></div>';
+      this.root.appendChild(this.letterbox);
+    }
+    this.letterbox.classList.toggle('on', on);
+    this.root.classList.toggle('cinematic', on);
+  }
+
   setBoss(name) {
     this.el.boss.hidden = !name;
     if (name) {

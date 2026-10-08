@@ -379,3 +379,14 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .toast, .banner, .bar.fo.flash { animation-duration: 1ms; }
 }
+
+/* ---------- cutscenes ---------- */
+.letterbox { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.letterbox > div { position: absolute; left: 0; right: 0; height: 12vh; background: #000; transition: transform 0.7s ease; }
+.lb-top { top: 0; transform: translateY(-100%); }
+.lb-bottom { bottom: 0; transform: translateY(100%); }
+.letterbox.on .lb-top, .letterbox.on .lb-bottom { transform: none; }
+#hud.cinematic > :not(.letterbox):not(.banner) { opacity: 0; transition: opacity 0.4s; }
+.banner.bosstitle { top: 70%; background: none; z-index: 6; }
+.banner.bosstitle .banner-text { color: var(--text); font-size: clamp(1.9rem, 5vw, 3.4rem); letter-spacing: 0.08em; }
+.banner.bosstitle .banner-sub { color: var(--gold); font-style: normal; letter-spacing: 0.2em; text-transform: uppercase; font-size: 0.85rem; }

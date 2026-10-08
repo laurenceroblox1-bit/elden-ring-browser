@@ -10,6 +10,7 @@ import { Particles } from '../effects/Particles.js';
 import { Effects } from '../effects/Effects.js';
 import { Projectiles } from '../effects/Projectiles.js';
 import { Combat } from '../systems/Combat.js';
+import { BossIntro, BOSS_INTRO_LENGTH } from './Cutscene.js';
 import { Quests } from '../systems/Quests.js';
 import { Interactions } from '../systems/Interactions.js';
 import { Save, newGameState, mergeSave, levelOf, levelCost } from '../systems/Save.js';
@@ -223,6 +224,11 @@ export class Game {
 
   // Respawns enemies and resets an unfinished boss fight. Called on rest and on death.
   resetWorld() {
+    if (this.cutscene) {
+      this.cutscene.done = true;
+      this.cutscene = null;
+      this.hud.setLetterbox(false);
+    }
     this.despawnExtras();
     for (const e of this.enemies) e.reset();
     this.effects.clear();
@@ -468,11 +474,21 @@ export class Game {
     });
   }
 
-  startBossFight() {
+  startBossFight({ cutscene = true } = {}) {
     this.bossFight = true;
-    this.boss.awaken();
-    this.hud.setBoss(this.boss.name);
     this.audio.setMusic(true);
+    if (!cutscene) {
+      this.boss.awaken();
+      this.hud.setBoss(this.boss.name);
+      return;
+    }
+    this.boss.awaken(BOSS_INTRO_LENGTH);
+    this.cutscene = new BossIntro(this, () => {
+      this.cutscene = null;
+      // A skipped cutscene cuts the Warden's rise short too.
+      this.boss.introLen = Math.min(this.boss.introLen ?? BOSS_INTRO_LENGTH, this.boss.t + 0.6);
+      this.hud.setBoss(this.boss.name);
+    });
   }
 
   // ---------- outcomes ----------
@@ -680,6 +696,16 @@ export class Game {
     i.poll();
     this._padModeSync();
     this._modalKeys();
+    if (this.cutscene && !this.modal) {
+      // Cutscene: the world keeps breathing (the Warden rises, particles drift) but nobody acts.
+      this.boss.update(dt);
+      this.effects.update(dt);
+      this.combat.update(dt);
+      for (const n of this.npcs) n.update(dt);
+      this._timers(dt);
+      this.cutscene?.update(dt);
+      return;
+    }
     if (!this.modal) {
       // The test menu's time scale slows or speeds the whole simulation; hit-stop slows it further.
       let sdt = dt * this.timeScale;

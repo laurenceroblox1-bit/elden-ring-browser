@@ -104,11 +104,13 @@ export class Warden extends Actor {
     this.model.root.visible = false;
   }
 
-  awaken() {
+  // `introLen` stretches the rise to fit the opening cutscene (see core/Cutscene.js).
+  awaken(introLen = 2.4) {
     this.state = 'intro';
+    this.introLen = introLen;
     this.lockable = true;
     this.t = 0;
-    this.game.audio.play('bell');
+    if (introLen <= 2.4) this.game.audio.play('bell');
   }
 
   constrain() {
@@ -212,7 +214,7 @@ export class Warden extends Actor {
       case 'dormant':
         break;
       case 'intro':
-        if (this.t > 2.4) {
+        if (this.t > (this.introLen ?? 2.4)) {
           this.state = 'engage';
           this.invuln = false;
           this.lockable = true;
@@ -435,10 +437,22 @@ export class Warden extends Actor {
         p.headX = 0.6 + Math.sin(this.game.time * 0.8) * 0.04;
         break;
       case 'intro': {
-        const u = clamp(this.t / 2.2, 0, 1);
-        if (u < 0.55) copyPose(p, W.kneel);
-        else mixPose(p, W.stance, W.roar, Math.sin(((u - 0.55) / 0.45) * Math.PI));
-        k = dampK(4, dt);
+        const len = this.introLen ?? 2.4;
+        if (len > 4) {
+          // Cutscene timing: kneel, rise as the camera drops low (2.5-4.3 s), roar on the close-up (4.3-6.3 s).
+          const t = this.t;
+          if (t < 2.5) copyPose(p, W.kneel);
+          else if (t < 4.3) mixPose(p, W.kneel, W.stance, easeInOut((t - 2.5) / 1.8));
+          else if (t < 6.3) mixPose(p, W.stance, W.roar, Math.sin(((t - 4.3) / 2.0) * Math.PI));
+          else copyPose(p, W.stance);
+          this.model.eye.emissiveIntensity = 0.4 + clamp((t - 2.6) / 1.4, 0, 1) * 1.8;
+          k = dampK(6, dt);
+        } else {
+          const u = clamp(this.t / 2.2, 0, 1);
+          if (u < 0.55) copyPose(p, W.kneel);
+          else mixPose(p, W.stance, W.roar, Math.sin(((u - 0.55) / 0.45) * Math.PI));
+          k = dampK(4, dt);
+        }
         break;
       }
       case 'engage': {
