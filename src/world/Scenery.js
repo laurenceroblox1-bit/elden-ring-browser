@@ -4,7 +4,7 @@
 // dropped past SMALL_FAR from the camera, where the fog and their size hide them anyway.
 import * as THREE from '../lib/three.js';
 import { fbm, mulberry32 } from '../core/math.js';
-import { ZONES, ROADS, LAKE, SHRINES, NPCS, NOTICE, ENEMY_SPAWNS, PICKUPS, FIRES, KEEP_CLEAR } from '../data/world.js';
+import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, HOLLOW, SHRINES, NPCS, NOTICE, ENEMY_SPAWNS, PICKUPS, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
 import { ChunkBatcher } from './Batcher.js';
 import { windPatch, windDepthMaterial, ADDITIVE_FOG } from './Wind.js';
@@ -62,6 +62,7 @@ export class Scenery {
     this._lakeside();
     this._roads();
     this._stoneRing(-60, -110, 7.5);
+    this._fen();
     this._bakeStatics();
     const bell = world.chapelBell;
     if (bell) this._put(this.big, P.fallenBellParts(this.rng), bell.x, bell.z, { ry: bell.ry, sink: 0.2 });
@@ -85,9 +86,10 @@ export class Scenery {
   // Free ground for a large prop: off roads, out of zones, the lake and the arena.
   ok(x, z, pad = 0, maxSlope = 0.6) {
     const w = this.world;
-    if (Math.hypot(x, z) > 290) return false;
+    if (Math.hypot(x, z) > WORLD.playRadius - 40) return false;
     if (w.roadDistance(x, z) < 6 + pad) return false;
     if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return false;
+    if (w.fenPoolDepth(x, z) > 0) return false;
     for (const zn of Object.values(ZONES)) if (Math.hypot(x - zn.x, z - zn.z) < zn.flat + 4 + pad) return false;
     if (w.inArena(x, z, 14)) return false;
     return w.slopeAt(x, z) < maxSlope;
@@ -122,12 +124,13 @@ export class Scenery {
 
   _trees() {
     const rng = this.rng, w = this.world;
-    this._scatter(950, 9000, 290, (x, z) => {
+    this._scatter(1500, 14000, WORLD.playRadius - 40, (x, z) => {
       if (this.forest(x, z) < -0.05 && rng() > 0.12) return false;
       if (!this.ok(x, z, 0)) return false;
       const moorish = x < -140 && z < -40;
+      const fen = Math.hypot(x - FEN.x, z - FEN.z) < FEN.r || Math.hypot(x - HOLLOW.x, z - HOLLOW.z) < HOLLOW.r + 30;
       const roll = rng();
-      const type = moorish ? (roll < 0.5 ? 'dead' : 'pine') : roll < 0.52 ? 'pine' : roll < 0.9 ? 'broad' : 'dead';
+      const type = fen ? (roll < 0.8 ? 'dead' : 'pine') : moorish ? (roll < 0.5 ? 'dead' : 'pine') : roll < 0.52 ? 'pine' : roll < 0.9 ? 'broad' : 'dead';
       const s = 0.8 + rng() * 0.7;
       const parts = type === 'pine' ? P.pineParts(rng) : type === 'broad' ? P.broadParts(rng) : P.deadParts(rng);
       const y = w.getHeight(x, z);
@@ -142,7 +145,7 @@ export class Scenery {
 
   _rocks() {
     const rng = this.rng, w = this.world;
-    this._scatter(320, 1600, 300, (x, z) => {
+    this._scatter(480, 2600, WORLD.playRadius - 30, (x, z) => {
       if (!this.ok(x, z, -3)) return false;
       const s = 0.4 + Math.pow(rng(), 2.5) * 2.6;
       // Rocks big enough to block are kept off the road shoulders.
@@ -323,6 +326,46 @@ export class Scenery {
   }
 
   // A ring of leaning standing stones on a hilltop, with a flat offering stone at its heart.
+  // The Ashen Fen: reed beds round the black pools, grey tussocks, bare snags, and the great ring of
+  // stones around the Mother's Hollow, open towards the road so the way in is plain.
+  _fen() {
+    const rng = this.rng, w = this.world;
+    for (const p of FEN_POOLS) {
+      const n = Math.round(p.r * 3.2);
+      for (let i = 0; i < n * 3 && i < 400; i++) {
+        const a = rng() * 6.28, d = p.r * (0.55 + rng() * 0.7);
+        const x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
+        const depth = w.fenLevel - w.getHeight(x, z);
+        if (depth < -0.6 || depth > 0.7 || w.roadDistance(x, z) < 3.5) continue;
+        this._put(this.small, P.reedParts(rng), x, z, { s: 0.9 + rng() * 0.6, sink: 0.1 });
+      }
+    }
+    this._scatter(900, 9000, WORLD.playRadius - 40, (x, z) => {
+      if (Math.hypot(x - FEN.x, z - FEN.z) > FEN.r * 0.95 || w.roadDistance(x, z) < 3.5) return false;
+      if (w.isWater(x, z) || w.slopeAt(x, z) > 0.5 || Math.hypot(x - HOLLOW.x, z - HOLLOW.z) < HOLLOW.r - 4) return false;
+      const s = 0.9 + rng() * 0.9;
+      this._put(this.small, P.tuftParts(rng, 0x8c8a72), x, z, { s, sy: s * (0.7 + rng() * 0.5), sink: 0.05 });
+      return true;
+    });
+    // Standing stones round the hollow; the gap faces the road coming down from the north-west.
+    const gate = Math.atan2(334 - HOLLOW.x, -18 - HOLLOW.z);
+    const n = 14;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      if (Math.abs(Math.atan2(Math.sin(a - gate), Math.cos(a - gate))) < 0.4) continue;
+      const r = HOLLOW.r + 1.5 + rng() * 1.5;
+      const x = HOLLOW.x + Math.sin(a) * r, z = HOLLOW.z + Math.cos(a) * r;
+      this._put(this.big, P.standingStoneParts(rng, 3.6 + rng() * 2.6), x, z, { ry: a + Math.PI / 2, s: 1.5 });
+      w.addCircle(x, z, 0.9);
+    }
+    // Gnawed bones and old nests on the hollow floor.
+    for (let i = 0; i < 26; i++) {
+      const a = rng() * 6.28, d = 6 + rng() * (HOLLOW.r - 9);
+      const x = HOLLOW.x + Math.sin(a) * d, z = HOLLOW.z + Math.cos(a) * d;
+      this._put(this.small, P.rockParts(rng, rng() < 0.6 ? 0xd8cfb8 : 0x6a6458), x, z, { sx: 0.3 + rng() * 0.3, sy: 0.12, sz: 0.9 + rng() * 0.8, rx: rng() * 0.3 });
+    }
+  }
+
   _stoneRing(cx, cz, r) {
     const rng = this.rng, w = this.world;
     const n = 9;

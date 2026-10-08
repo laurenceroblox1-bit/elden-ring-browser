@@ -295,10 +295,10 @@ export function rockParts(rng, hex = 0x7a766d) {
 }
 
 const GRASS = [0xb39a4e, 0x7c8740, 0x9a9446, 0x8a8a3e];
-export function tuftParts(rng) {
+export function tuftParts(rng, hex) {
   const G = sceneryGeometries();
   const parts = [];
-  const hue = GRASS[Math.floor(rng() * GRASS.length)];
+  const hue = hex ?? GRASS[Math.floor(rng() * GRASS.length)];
   const n = 3 + (rng() < 0.4 ? 1 : 0);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * 6.28 + rng();

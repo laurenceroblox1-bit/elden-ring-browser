@@ -1,7 +1,7 @@
 // The Vale: heightmap terrain, roads, lake, vegetation, set pieces and 2D colliders.
 import * as THREE from '../lib/three.js';
 import { createNoise2D, fbm, smoothstep, clamp, lerp, mulberry32, distToSegment } from '../core/math.js';
-import { WORLD, ZONES, ROADS, LAKE, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
+import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
 import { mat, mesh, box, plainBox, glowSprite } from '../models/kit.js';
 import { Scenery } from './Scenery.js';
@@ -25,6 +25,7 @@ const COL = {
   snow: C(0xdcd9d2), ash: C(0x6e6962), mud: C(0x4d4234), moor: C(0x6b5f4a),
   warm: C(0xb08a48), cool: C(0x5e6c3a), damp: C(0x4c5530), canopy: C(0x55602e),
   rut: C(0x87714f), scree: C(0x8a8578), rockWarm: C(0x857a6a),
+  fen: C(0x6d6c56), fenAsh: C(0x85827a), bog: C(0x3b382e), fenMoss: C(0x55603f),
 };
 
 export class World {
@@ -47,8 +48,11 @@ export class World {
     this.roadSegs = [];
     for (const road of ROADS) for (let i = 0; i < road.length - 1; i++) this.roadSegs.push([...road[i], ...road[i + 1]]);
 
-    this.flatZones = Object.values(ZONES).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._raw(z.x, z.z).big }));
     this.waterLevel = this._raw(LAKE.x, LAKE.z).big - 2;
+    // The fen's pools all share one level, just under the fen floor.
+    this.fenFloor = this._raw(FEN.x, FEN.z).big;
+    this.fenLevel = this.fenFloor - 0.35;
+    this.flatZones = Object.values(ZONES).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
 
     this._buildHeights();
     this._buildTerrain();
@@ -67,9 +71,16 @@ export class World {
   _raw(x, z) {
     let big = fbm(this.noise, x * 0.0032, z * 0.0032, 4) * 24;
     const r = Math.hypot(x, z);
-    big += smoothstep(265, 410, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50);
+    big += smoothstep(WORLD.mountainStart, WORLD.mountainEnd, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50);
     const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2;
     return { big, h: big + detail };
+  }
+
+  // Level a zone settles at: its own ground, or the fen floor when it sits inside the fen.
+  _flatHeight(x, z) {
+    const big = this._raw(x, z).big;
+    const fd = Math.hypot(x - FEN.x, z - FEN.z);
+    return fd < FEN.r ? lerp(big, this.fenFloor, 1 - smoothstep(FEN.r * 0.5, FEN.r, fd)) : big;
   }
 
   roadDistance(x, z) {
@@ -86,6 +97,9 @@ export class World {
     let h = h0;
     const rd = this.roadDistance(x, z);
     h = lerp(h, big, (1 - smoothstep(2.5, 9, rd)) * 0.92);
+    // The fen is a broad, nearly level basin with a little hummock left in it.
+    const fd = Math.hypot(x - FEN.x, z - FEN.z);
+    if (fd < FEN.r) h = lerp(h, this.fenFloor + (h0 - big) * 0.4, 1 - smoothstep(FEN.r * 0.5, FEN.r, fd));
     const ld = Math.hypot(x - LAKE.x, z - LAKE.z);
     h = lerp(h, this.waterLevel - 3.5, 1 - smoothstep(LAKE.r * 0.4, LAKE.r, ld));
     for (const zn of this.flatZones) {
@@ -93,6 +107,9 @@ export class World {
       const w = 1 - smoothstep(zn.r, zn.r + 14, d);
       if (w > 0) h = lerp(h, zn.h, w);
     }
+    // Fen pools, with ragged shores; the road stays a causeway between them.
+    const pool = this.fenPoolDepth(x, z);
+    if (pool > 0) h = lerp(h, this.fenLevel - 2.6, pool * smoothstep(3.5, 8, rd));
     return h;
   }
 
@@ -174,6 +191,14 @@ export class World {
         const ld = Math.hypot(x - LAKE.x, z - LAKE.z);
         c.lerp(COL.damp, (1 - smoothstep(LAKE.r * 1.0, LAKE.r * 1.5 + nz * 8, ld)) * 0.55);
         c.lerp(COL.mud, 1 - smoothstep(LAKE.r * 0.85, LAKE.r * 1.05, ld));
+        // The Ashen Fen: grey-green ash ground, mossy patches, black mud around the pools.
+        const fw = 1 - smoothstep(FEN.r * 0.65, FEN.r, Math.hypot(x - FEN.x, z - FEN.z) + nz * 10);
+        if (fw > 0) {
+          c.lerp(tmpC.copy(COL.fen).lerp(COL.fenAsh, smoothstep(0.1, 0.6, t)), fw * 0.85);
+          c.lerp(COL.fenMoss, smoothstep(0.2, 0.7, macro) * fw * 0.4);
+          const pd = this.fenPoolDepth(x, z);
+          c.lerp(COL.bog, smoothstep(0.0, 0.25, pd) * fw);
+        }
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
         const snowLine = h + nz * 7;
@@ -238,12 +263,32 @@ export class World {
     return idx;
   }
 
+  // 0 on dry ground, rising to 1 in the middle of a fen pool.
+  fenPoolDepth(x, z) {
+    if (Math.hypot(x - FEN.x, z - FEN.z) > FEN.r) return 0;
+    let best = 0;
+    for (const p of FEN_POOLS) {
+      const d = Math.hypot(x - p.x, z - p.z) + this.noise(x * 0.11, z * 0.11) * p.r * 0.25;
+      best = Math.max(best, 1 - smoothstep(p.r * 0.35, p.r, d));
+    }
+    return best;
+  }
+
   _buildWater() {
     this.water = new Water(this.scene, LAKE, this.waterLevel, (x, z) => this.waterLevel - this.getHeight(x, z));
+    // Black, still fen water: same shader, darker colours.
+    this.pools = FEN_POOLS.map((p) => {
+      const w = new Water(this.scene, { x: p.x, z: p.z, r: p.r * 1.3 }, this.fenLevel, (x, z) => this.fenLevel - this.getHeight(x, z));
+      w.uniforms.uShallow.value.setHex(0x4a5240);
+      w.uniforms.uDeep.value.setHex(0x161c1c);
+      w.uniforms.uFoam.value.setHex(0x9a9684);
+      return w;
+    });
   }
 
   isWater(x, z) {
-    return Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r && this.getHeight(x, z) < this.waterLevel - 0.3;
+    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return this.getHeight(x, z) < this.waterLevel - 0.3;
+    return this.fenPoolDepth(x, z) > 0 && this.getHeight(x, z) < this.fenLevel - 0.3;
   }
 
   // ---------- placement helpers ----------
@@ -386,7 +431,7 @@ export class World {
 
     // The Hollow Bell on the eastern peaks.
     const spire = P.buildSpire();
-    spire.group.position.set(255, this.getHeight(255, -300) - 10, -300);
+    spire.group.position.set(330, this.getHeight(330, -400) - 10, -400); // on the far peaks, past the fen
     this.scene.add(spire.group);
     this.statics.push(spire.group);
 
@@ -712,6 +757,7 @@ export class World {
     this.weather.update(dt, time, cam);
     this.weather.setViewportScale(scale);
     this.water.update(time, sky, this.weather.rain);
+    for (const p of this.pools) p.update(time, sky, this.weather.rain);
     this.scenery.update(cam, sky.night, scale);
     this.ambient.update(dt, time, cam, { night: sky.night, dusk: sky.dusk, weather: this.weather.name, scale });
   }
