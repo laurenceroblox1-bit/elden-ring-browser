@@ -148,6 +148,16 @@ export class AudioFx {
         this._noise({ dur: 1.6, freq: 260, to: 140, q: 2, gain: 0.5, attack: 0.15 });
         this._tone({ freq: 82, to: 55, type: 'sawtooth', dur: 1.5, gain: 0.2, attack: 0.2 });
         break;
+      case 'howl':
+        // A long rising-falling wail over a growl.
+        this._tone({ freq: 220, to: 420, type: 'triangle', dur: 0.9, gain: 0.16, attack: 0.25 });
+        this._tone({ freq: 420, to: 260, type: 'triangle', dur: 1.2, gain: 0.14, attack: 0.05, delay: 0.85 });
+        this._noise({ dur: 1.8, freq: 380, to: 200, q: 1.5, gain: 0.25, attack: 0.3 });
+        break;
+      case 'snarl':
+        this._noise({ dur: 0.45, freq: 320, to: 180, q: 3, gain: 0.35, attack: 0.03 });
+        this._tone({ freq: 95, to: 70, type: 'sawtooth', dur: 0.4, gain: 0.12 });
+        break;
       case 'heal':
         this._tone({ freq: 520, to: 780, dur: 0.5, gain: 0.12, attack: 0.05 });
         this._tone({ freq: 780, to: 1040, dur: 0.6, gain: 0.08, attack: 0.08, delay: 0.1 });

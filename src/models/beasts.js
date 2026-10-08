@@ -5,11 +5,12 @@ import { mat, mesh, box, cone, group, mergeRig } from './kit.js';
 
 // Mire Hound: a starved ash-grey hound from the lake fogs. Ribs like a cage, a ridge of bone spurs
 // down the spine, ember eyes and a smouldering maw. Faces +Z with its feet at the root.
-export function buildHound() {
-  const hide = mat(0x6b6e6f, { roughness: 0.95 });
-  const dark = mat(0x3e4043, { roughness: 0.95 });
+// `mother` builds Vharra instead: soot-dark hide, a crown of bone, four eyes and a smouldering mane.
+export function buildHound({ mother = false } = {}) {
+  const hide = mat(mother ? 0x4a4644 : 0x6b6e6f, { roughness: 0.95 });
+  const dark = mat(mother ? 0x2a2626 : 0x3e4043, { roughness: 0.95 });
   const bone = mat(0xd8cfb8);
-  const ember = mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4 });
+  const ember = mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
   const maw = mat(0x6a2414, { emissive: 0xff4a10, emissiveIntensity: 0.7 });
 
   const root = new THREE.Group();
@@ -44,6 +45,20 @@ export function buildHound() {
   jaw.add(mesh(box(0.08, 0.02, 0.22), maw, { z: 0.14, y: 0.03, shadow: false }));
   for (const x of [0.04, -0.04]) jaw.add(mesh(cone(0.016, 0.06, 3), bone, { x, y: 0.05, z: 0.27 }));
 
+  if (mother) {
+    // Ember mane down the neck and shoulders, a second pair of eyes, a crown of hooked horns, and a
+    // glowing seam along the belly where the litter-fire burns.
+    for (let i = 0; i < 4; i++) neck.add(mesh(box(0.05, 0.12 + i * 0.02, 0.07), ember, { y: 0.11, z: 0.3 - i * 0.09, rx: -0.4, shadow: false }));
+    for (let i = 0; i < 3; i++) body.add(mesh(box(0.06, 0.1, 0.08), ember, { y: 0.24, z: 0.5 - i * 0.12, shadow: false }));
+    for (const x of [0.06, -0.06]) head.add(mesh(box(0.035, 0.028, 0.03), ember, { x, y: 0.085, z: 0.09, shadow: false }));
+    for (const x of [0.1, -0.1]) {
+      head.add(mesh(cone(0.04, 0.24, 4), bone, { x, y: 0.12, z: 0.02, rx: -1.1, rz: x * -3 }));
+      head.add(mesh(cone(0.03, 0.14, 4), bone, { x: x * 1.3, y: 0.02, z: -0.08, rx: -1.4, rz: x * -6 }));
+    }
+    body.add(mesh(box(0.14, 0.03, 0.5), maw, { y: -0.2, z: 0.1, shadow: false }));
+    for (let i = 0; i < 4; i++) body.add(mesh(box(0.45, 0.04, 0.05), bone, { z: -0.36 - i * 0.08, y: 0.0 + i * 0.01, rx: 0.2 }));
+  }
+
   const tail = group({ y: 0.12, z: -0.66, rx: -0.6 });
   body.add(tail);
   tail.add(mesh(box(0.06, 0.06, 0.46), dark, { z: -0.22 }));
@@ -67,5 +82,5 @@ export function buildHound() {
   mkLeg(-0.14, -0.5, false);
 
   mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
-  return { root, body, neck, head, jaw, tail, legs };
+  return { root, body, neck, head, jaw, tail, legs, materials: { ember } };
 }

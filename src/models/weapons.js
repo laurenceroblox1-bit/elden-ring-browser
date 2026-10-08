@@ -116,6 +116,23 @@ const BUILD = {
     return { right: g };
   },
   // Captain's Cleaver: a broad square-ended slab with a riveted spine.
+  // Mother's Fang: one long curved fang, yellowed, with a dark root bound in leather and a smouldering
+  // crack down its length.
+  mothers_fang() {
+    const g = group();
+    g.add(mesh(box(0.06, 0.06, 0.46), M.leather(), { z: -0.1 }));
+    g.add(mesh(box(0.1, 0.1, 0.1), M.wood(), { z: -0.36 }));
+    g.add(mesh(box(0.2, 0.12, 0.14), M.wood(), { z: 0.16 }));
+    const bone = M.bone();
+    g.add(mesh(box(0.16, 0.07, 0.5), bone, { z: 0.46 }));
+    g.add(mesh(box(0.13, 0.06, 0.46), bone, { z: 0.9, x: 0.02, ry: -0.08 }));
+    g.add(mesh(box(0.1, 0.05, 0.36), bone, { z: 1.28, x: 0.06, ry: -0.18 }));
+    const tip = mesh(cone(0.05, 0.3, 4), bone, { z: 1.58, x: 0.12, rx: Math.PI / 2, ry: Math.PI / 4 });
+    tip.scale.set(1, 1, 0.5);
+    g.add(tip);
+    g.add(mesh(box(0.02, 0.075, 0.8), M.ember(), { z: 0.8, x: 0.02, ry: -0.1, shadow: false }));
+    return { right: g };
+  },
   captains_cleaver() {
     const g = group();
     g.add(mesh(box(0.05, 0.05, 0.24), M.leather(), { z: -0.04 }));

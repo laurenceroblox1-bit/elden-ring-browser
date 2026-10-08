@@ -60,6 +60,17 @@ export const QUESTS = {
     reward: { ash: 350 },
     doneText: 'The shore is quiet again. Ilse says she slept through the night for the first time in weeks.',
   },
+  mother: {
+    title: 'The Mother of the Mire',
+    giver: 'Sister Ilse, Pilgrim',
+    summary: 'The hounds keep coming back however many fall. Ilse has heard that they are whelped far to the east, in a fen of grey ash, by something very much larger.',
+    stages: [
+      { text: 'Follow the fen road east from the Watch Ruins into the Ashen Fen.', on: { type: 'zone', id: 'fen' }, marker: [312, 18] },
+      { text: "Find the Mother's Hollow at the heart of the fen and put the Mother to rest.", on: { type: 'boss', id: 'mother' }, marker: [345, -42] },
+    ],
+    reward: { ash: 800, flask: 1 },
+    doneText: "Vharra sleeps for good. No new litters will come out of the fen, and Ilse can finally sleep.",
+  },
   acolytes: {
     title: 'Snuff the Lanterns',
     giver: 'Brannoc, Stablemaster',

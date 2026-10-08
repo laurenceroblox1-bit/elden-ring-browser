@@ -176,12 +176,11 @@ export class Hound extends Foe {
 
   // ---------- animation ----------
 
-  _animate(dt, c) {
-    const m = this.model, a = this.anim;
-    const sp = Math.hypot(this.vel.x, this.vel.z);
-    const T = { y: 0, x: 0, z: 0, neck: 0, head: 0, jaw: 0.05, tailX: 0, tailY: Math.sin(this.game.time * 2 + this.spawn.x) * 0.15 };
-    let legs = 'gait', k = dampK(12, dt);
+  // Target pose for the current state: fills T (body offsets and joint angles), and o.legs / o.k (the
+  // leg mode and how fast the pose is reached). Subclasses add their own states and fall back here.
+  _pose(T, o, dt) {
     const t = this.t;
+    let legs = o.legs, k = o.k;
     switch (this.state) {
       case 'idle':
         T.neck = 0.45; T.head = 0.15 + Math.sin(this.game.time * 5) * 0.06; T.tailX = 0.35;
@@ -240,6 +239,18 @@ export class Hound extends Foe {
         T.neck = 0.2; T.tailX = 0.4;
         break;
     }
+    o.legs = legs;
+    o.k = k;
+  }
+
+  _animate(dt) {
+    const m = this.model, a = this.anim;
+    // Speeds are judged at the hound's own size (a scaled-up hound strides slower).
+    const sp = Math.hypot(this.vel.x, this.vel.z) / (this.size ?? 1);
+    const T = { y: 0, x: 0, z: 0, neck: 0, head: 0, jaw: 0.05, tailX: 0, tailY: Math.sin(this.game.time * 2 + this.spawn.x) * 0.15 };
+    const o = { legs: 'gait', k: dampK(12, dt) };
+    this._pose(T, o, dt);
+    const legs = o.legs, k = o.k;
     if (this.flinch > 0 && this.alive) { T.z += this.flinch * 0.8; T.neck -= this.flinch; }
 
     for (const key in T) a[key] += (T[key] - a[key]) * k;
@@ -266,6 +277,8 @@ export class Hound extends Foe {
       else if (legs === 'tuck') { hip = leg.front ? -0.5 : 0.6; knee = leg.front ? 1.0 : -1.0; }
       else if (legs === 'splay') { hip = leg.front ? -0.5 : 0.1; knee = leg.front ? 0.2 : -0.6; }
       else if (legs === 'limp') { hip = leg.front ? -0.3 : 0.5; knee = leg.front ? 0.4 : -0.3; }
+      else if (legs === 'fold') { hip = leg.front ? -1.35 : -0.55; knee = leg.front ? 0.15 : -1.7; } // lying down
+      else if (legs === 'rear') { hip = leg.front ? -0.9 : 0.55; knee = leg.front ? 1.2 : -0.9; } // up on the hind legs
       else {
         const phase = gallop ? (leg.front ? 0 : Math.PI) + (leg.side > 0 ? 0 : 0.35) : (leg.front === leg.side > 0 ? 0 : Math.PI);
         const s = Math.sin(this.gait + phase);

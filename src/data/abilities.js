@@ -95,6 +95,46 @@ export const ARTS = {
     ],
   },
 
+  // Mother's Fang: Vharra's own pounce. A crouch, a leap a few strides forward, and a landing that
+  // splits the ground in a ring of ash. Untouchable at the top of the leap.
+  mothers_pounce: {
+    name: "Mother's Pounce",
+    desc: 'Crouch like the Mother of the Mire, leap onto your foe and land in a ring of ash. Nothing can touch you at the top of the leap.',
+    focus: 16, stamina: 26, cooldown: 4,
+    time: 1.3, track: 0.3, invuln: [0.24, 0.6], cancel: 1.0,
+    keys: [[0, 'rest'], [0.2, 'quakeRaise'], [0.62, 'quakeRaise'], [0.72, 'quakeSlam'], [1.05, 'quakeSlam'], [1.3, 'rest']],
+    events: [
+      [0.22, (p, act) => {
+        p.game.audio.play('heavySwing');
+        p.vy = 7.5;
+        p.onGround = false;
+        act.leap = true;
+      }],
+      [0.72, (p, act) => {
+        const g = p.game;
+        act.leap = false;
+        const f = front(p, 1.6, 0.8);
+        g.combat.sphere(p, f, 2.2, { dmg: 40 * p.dmgMult, poise: 60, heavy: true }, new Set());
+        g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 1, maxR: 7, speed: 14, color: 0xd8c8a8, hit: { dmg: 22 * p.dmgMult, poise: 40, heavy: true } });
+        g.audio.play('slam');
+        g.cameraShake(0.4);
+        g.hitstop = Math.max(g.hitstop, 0.06);
+        dust(g, f.x, f.z, 40);
+      }],
+    ],
+    move(p, act, dt) {
+      const g = p.game;
+      let sp = 0;
+      if (act.leap) {
+        sp = 9;
+        const lock = g.lockTarget;
+        if (lock && Math.hypot(lock.pos.x - p.pos.x, lock.pos.z - p.pos.z) < lock.radius + 1.4) sp = 0;
+      }
+      p.vel.x = sp ? p.forwardX * sp : p.vel.x * Math.exp(-10 * dt);
+      p.vel.z = sp ? p.forwardZ * sp : p.vel.z * Math.exp(-10 * dt);
+    },
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',

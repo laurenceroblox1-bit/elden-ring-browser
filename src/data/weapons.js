@@ -126,6 +126,25 @@ export const WEAPONS = {
     },
   },
 
+  mothers_fang: {
+    name: "Mother's Fang",
+    type: 'Greatsword',
+    hands: 2,
+    stance: 'great',
+    scale: 1.45,
+    desc: 'A fang from the jaw of Vharra, Mother of the Mire, bound to a grip of fen-oak. It is still warm, and the hounds of the Vale will not come near whoever carries it.',
+    art: 'mothers_pounce',
+    riposte: { dmg: 34 },
+    guard: { name: 'fang', absorb: 0.7, cost: 1.3, parryWindow: 0.15, raiseTime: 0.13, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 23, dmg: 32, poise: 30, windup: 0.36, active: 0.2, recover: 0.52, lunge: 2.6, reach: 3.2, arc: 1.4, pose: 'gSweepR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 23, dmg: 32, poise: 30, windup: 0.33, active: 0.2, recover: 0.54, lunge: 2.6, reach: 3.2, arc: 1.4, pose: 'gSweepL', next: 'light3', sfx: 'heavySwing' },
+      light3: { stamina: 26, dmg: 40, poise: 40, windup: 0.4, active: 0.18, recover: 0.6, lunge: 4.2, reach: 3.4, arc: 0.45, pose: 'gThrust', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 38, dmg: 66, poise: 62, windup: 0.76, active: 0.18, recover: 0.7, lunge: 3.2, reach: 3.4, arc: 0.6, pose: 'gOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 20, dmg: 28, poise: 24, windup: 0.16, active: 0.16, recover: 0.48, lunge: 3.6, reach: 3.1, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
   mirewatch_halberd: {
     name: 'Mirewatch Halberd',
     type: 'Halberd',

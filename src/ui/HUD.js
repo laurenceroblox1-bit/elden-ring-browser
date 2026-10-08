@@ -665,7 +665,7 @@ export class HUD {
   }
 
   _boss(dt) {
-    const b = this.game.boss;
+    const b = this.game.activeBoss ?? this.game.boss;
     if (this.el.boss.hidden) return;
     const f = Math.max(0, b.hp / b.maxHp);
     this.bossLagV = Math.max(f, this.bossLagV - dt * (b.recentT > 0 ? 0 : 0.35));

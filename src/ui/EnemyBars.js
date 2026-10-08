@@ -43,6 +43,7 @@ export class EnemyBars {
     const g = this.game, cam = g.camera, p = g.player.pos;
     const w = innerWidth, h = innerHeight;
     for (const e of g.enemies) {
+      if (e.isBoss) continue; // bosses have the big bar at the bottom of the screen
       const b = this._bar(e);
       const hurt = e.hp < e.maxHp;
       const engaged = e.state && !['idle', 'return', 'dead'].includes(e.state);

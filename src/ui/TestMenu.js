@@ -314,6 +314,35 @@ export class TestMenu {
         break;
       }
 
+      // Vharra (the fen boss)
+      case 'mother': {
+        if (!p.alive) { note = 'You have fallen. Wait to rise at the lantern.'; break; }
+        Object.assign(p, { hp: p.maxHp, stamina: p.maxStamina, focus: p.maxFocus, flasks: p.flasksMax, winded: false });
+        close = g.enterMotherFight({ cutscene: arg !== 'skip' });
+        break;
+      }
+      case 'motherHp': {
+        const m = g.motherFight;
+        if (!m) { note = 'Wake her first.'; break; }
+        m.hp = m.maxHp * Number(arg);
+        note = `Vharra set to ${Math.round(Number(arg) * 100)}% health.`;
+        break;
+      }
+      case 'motherKill': {
+        const m = g.motherFight;
+        if (!m) { note = 'Wake her first.'; break; }
+        g.combat.strike(p, m, { dmg: 1e6, poise: 0 });
+        break;
+      }
+      case 'motherReset': {
+        const m = g.enemies.find((e) => e.tag === 'matriarch');
+        g.endMotherFight();
+        st.flags.motherDead = false;
+        m?.reset();
+        note = 'Vharra is asleep in her hollow again.';
+        break;
+      }
+
       // debug views
       case 'hitboxes': g.debugViews.setHitboxes(!g.debugViews.hitboxes); break;
       case 'colliders': g.debugViews.setColliders(!g.debugViews.colliders); break;
@@ -402,6 +431,8 @@ export class TestMenu {
     const owned = (id) => g.hasGear(id);
     const gearBtn = (id, def) => btn('gear', esc(def.name), { arg: id, disabled: owned(id), cls: owned(id) ? 'owned' : '' });
     const bossState = dead ? 'silenced' : fighting ? `fighting, phase ${b.phase}, ${Math.ceil(b.hp)} / ${b.maxHp} HP` : 'kneeling, asleep';
+    const mf = g.motherFight;
+    const motherState = st.flags.motherDead ? 'at rest for good' : mf ? `fighting, phase ${mf.phase}, ${Math.ceil(mf.hp)} / ${mf.maxHp} HP` : 'asleep in her hollow';
     const q = g.quests, mq = this._mainQuest();
     const tod = g.sky.getTimeOfDay();
 
@@ -444,7 +475,7 @@ export class TestMenu {
         + toggle('freeze', 'Freeze enemy AI', g.cheats.freeze)
         + btn('pack', 'Spawn a hound pack')
       ) + sub('Spawn 5 m ahead, facing you:') + row(
-        enemyKinds().map((k) => btn('spawn', `Spawn ${esc(title(k))}`, { arg: k })).join('')
+        enemyKinds().filter((k) => k !== 'matriarch').map((k) => btn('spawn', `Spawn ${esc(title(k))}`, { arg: k })).join('')
       )),
 
       group('Gear and items', row(
@@ -466,6 +497,15 @@ export class TestMenu {
         + sub('Rehearsal: full restore, then straight into the fight.') + row(
           btn('rehearse', 'Rehearse (with cutscene)', { cls: 'warn' }) + btn('rehearse', 'Rehearse (skip cutscene)', { arg: 'skip', cls: 'warn' })
         )),
+
+      group('Second boss', sub(`Vharra, Mother of the Mire: ${esc(motherState)}.`) + row(
+        btn('mother', 'Fight her (with cutscene)', { cls: 'warn' })
+        + btn('mother', 'Fight her (skip cutscene)', { arg: 'skip', cls: 'warn' })
+        + btn('motherHp', 'Health 50% (phase 2)', { arg: 0.5, disabled: !mf })
+        + btn('motherHp', 'Health 10%', { arg: 0.1, disabled: !mf })
+        + btn('motherKill', 'Kill', { disabled: !mf, cls: 'warn' })
+        + btn('motherReset', 'Reset (put her to sleep)')
+      )),
 
       group('Debug views', row(
         toggle('hitboxes', 'Hitboxes and attack reach', g.debugViews.hitboxes)

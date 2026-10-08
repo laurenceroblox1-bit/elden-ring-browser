@@ -143,6 +143,23 @@ export const DIALOGUE = {
         effect: () => q.start('hounds'),
       };
     }
+    if (q.status('hounds') === 'done' && q.status('mother') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Thank you. Truly. But I counted them again last night. There were more.',
+          'The old lake-watchers had a story: the hounds are all one litter, whelped by a mother as big as a cart, asleep in the Ashen Fen past the Watch Ruins.',
+          'Follow the road east of the ruins, past the fen shrine. If she\'s real, she won\'t stay asleep for long once you step into her hollow.',
+        ],
+        effect: () => {
+          q.start('mother');
+          if (g.state.flags.motherDead) q.complete('mother'); // already beaten before anyone asked
+        },
+      };
+    }
+    if (q.status('mother') === 'active') {
+      return { name, lines: ['The fen road runs east from the Watch Ruins. Be careful in the hollow. Mothers fight hardest of all.'] };
+    }
     if (q.status('bell') === 'inactive') {
       return {
         name,

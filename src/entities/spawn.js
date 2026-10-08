@@ -4,12 +4,14 @@
 import { Sentry } from './Sentry.js';
 import { Hound } from './Hound.js';
 import { Acolyte } from './Acolyte.js';
+import { Matriarch } from './Matriarch.js';
 
 const KINDS = {
   sentry: Sentry,
   captain: Sentry,
   hound: Hound, // packs share a `pack` id: they wake together and take turns to lunge
   acolyte: Acolyte,
+  matriarch: Matriarch, // Vharra, the fen's boss: runs her own fight (Game.startMotherFight)
 };
 
 export function createEnemy(game, spawn) {

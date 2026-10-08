@@ -31,7 +31,7 @@ export class Horse {
   blockedReason() {
     const g = this.game;
     if (!g.state.flags.horse) return 'You have no way to call a steed.';
-    if (g.bossFight) return 'Wisp will not come here.';
+    if (g.bossFight || g.motherFight) return 'Wisp will not come here.';
     if (g.world.inArena(g.player.pos.x, g.player.pos.z, 4)) return 'Wisp will not come here.';
     if (!['move', 'guard'].includes(g.player.state)) return '';
     return null;

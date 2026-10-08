@@ -28,7 +28,7 @@ import { navigate, focusFirst } from './Gamepad.js';
 import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
-import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA } from '../data/world.js';
+import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW } from '../data/world.js';
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -66,6 +66,7 @@ export class Game {
     this.mode = 'title';
     this.modal = null;
     this.bossFight = false;
+    this.motherFight = null; // Vharra while her fight runs (entities/Matriarch.js)
     this.lockTarget = null;
     this.zone = null;
     this.zoneT = 0;
@@ -253,6 +254,7 @@ export class Game {
       if (this.world.gateDoors.open > 0) this.world.closeGate();
     }
     this.bossFight = false;
+    this.motherFight = null; // she went back to sleep with the reset above
     this.hud.setBoss(null);
     this.audio.setMusic(false);
     if (this.horse.ridden) this.horse.dismount(true);
@@ -501,6 +503,70 @@ export class Game {
       this.boss.introLen = Math.min(this.boss.introLen ?? BOSS_INTRO_LENGTH, this.boss.t + 0.6);
       this.hud.setBoss(this.boss.name);
     });
+  }
+
+  // The boss whose bar is showing: Vharra while she hunts, otherwise the Warden while his fight runs.
+  get activeBoss() {
+    return this.motherFight ?? (this.bossFight ? this.boss : null);
+  }
+
+  // Vharra wakes (called by her when the player steps into the hollow).
+  startMotherFight(m, { cutscene = true } = {}) {
+    if (this.motherFight || !m.alive) return;
+    this.motherFight = m;
+    this.lockTarget = null;
+    this.audio.setMusic(true);
+    if (this.horse.ridden) this.horse.dismount(true);
+    if (!cutscene) {
+      m.awaken();
+      this.hud.setBoss(m.name);
+      return;
+    }
+    m.awaken(BOSS_INTRO_LENGTH);
+    this.cutscene = new BossIntro(this, () => {
+      this.cutscene = null;
+      m.introLen = Math.min(m.introLen, m.t + 0.6);
+      this.hud.setBoss(m.name);
+    }, { boss: m, name: m.name, title: 'Whelp-Mother of the Ashen Fen', open: 'snarl', roar: 'howl', scale: 1.45, lift: 1.0, roarAt: [2.6, 4.4] });
+  }
+
+  // Ends her fight without a winner: she lies back down, healed, and her summoned litter scatters.
+  endMotherFight() {
+    const m = this.motherFight;
+    if (!m) return;
+    this.motherFight = null;
+    this.hud.setBoss(null);
+    this.audio.setMusic(false);
+    if (this.lockTarget === m) this.lockTarget = null;
+    this.despawnExtras((e) => e.pack === 'vharra-litter');
+    if (m.alive) m.reset();
+  }
+
+  onMotherDefeated(m) {
+    this.motherFight = null;
+    this.lockTarget = null;
+    this.audio.setMusic(false);
+    this.after(2.6, () => {
+      this.hud.banner('The Mother Sleeps', m.name, 'victory', 6000);
+      this.audio.play('victory');
+      this.state.flags.motherDead = true;
+      this.hud.setBoss(null);
+      this.events.emit('bossDefeated', 'mother');
+      this.after(2.5, () => this.giveGear('mothers_fang'));
+      this.save();
+    });
+  }
+
+  // Test menu: puts the player at the hollow's mouth and wakes Vharra (reviving her if she was beaten).
+  enterMotherFight({ cutscene = true } = {}) {
+    const m = this.enemies.find((e) => e.tag === 'matriarch');
+    if (!m || !this.player.alive) return false;
+    this.endMotherFight();
+    this.state.flags.motherDead = false;
+    m.reset();
+    this.teleport(HOLLOW.x - 7, HOLLOW.z + 15, Math.PI + 0.4, { banner: false });
+    this.startMotherFight(m, { cutscene });
+    return true;
   }
 
   // ---------- outcomes ----------
@@ -757,8 +823,8 @@ export class Game {
       return;
     }
     if (this.cutscene && !this.modal) {
-      // Cutscene: the world keeps breathing (the Warden rises, particles drift) but nobody acts.
-      this.boss.update(dt);
+      // Cutscene: the world keeps breathing (the boss rises, particles drift) but nobody acts.
+      this.cutscene.boss.update(dt);
       this.effects.update(dt);
       this.combat.update(dt);
       for (const n of this.npcs) n.update(dt);
@@ -875,7 +941,7 @@ export class Game {
       const d = Math.hypot(dx, dz);
       if (d >= min || d < 1e-4) continue;
       const push = min - d;
-      const share = e === this.boss ? 1 : 0.6;
+      const share = e === this.boss || e.isBoss ? 1 : 0.6;
       p.pos.x += (dx / d) * push * share;
       p.pos.z += (dz / d) * push * share;
       e.pos.x -= (dx / d) * push * (1 - share);
@@ -889,7 +955,7 @@ export class Game {
     const p = this.player.pos;
     const found = this.zoneAt(p.x, p.z);
     if (found && found !== this.zone && this.player.alive) {
-      if (!this.bossFight) this.hud.banner(ZONES[found].name, '', 'area');
+      if (!this.activeBoss) this.hud.banner(ZONES[found].name, '', 'area');
       this.events.emit('zoneEntered', found);
     }
     if (found) {
@@ -923,6 +989,7 @@ export class Game {
     this.horse.hideNow();
     this.lockTarget = null;
     if (this.bossFight && !keepFight) this.endBossFight();
+    if (this.motherFight && !keepFight) this.endMotherFight();
     if (p.state === 'fog') this.world.fogGate.collider.enabled = true; // the walk's onDone won't run now
     p.pos.set(x, 0, z);
     this.world.resolve(p.pos, p.radius);
@@ -1003,6 +1070,7 @@ export class Game {
     const s = this.world.shrines.get(id);
     if (!s || !s.lit) return 'That lantern has not been kindled.';
     if (this.bossFight) return 'The mist holds you here until the fight is done.';
+    if (this.motherFight) return 'Not while the Mother hunts you.';
     if (!this.player.alive) return 'You cannot travel while fallen.';
     if (this.player.state === 'fog') return 'Not while passing through the mist.';
     this.teleport(s.x, s.z + 2.5, Math.PI, { banner: false });
@@ -1014,24 +1082,32 @@ export class Game {
   // Spawns an enemy of `kind` a few metres in front of the player, facing them.
   spawnEnemy(kind, dist = 5) {
     const p = this.player;
-    tmp.set(p.pos.x + Math.sin(p.yaw) * dist, 0, p.pos.z + Math.cos(p.yaw) * dist);
+    return this.summonEnemy(kind, p.pos.x + Math.sin(p.yaw) * dist, p.pos.z + Math.cos(p.yaw) * dist, p.yaw + Math.PI);
+  }
+
+  // A temporary enemy at (x, z): it lives until the next rest, death or despawnExtras().
+  summonEnemy(kind, x, z, yaw = 0, extra = {}) {
+    tmp.set(x, 0, z);
     this.world.resolve(tmp, 0.6);
-    const e = createEnemy(this, { kind, x: tmp.x, z: tmp.z, yaw: p.yaw + Math.PI });
+    const e = createEnemy(this, { kind, x: tmp.x, z: tmp.z, yaw, ...extra });
     this.enemies.push(e);
     this.extras.add(e);
     return e;
   }
 
-  despawnExtras() {
+  // Removes temporary enemies (all of them, or those `which(e)` picks).
+  despawnExtras(which = null) {
     if (!this.extras.size) return;
-    for (const e of this.extras) {
+    const gone = which ? [...this.extras].filter(which) : [...this.extras];
+    for (const e of gone) {
       this.scene.remove(e.model.root);
       this.combat.unregister(e);
       e.dispose?.();
       if (this.lockTarget === e) this.lockTarget = null;
+      this.extras.delete(e);
     }
-    this.enemies = this.enemies.filter((e) => !this.extras.has(e));
-    this.extras.clear();
+    const set = new Set(gone);
+    this.enemies = this.enemies.filter((e) => !set.has(e));
   }
 
   respawnEnemies() {
@@ -1088,7 +1164,7 @@ export class Game {
     if (i.justDown.has('Digit7')) go(ARENA.x, ARENA.z + ARENA.r + 4);
     if (i.justDown.has('KeyG')) { this.player.god = !this.player.god; this.hud.toast(`God mode ${this.player.god ? 'on' : 'off'}`); }
     if (i.justDown.has('KeyU')) { this.state.flags.horse = true; this.hud.toast('Wisp unlocked'); }
-    if (i.justDown.has('KeyK') && this.bossFight) this.boss.takeHit({ dmg: 9999, poise: 0, dirX: 0, dirZ: 1 });
+    if (i.justDown.has('KeyK') && this.activeBoss) this.activeBoss.takeHit({ dmg: 9999, poise: 0, dirX: 0, dirZ: 1 });
     if (i.justDown.has('KeyL')) { this.state.ash += 5000; }
     if (i.justDown.has('KeyY')) { for (const id of ALL_GEAR) this.giveGear(id); }
   }
