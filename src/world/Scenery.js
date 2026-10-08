@@ -4,7 +4,7 @@
 // dropped past SMALL_FAR from the camera, where the fog and their size hide them anyway.
 import * as THREE from '../lib/three.js';
 import { fbm, mulberry32 } from '../core/math.js';
-import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, HOLLOW, SHRINES, NPCS, NOTICE, ENEMY_SPAWNS, PICKUPS, FIRES, KEEP_CLEAR } from '../data/world.js';
+import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, HOLLOW, RIME, TARN, HALL, SHRINES, NPCS, NOTICE, ENEMY_SPAWNS, PICKUPS, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
 import { ChunkBatcher } from './Batcher.js';
 import { windPatch, windDepthMaterial, ADDITIVE_FOG } from './Wind.js';
@@ -63,6 +63,7 @@ export class Scenery {
     this._roads();
     this._stoneRing(-60, -110, 7.5);
     this._fen();
+    this._rimewold();
     this._bakeStatics();
     const bell = world.chapelBell;
     if (bell) this._put(this.big, P.fallenBellParts(this.rng), bell.x, bell.z, { ry: bell.ry, sink: 0.2 });
@@ -125,6 +126,7 @@ export class Scenery {
   _trees() {
     const rng = this.rng, w = this.world;
     this._scatter(1500, 14000, WORLD.playRadius - 40, (x, z) => {
+      if (z < RIME.snowZ + 6) return false; // the Rimewold has its own trees (_rimewold)
       if (this.forest(x, z) < -0.05 && rng() > 0.12) return false;
       if (!this.ok(x, z, 0)) return false;
       const moorish = x < -140 && z < -40;
@@ -146,7 +148,7 @@ export class Scenery {
   _rocks() {
     const rng = this.rng, w = this.world;
     this._scatter(480, 2600, WORLD.playRadius - 30, (x, z) => {
-      if (!this.ok(x, z, -3)) return false;
+      if (z < RIME.snowZ + 6 || !this.ok(x, z, -3)) return false;
       const s = 0.4 + Math.pow(rng(), 2.5) * 2.6;
       // Rocks big enough to block are kept off the road shoulders.
       if (s > 0.9 && (w.roadDistance(x, z) < 6 || !this.clearOfPois(x, z, 3))) return false;
@@ -363,6 +365,64 @@ export class Scenery {
       const a = rng() * 6.28, d = 6 + rng() * (HOLLOW.r - 9);
       const x = HOLLOW.x + Math.sin(a) * d, z = HOLLOW.z + Math.cos(a) * d;
       this._put(this.small, P.rockParts(rng, rng() < 0.6 ? 0xd8cfb8 : 0x6a6458), x, z, { sx: 0.3 + rng() * 0.3, sy: 0.12, sz: 0.9 + rng() * 0.8, rx: rng() * 0.3 });
+    }
+  }
+
+  // The Rimewold: snow-laden pines in dark stands, frosted snags, snow-capped boulders and drifts, and
+  // pale frozen grass. Placed across the whole lobe (the circle-based scatters stop at the Vale's edge).
+  _rimewold() {
+    const rng = this.rng, w = this.world;
+    const spot = () => {
+      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (RIME.r - 6);
+      return [RIME.x + Math.sin(a) * d, RIME.z + Math.cos(a) * d];
+    };
+    const free = (x, z, pad) => {
+      if (z > RIME.snowZ - 4 || !w.inPlay(x, z, 6)) return false;
+      if (w.roadDistance(x, z) < 5 + pad) return false;
+      if (Math.hypot(x - TARN.x, z - TARN.z) < TARN.r + 3 + pad) return false;
+      if (Math.hypot(x - HALL.x, z - HALL.z) < HALL.r + 5 + pad) return false;
+      for (const zn of Object.values(ZONES)) if (zn.flat != null && Math.hypot(x - zn.x, z - zn.z) < zn.flat + 3 + pad) return false;
+      return this.clearOfGear(x, z, 2);
+    };
+    const stand = (x, z) => fbm(w.noise, x * 0.012 + 70, z * 0.012 - 30, 2); // dark stands of pine
+    for (let i = 0, placed = 0; i < 9000 && placed < 760; i++) {
+      const [x, z] = spot();
+      if (stand(x, z) < -0.1 && rng() > 0.15) continue;
+      if (!free(x, z, 0) || w.slopeAt(x, z) > 0.6) continue;
+      const s = 0.8 + rng() * 0.7;
+      const snag = rng() < 0.14;
+      this._put(this.big, snag ? P.frostSnagParts(rng) : P.snowPineParts(rng), x, z, { s, y: w.getHeight(x, z) });
+      w.addCircle(x, z, 0.35 * s);
+      this.trees.push({ x, z, y: w.getHeight(x, z), s, type: snag ? 'dead' : 'pine' });
+      placed++;
+    }
+    for (let i = 0, placed = 0; i < 3000 && placed < 260; i++) {
+      const [x, z] = spot();
+      if (!free(x, z, -2)) continue;
+      const s = 0.4 + Math.pow(rng(), 2.3) * 2.4;
+      if (s > 0.9 && (w.roadDistance(x, z) < 6 || !this.clearOfPois(x, z, 3))) continue;
+      const y = w.getHeight(x, z) + s * (0.2 - w.slopeAt(x, z) * 0.6);
+      this._put(this.big, P.snowRockParts(rng), x, z, { y, ry: rng() * 6, sx: s * (1 + rng() * 0.5), sy: s * (0.6 + rng() * 0.4), sz: s * (1 + rng() * 0.4) });
+      if (s > 0.9) w.addCircle(x, z, s * 0.95);
+      placed++;
+    }
+    for (let i = 0, placed = 0; i < 4000 && placed < 420; i++) {
+      const [x, z] = spot();
+      if (!free(x, z, -3)) continue;
+      this._put(this.small, P.driftParts(rng), x, z, { s: 0.8 + rng() * 1.2, sink: 0.1 });
+      placed++;
+    }
+    for (let i = 0, placed = 0; i < 9000 && placed < 2600; i++) {
+      const [x, z] = spot();
+      if (!free(x, z, -3.5) || w.slopeAt(x, z) > 0.5) continue;
+      const s = 0.7 + rng() * 0.7;
+      this._put(this.small, P.tuftParts(rng, rng() < 0.5 ? 0xb9c2c0 : 0x9aa49a), x, z, { s, sy: s * (0.6 + rng() * 0.5), sink: 0.05 });
+      placed++;
+    }
+    // Reeds of frozen grass around the tarn's shore.
+    for (let i = 0; i < 160; i++) {
+      const a = rng() * Math.PI * 2, d = TARN.r * (1.0 + rng() * 0.25);
+      this._put(this.small, P.reedParts(rng), TARN.x + Math.sin(a) * d, TARN.z + Math.cos(a) * d, { s: 0.7 + rng() * 0.4, sink: 0.1 });
     }
   }
 

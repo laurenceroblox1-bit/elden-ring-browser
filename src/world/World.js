@@ -1,9 +1,9 @@
 // The Vale: heightmap terrain, roads, lake, vegetation, set pieces and 2D colliders.
 import * as THREE from '../lib/three.js';
 import { createNoise2D, fbm, smoothstep, clamp, lerp, mulberry32, distToSegment } from '../core/math.js';
-import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
+import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, RIME, TARN, HALL, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
-import { mat, mesh, box, plainBox, glowSprite } from '../models/kit.js';
+import { mat, mesh, box, cyl, cone, plainBox, glowSprite } from '../models/kit.js';
 import { Scenery } from './Scenery.js';
 import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
@@ -26,6 +26,7 @@ const COL = {
   warm: C(0xb08a48), cool: C(0x5e6c3a), damp: C(0x4c5530), canopy: C(0x55602e),
   rut: C(0x87714f), scree: C(0x8a8578), rockWarm: C(0x857a6a),
   fen: C(0x6d6c56), fenAsh: C(0x85827a), bog: C(0x3b382e), fenMoss: C(0x55603f),
+  snowLit: C(0xeef2f4), snowShade: C(0xc6d2dc), snowRoad: C(0xa9a197), iceRock: C(0x6c7680), hallIce: C(0xb4cbd8),
 };
 
 export class World {
@@ -52,7 +53,7 @@ export class World {
     // The fen's pools all share one level, just under the fen floor.
     this.fenFloor = this._raw(FEN.x, FEN.z).big;
     this.fenLevel = this.fenFloor - 0.35;
-    this.flatZones = Object.values(ZONES).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
+    this.flatZones = Object.values(ZONES).filter((z) => z.flat != null).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
 
     this._buildHeights();
     this._buildTerrain();
@@ -68,10 +69,26 @@ export class World {
 
   // ---------- height field ----------
 
+  // How far inside the Rimewold lobe (x, z) is: 1 well inside, 0 outside.
+  rimeLobe(x, z) {
+    return 1 - smoothstep(RIME.r * 0.8, RIME.r * 1.2, Math.hypot(x - RIME.x, z - RIME.z));
+  }
+
+  // 0 south of the ridge, 1 in the snow.
+  snowAt(x, z) {
+    return smoothstep(RIME.snowZ + 4, RIME.snowZ - 22, z);
+  }
+
   _raw(x, z) {
     let big = fbm(this.noise, x * 0.0032, z * 0.0032, 4) * 24;
     const r = Math.hypot(x, z);
-    big += smoothstep(WORLD.mountainStart, WORLD.mountainEnd, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50);
+    const lobe = this.rimeLobe(x, z);
+    // The Rimewold is a highland a little above the Vale, ringed by its own peaks.
+    big += lobe * smoothstep(RIME.ridgeZ + 10, RIME.ridgeZ - 40, z) * 8;
+    big += smoothstep(WORLD.mountainStart, WORLD.mountainEnd, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50) * (1 - lobe);
+    // The ridge between the Vale and the Rimewold; Castle Dunmarrow holds the only pass through it.
+    const ridge = (1 - smoothstep(8, 46, Math.abs(z - RIME.ridgeZ))) * smoothstep(36, 95, Math.abs(x));
+    if (ridge > 0) big += ridge * (46 + fbm(this.noise2, x * 0.02 + 5, z * 0.02, 2) * 14);
     const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2;
     return { big, h: big + detail };
   }
@@ -198,6 +215,17 @@ export class World {
           c.lerp(COL.fenMoss, smoothstep(0.2, 0.7, macro) * fw * 0.4);
           const pd = this.fenPoolDepth(x, z);
           c.lerp(COL.bog, smoothstep(0.0, 0.25, pd) * fw);
+        }
+        // The Rimewold: lit and shaded snow drifts, packed snow on the roads, blue-grey rock on the
+        // steep faces, and pale ice-stone around the Hall of the Winter Lantern.
+        const sn = this.snowAt(x, z + nz * 6);
+        if (sn > 0) {
+          tmpC.copy(COL.snowShade).lerp(COL.snowLit, smoothstep(0.2, 0.8, t));
+          tmpC.lerp(COL.iceRock, smoothstep(0.5, 0.95, slope));
+          c.lerp(tmpC, sn);
+          c.lerp(COL.snowRoad, rw * 0.75 * sn);
+          const hd = Math.hypot(x - HALL.x, z - HALL.z);
+          c.lerp(COL.hallIce, (1 - smoothstep(HALL.r - 4, HALL.r + 6, hd)) * 0.8);
         }
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
@@ -428,6 +456,7 @@ export class World {
     this._buildChapel();
     this._buildArena();
     this._buildCastle();
+    this._buildRimewold();
 
     // The Hollow Bell on the eastern peaks.
     const spire = P.buildSpire();
@@ -600,16 +629,203 @@ export class World {
     f.glow.visible = active;
   }
 
+  // Castle Dunmarrow holds the pass north: a curtain wall with a gatehouse (its doors open with the
+  // arena's when the Warden falls), a courtyard with the keep and a tower, and a rear gate onto the
+  // Rimewold. Walls run on from the corner towers up into the ridge, so the castle is the only way through.
   _buildCastle() {
-    const c = ZONES.castle;
-    const castle = P.buildCastle();
-    castle.position.set(c.x, this.getHeight(c.x, c.z) - 0.5, c.z - 8);
+    const F = -326, B = -366, W = 30; // front wall line, rear wall line, half width
+    const stone = 0x6f6a62, dark = 0x5c5850, cap = 0x7a756c;
+    const gy = this.getHeight(0, -346);
+    // Front and rear walls, each with a gate gap in the middle and battlements along the top.
+    for (const [z, h] of [[F, 14], [B, 12]]) {
+      for (const sx of [-1, 1]) {
+        this.block(sx * 17.25, z, 25.5, h, 4, 0, { y: gy - 0.3, color: stone });
+        for (let x = 6; x < 29; x += 3) this.block(sx * x, z, 1.4, 1.2, 4.2, 0, { y: gy - 0.3 + h, color: cap, collide: false });
+      }
+      this.block(0, z, 9.5, h - 9.5, 4, 0, { y: gy + 9.2, color: dark, collide: false }); // over the gate
+    }
+    // Side walls.
+    for (const sx of [-1, 1]) {
+      this.block(sx * W, (F + B) / 2, 3, 12, F - B, 0, { y: gy - 0.3, color: stone });
+    }
+    // Corner towers and the keep, as meshes Scenery bakes in; colliders by hand.
+    const castle = new THREE.Group();
+    const wallM = mat(stone), roofM = mat(0x3c4250), winM = mat(0xffc27a, { emissive: 0xff9a40, emissiveIntensity: 1.6 });
+    for (const [x, z] of [[-W, F], [W, F], [-W, B], [W, B]]) {
+      castle.add(mesh(cyl(4.4, 5, 20, 10), wallM, { x, y: 10, z }));
+      castle.add(mesh(cone(5.6, 8, 10), roofM, { x, y: 24, z }));
+      this.addCircle(x, z, 4.8);
+    }
+    // The keep (west) and a tall tower (east).
+    castle.add(mesh(box(20, 22, 14), wallM, { x: -17, y: 11, z: -352 }));
+    castle.add(mesh(cone(13, 10, 4), roofM, { x: -17, y: 27, z: -352, ry: Math.PI / 4 }));
+    this.addBox(-17, -352, 10, 7);
+    castle.add(mesh(cyl(4, 4.6, 30, 10), wallM, { x: 18, y: 15, z: -354 }));
+    castle.add(mesh(cone(5.2, 12, 10), roofM, { x: 18, y: 36, z: -354 }));
+    this.addCircle(18, -354, 4.7);
+    castle.position.y = gy - 0.4;
     this.scene.add(castle);
     this.statics.push(castle);
-    this.addBox(c.x, c.z - 8, 33, 3.5, 0);
-    this.addCircle(c.x - 30, c.z - 8, 6);
-    this.addCircle(c.x + 30, c.z - 8, 6);
-    this.castleDoor = { x: c.x, z: c.z - 4 };
+    // Lit windows and the keep's door (kept out of the static bake so they glow).
+    const lit = new THREE.Group();
+    for (const [x, y, z] of [[-11, 16, -344.9], [-23, 16, -344.9], [-17, 9, -344.9], [-6.9, 12, -349], [-6.9, 17, -355], [18, 22, -349.8], [18, 14, -349.8]]) {
+      lit.add(mesh(box(1, 1.8, 0.4), winM, { x, y, z, ry: x === -6.9 ? Math.PI / 2 : 0, shadow: false }));
+    }
+    lit.add(mesh(box(0.4, 4.2, 3), mat(0x2f251c), { x: -6.9, y: 2.1, z: -354 }));
+    lit.position.y = gy - 0.4;
+    this.scene.add(lit);
+    // Courtyard: worn flagstones, a well, weapon racks, a fallen banner.
+    const rng = mulberry32(912);
+    for (let i = 0; i < 40; i++) {
+      const x = -26 + rng() * 52, z = F - 4 - rng() * 34;
+      if (x < -6 && z < -344 && z > -360) continue; // under the keep
+      this.block(x, z, 1.4 + rng() * 1.6, 0.18, 1.4 + rng() * 1.6, rng() * 3, { y: gy - 0.12, color: 0x7d786f, collide: false });
+    }
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      this.block(4 + Math.sin(a) * 1.5, -342 + Math.cos(a) * 1.5, 1.3, 1.1, 0.5, a, { y: gy - 0.3, color: 0x6c675f, collide: false });
+    }
+    this.addCircle(4, -342, 1.9);
+    for (const [x, z] of [[24, -335], [24, -340]]) {
+      this.block(x, z, 0.3, 2.2, 3, 0, { y: gy - 0.3, color: 0x4a3a2a });
+    }
+    // Walls on from the corner towers, climbing into the ridge on either side.
+    for (const sx of [-1, 1]) {
+      for (let x = 36; x <= 100; x += 4) {
+        const z = F - 4 - (x - 36) * 0.02;
+        const y = this.getHeight(sx * x, z);
+        this.block(sx * x, z, 4.3, 10, 3, 0, { y: y - 1, color: stone });
+        this.block(sx * x, z, 1.4, 1.2, 3.2, 0, { y: y + 9, color: cap, collide: false });
+      }
+      // Past the built wall the ridge itself stops you (an invisible line along its crest).
+      this.addBox(sx * 220, RIME.ridgeZ, 120, 2.5);
+    }
+    // The gatehouse doors (open with the arena's north gate) and the rear archway's lintel.
+    const doors = P.buildGateDoors(8.6, 9);
+    doors.group.position.set(0, gy - 0.1, F + 1.4);
+    this.scene.add(doors.group);
+    this.castleDoors = { ...doors, collider: this.addBox(0, F, 4.6, 2.2, 0, true), open: 0, opening: false };
+    this.castleDoor = { x: 0, z: F + 4 };
+  }
+
+  // The Rimewold's set pieces: the frozen tarn's ice, crystal clusters, Ormund's hut, a ruined frost
+  // chapel, frozen statues along the road and the Hall of the Winter Lantern.
+  _buildRimewold() {
+    const rng = mulberry32(4411);
+    // The tarn: a sheet of ice on the levelled ground, ragged at the shore, with dark cracks.
+    const ty = this.getHeight(TARN.x, TARN.z);
+    const pts = [];
+    for (let i = 0; i < 48; i++) {
+      const a = (i / 48) * Math.PI * 2;
+      const r = TARN.r * (0.9 + 0.1 * this.noise(Math.cos(a) * 2, Math.sin(a) * 2));
+      pts.push(new THREE.Vector2(Math.cos(a) * r, Math.sin(a) * r));
+    }
+    const iceGeo = new THREE.ShapeGeometry(new THREE.Shape(pts));
+    iceGeo.rotateX(-Math.PI / 2);
+    const ice = new THREE.Mesh(iceGeo, new THREE.MeshStandardMaterial({ color: 0xbcd9e8, roughness: 0.08, metalness: 0.25, transparent: true, opacity: 0.86, flatShading: true }));
+    ice.position.set(TARN.x, ty + 0.05, TARN.z);
+    ice.receiveShadow = true;
+    ice.renderOrder = 1;
+    this.scene.add(ice);
+    this.tarnIce = ice;
+    for (let i = 0; i < 26; i++) {
+      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * TARN.r * 0.8;
+      this.block(TARN.x + Math.sin(a) * d, TARN.z + Math.cos(a) * d, 0.12, 0.02, 2 + rng() * 5, rng() * 3, { y: ty + 0.06, color: 0x5f7684, collide: false });
+    }
+    // Ormund's ice-fishing hole and his hut on the shore.
+    const hut = ZONES.hut;
+    const hy = this.getHeight(hut.x, hut.z);
+    const wood = 0x5a4632, roofC = 0x3b2f25;
+    this.block(hut.x - 2.6, hut.z, 0.4, 3, 5, 0, { y: hy - 0.3, color: wood });
+    this.block(hut.x + 2.6, hut.z, 0.4, 3, 5, 0, { y: hy - 0.3, color: wood });
+    this.block(hut.x, hut.z - 2.5, 5.6, 3, 0.4, 0, { y: hy - 0.3, color: wood });
+    this.block(hut.x - 1.9, hut.z + 2.5, 1.8, 3, 0.4, 0, { y: hy - 0.3, color: wood });
+    this.block(hut.x + 1.9, hut.z + 2.5, 1.8, 3, 0.4, 0, { y: hy - 0.3, color: wood });
+    for (const sx of [-1, 1]) this.block(hut.x + sx * 1.5, hut.z, 3.6, 0.3, 6, 0, { y: hy + 3.5, rz: sx * -0.55, color: roofC, collide: false });
+    this.block(hut.x, hut.z, 0.4, 0.4, 6.2, 0, { y: hy + 4.4, color: 0xeef2f4, collide: false });
+    this.block(TARN.x - 20, TARN.z + 22, 1.6, 0.06, 1.6, 0.4, { y: ty + 0.04, color: 0x1c2a32, collide: false });
+    // Crystal clusters: tall shards of blue ice that glow faintly (one instanced mesh for all).
+    const shards = [];
+    const cluster = (cx, cz, n, size) => {
+      for (let i = 0; i < n; i++) {
+        const a = rng() * Math.PI * 2, d = i ? 0.8 + rng() * 2.2 * size : 0;
+        const x = cx + Math.sin(a) * d, z = cz + Math.cos(a) * d;
+        const h = (i ? 1.2 + rng() * 2 : 3 + rng() * 1.5) * size;
+        shards.push({ x, z, h, w: h * (0.18 + rng() * 0.08), rx: (rng() - 0.5) * 0.6, rz: (rng() - 0.5) * 0.6, ry: rng() * 3 });
+        if (!i) this.addCircle(cx, cz, 0.7 * size);
+      }
+    };
+    for (const [x, z, n, s] of [[40, -392, 5, 1], [-36, -404, 6, 1.2], [96, -430, 7, 1.4], [-118, -470, 6, 1.3], [62, -520, 8, 1.6], [-70, -538, 7, 1.5], [26, -470, 4, 0.9], [-8, -500, 3, 0.8], [120, -480, 6, 1.2], [-104, -510, 5, 1.1], [-28, -592, 6, 1.5], [36, -596, 6, 1.4]]) {
+      cluster(x, z, n, s);
+    }
+    const shardGeo = new THREE.OctahedronGeometry(1, 0);
+    shardGeo.scale(1, 1, 0.7);
+    const shardMat = new THREE.MeshStandardMaterial({ color: 0xa8dcff, emissive: 0x2f8fd8, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.1, flatShading: true, transparent: true, opacity: 0.92 });
+    const im = new THREE.InstancedMesh(shardGeo, shardMat, shards.length);
+    const dummy = new THREE.Object3D();
+    shards.forEach((sh, i) => {
+      dummy.position.set(sh.x, this.getHeight(sh.x, sh.z) + sh.h * 0.45, sh.z);
+      dummy.rotation.set(sh.rx, sh.ry, sh.rz);
+      dummy.scale.set(sh.w, sh.h * 0.6, sh.w);
+      dummy.updateMatrix();
+      im.setMatrixAt(i, dummy.matrix);
+    });
+    im.castShadow = true;
+    this.scene.add(im);
+    this.crystals = { mesh: im, mat: shardMat, list: shards };
+    // The frost chapel: a ruined nave on the east rise, its rite lying inside.
+    const fc = { x: 108, z: -506 };
+    const fy = this.getHeight(fc.x, fc.z);
+    for (const sx of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const h = 4 + Math.sin(i * 2.1 + sx) * 1.6;
+        this.block(fc.x + sx * 5, fc.z - 7 + i * 4.6, 1, h, 4.4, 0, { y: fy - 0.5, color: 0x8c96a0 });
+      }
+    }
+    this.block(fc.x, fc.z - 9.5, 11, 6.5, 1, 0, { y: fy - 0.5, color: 0x8c96a0 });
+    this.block(fc.x, fc.z - 9.5, 3, 2.4, 1.2, 0, { y: fy + 5.8, color: 0x9aa4ae, collide: false });
+    for (let i = 0; i < 10; i++) this.block(fc.x + (rng() - 0.5) * 12, fc.z + (rng() - 0.5) * 18, 0.9 + rng(), 0.4 + rng() * 0.5, 0.9 + rng(), rng() * 3, { color: 0x7f8992, collide: false });
+    // Frozen statues of the old watch along the road north, rimed white.
+    for (const [x, z, ry] of [[-10, -414, 0.4], [16, -456, -0.3], [-10, -506, 0.3], [12, -520, -0.4]]) {
+      const st = P.buildStatue();
+      st.traverse((o) => { if (o.isMesh) o.material = mat(0xc8d4dc); });
+      this._static(st, x, z, ry);
+      this.addCircle(x, z, 1.0);
+    }
+    // The Hall of the Winter Lantern: a ring of ice-stone pillars open to the south, an altar, and
+    // the great lantern hanging over it (its light dims while Saelith carries the flame).
+    const hy2 = this.getHeight(HALL.x, HALL.z);
+    const segs = 18;
+    for (let i = 0; i < segs; i++) {
+      const a = (i / segs) * Math.PI * 2;
+      if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.32) continue; // the way in, from the south
+      const x = HALL.x + Math.sin(a) * HALL.r, z = HALL.z + Math.cos(a) * HALL.r;
+      const h = 7 + Math.sin(i * 2.7) * 2;
+      this.block(x, z, 2.2, h, 2.2, a, { y: hy2 - 0.4, color: 0x9fb2c0 });
+      this.block(x, z, 2.8, 0.6, 2.8, a, { y: hy2 - 0.4 + h, color: 0xc8dae6, collide: false });
+    }
+    for (let i = 0; i < 60; i++) {
+      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (HALL.r - 3);
+      this.block(HALL.x + Math.sin(a) * d, HALL.z + Math.cos(a) * d, 1.6 + rng() * 1.8, 0.16, 1.6 + rng() * 1.8, rng() * 3, { y: hy2 - 0.1, color: 0xa9bfcc, collide: false });
+    }
+    this.block(HALL.x, HALL.z - 20, 4, 1.2, 2.4, 0, { y: hy2 - 0.3, color: 0x8798a6 });
+    const lantern = new THREE.Group();
+    const lm = mat(0x2f3338, { metalness: 0.6, roughness: 0.4 });
+    const flameM = mat(0xcfefff, { emissive: 0x6fc8ff, emissiveIntensity: 2.6 });
+    lantern.add(mesh(box(0.2, 7, 0.2), lm, { y: 9.5 }));
+    lantern.add(mesh(box(1.6, 0.25, 1.6), lm, { y: 6 }));
+    lantern.add(mesh(box(1.6, 0.25, 1.6), lm, { y: 3.4 }));
+    for (const [x, z] of [[-0.7, -0.7], [0.7, -0.7], [-0.7, 0.7], [0.7, 0.7]]) lantern.add(mesh(box(0.14, 2.6, 0.14), lm, { x, y: 4.7, z }));
+    lantern.add(mesh(box(0.9, 1.4, 0.9), flameM, { y: 4.7, shadow: false }));
+    const lglow = glowSprite(0x9fdcff, 9, 0.6);
+    lglow.position.y = 4.7;
+    lantern.add(lglow);
+    lantern.position.set(HALL.x, hy2 + 0.8, HALL.z - 20);
+    this.scene.add(lantern);
+    const llight = new THREE.PointLight(0x9fdcff, 30, 30, 2);
+    llight.position.set(HALL.x, hy2 + 5.5, HALL.z - 20);
+    this.scene.add(llight);
+    this.hallLantern = { group: lantern, flame: flameM, glow: lglow, light: llight, lit: 1 };
   }
 
   // ---------- vegetation ----------
@@ -700,13 +916,31 @@ export class World {
       }
     }
     for (const b of this.dynamic) hit = this._pushBox(pos, radius, b) || hit;
-    const r = Math.hypot(pos.x, pos.z);
-    if (r > WORLD.playRadius) {
-      pos.x *= WORLD.playRadius / r;
-      pos.z *= WORLD.playRadius / r;
-      hit = true;
-    }
+    if (this.clampToPlay(pos)) hit = true;
     return hit;
+  }
+
+  // The walkable area: the Vale's circle plus the Rimewold's lobe to the north. A point outside both
+  // goes back to whichever edge is nearer. True if it moved.
+  clampToPlay(pos) {
+    const PR = WORLD.playRadius;
+    const r = Math.hypot(pos.x, pos.z);
+    if (r <= PR) return false;
+    const dx = pos.x - RIME.x, dz = pos.z - RIME.z, dl = Math.hypot(dx, dz);
+    if (dl <= RIME.r) return false;
+    if (dl - RIME.r < r - PR) {
+      pos.x = RIME.x + (dx / dl) * RIME.r;
+      pos.z = RIME.z + (dz / dl) * RIME.r;
+    } else {
+      pos.x *= PR / r;
+      pos.z *= PR / r;
+    }
+    return true;
+  }
+
+  // Inside the walkable area (with `pad` metres to spare)?
+  inPlay(x, z, pad = 0) {
+    return Math.hypot(x, z) < WORLD.playRadius - pad || Math.hypot(x - RIME.x, z - RIME.z) < RIME.r - pad;
   }
 
   // ---------- per-frame ----------
@@ -737,12 +971,22 @@ export class World {
       const f = this.fogGate;
       ps.emit({ x: f.x + (Math.random() - 0.5) * 5, y: this.getHeight(f.x, f.z) + Math.random() * 6, z: f.z, count: 1, speed: 0.2, up: 0.5, color: 0xfff0c0, life: [1, 2], size: [0.06, 0.12], drag: 0.5 });
     }
-    const gd = this.gateDoors;
-    if (gd.opening && gd.open < 1) {
-      gd.open = Math.min(1, gd.open + dt * 0.25);
-      const a = (1 - Math.pow(1 - gd.open, 3)) * 1.7;
-      gd.left.rotation.y = -a;
-      gd.right.rotation.y = a;
+    for (const gd of [this.gateDoors, this.castleDoors]) {
+      if (gd.opening && gd.open < 1) {
+        gd.open = Math.min(1, gd.open + dt * 0.25);
+        const a = (1 - Math.pow(1 - gd.open, 3)) * 1.7;
+        gd.left.rotation.y = -a;
+        gd.right.rotation.y = a;
+      }
+    }
+    // The ice crystals breathe a little light; the hall's lantern flickers cold.
+    if (this.crystals) this.crystals.mat.emissiveIntensity = 0.8 + Math.sin(time * 0.9) * 0.18;
+    const hl = this.hallLantern;
+    if (hl) {
+      const f = hl.lit * (0.9 + Math.sin(time * 5.3) * 0.06 + Math.sin(time * 11.1) * 0.04);
+      hl.flame.emissiveIntensity = 0.3 + 2.4 * f;
+      hl.glow.material.opacity = 0.6 * f;
+      hl.light.intensity = 30 * f;
     }
   }
 
@@ -777,23 +1021,26 @@ export class World {
     return Object.keys(WEATHER);
   }
 
+  // The arena's north gate and Castle Dunmarrow's gatehouse open and shut together (with the Warden).
   closeGate() {
-    const gd = this.gateDoors;
-    gd.opening = false;
-    gd.open = 0;
-    gd.collider.enabled = true;
-    gd.left.rotation.y = 0;
-    gd.right.rotation.y = 0;
+    for (const gd of [this.gateDoors, this.castleDoors]) {
+      gd.opening = false;
+      gd.open = 0;
+      gd.collider.enabled = true;
+      gd.left.rotation.y = 0;
+      gd.right.rotation.y = 0;
+    }
   }
 
   openGate(instant = false) {
-    const gd = this.gateDoors;
-    gd.opening = true;
-    gd.collider.enabled = false;
-    if (instant) {
-      gd.open = 1;
-      gd.left.rotation.y = -1.7;
-      gd.right.rotation.y = 1.7;
+    for (const gd of [this.gateDoors, this.castleDoors]) {
+      gd.opening = true;
+      gd.collider.enabled = false;
+      if (instant) {
+        gd.open = 1;
+        gd.left.rotation.y = -1.7;
+        gd.right.rotation.y = 1.7;
+      }
     }
   }
 }

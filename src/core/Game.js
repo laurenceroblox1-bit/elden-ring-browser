@@ -30,7 +30,7 @@ import { navigate, focusFirst } from './Gamepad.js';
 import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
-import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW } from '../data/world.js';
+import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL } from '../data/world.js';
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -136,7 +136,7 @@ export class Game {
     const fog = this.world.fogGate;
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
     const cd = this.world.castleDoor;
-    I.add({ x: cd.x, z: cd.z + 3, radius: 5, label: () => 'Examine the doors', action: () => this.talk('castle') });
+    I.add({ x: cd.x, z: cd.z, radius: 4, enabled: () => !this.state.flags.wardenDead, label: () => 'Examine the doors', action: () => this.talk('castle') });
   }
 
   // One-time hints the first time the player meets each guard mechanic (per page session).
@@ -221,6 +221,7 @@ export class Game {
       this.world.setFogGate(false);
       this.world.fogGate.collider.enabled = false;
       this.world.openGate(true);
+      if (this.quests.status('winter') === 'inactive') this.after(1, () => this.quests.start('winter'));
     }
     this.resetWorld();
     this._spawnAtShrine();
@@ -601,6 +602,7 @@ export class Game {
       this.world.fogGate.collider.enabled = false;
       this.world.openGate();
       this.events.emit('bossDefeated', 'warden');
+      this.after(6, () => { if (this.quests.status('winter') === 'inactive') this.quests.start('winter'); });
       this.after(2.5, () => this.giveItem('warden_bell'));
       this.after(3.4, () => this.giveGear('bell_maul')); // no-op if the quest reward already gave it
       this.save();
@@ -968,6 +970,21 @@ export class Game {
     if (found) {
       this.zone = found;
       this._discover(found);
+    }
+    this._regionWeather(p);
+  }
+
+  // Snow falls north of the ridge: crossing it swaps the Vale's weather for the Rimewold's and back
+  // (a boss that brings its own weather sets weatherLock while it lasts).
+  _regionWeather(p) {
+    const north = p.z < RIME.snowZ - 4;
+    if (north === this.inRime || this.weatherLock) return;
+    this.inRime = north;
+    if (north) {
+      this.valeWeather = this.world.getWeather();
+      this.world.setWeather('snow');
+    } else if (this.world.getWeather() === 'snow' || this.world.getWeather() === 'blizzard') {
+      this.world.setWeather(this.valeWeather && this.valeWeather !== 'snow' ? this.valeWeather : 'clear');
     }
   }
 

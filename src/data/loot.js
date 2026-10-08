@@ -20,6 +20,12 @@ export const LOOT = [
   { gear: 'mirewatch_halberd', x: -197, z: -112 },
   // Propped against the cracked bell in the chapel.
   { gear: 'captains_cleaver', x: -114, z: 86 },
+  // Castle Dunmarrow: by the keep's door in the courtyard.
+  { gear: 'dunmarrow_longsword', x: -4, z: -356 },
+  // The ruined frost chapel on the Rimewold's east rise.
+  { gear: 'frost_nova', x: 108, z: -506 },
+  // Among the bones of the troll's den on the Howling Field.
+  { gear: 'rimeguard_greatshield', x: 140, z: -470 },
   // Propped against the Gatehouse Shrine, for whoever means to face the Warden.
   { gear: 'gatewarden_greatshield', x: 20.5, z: -190 },
 ];

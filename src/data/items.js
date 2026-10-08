@@ -12,6 +12,7 @@ export const ITEMS = {
     name: "Brannoc's Letter",
     desc: 'Folded twice and sealed with candle wax. Addressed in a careful, unpractised hand: "For the Sister at the lake."',
   },
+  brothers_lantern: { name: "Eskil's Lantern", desc: 'A small brass lantern with a dented hood, cold as the steps it lay on. Ormund the Ice-Cutter wants it back.' },
   bell_shard: {
     name: 'Shard of the Chapel Bell',
     desc: 'A curved piece of old bronze, still faintly warm. When you hold it to your ear you hear a note that never ends.',

@@ -267,6 +267,51 @@ export function pineParts(rng) {
   ];
 }
 
+// Rimewold pines: darker, bluer needles with snow lying on each tier.
+export function snowPineParts(rng) {
+  const G = sceneryGeometries();
+  const snow = tone(0xeef3f6, rng, 0.01, 0.04);
+  const t = 0.85 + rng() * 0.3;
+  return [
+    { geo: G.trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 1, 3, 1), color: tone(0x3e3228, rng), flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 1.4, 0, 0, 0, 0, 2.3, 3.8 * t, 2.3), color: tone(0x2a3c34, rng), flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 1.9, 0, 0, 0.3, 0, 2.0, 2.2 * t, 2.0), color: snow, flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 3.3, 0, 0, 0.5, 0, 1.6, 3.4 * t, 1.6), color: tone(0x2f4238, rng), flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 3.9, 0, 0, 0.9, 0, 1.25, 2.4 * t, 1.25), color: snow, flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 5.4, 0, 0, 0.2, 0, 0.8, 2.2 * t, 0.8), color: snow, flex: TREE_FLEX },
+  ];
+}
+
+// A frosted snag: a dead tree with rime along its branches.
+export function frostSnagParts(rng) {
+  const parts = deadParts(rng);
+  const G = sceneryGeometries();
+  const rime = tone(0xdfe8ee, rng, 0.01, 0.04);
+  parts.push({ geo: G.branch, matrix: xform(0.05, 2.62, 0, 0, 0, 0.8, 1.25, 1.75, 1.25), color: rime, flex: TREE_FLEX * 0.6 });
+  parts.push({ geo: G.trunk, matrix: xform(0, 3.9, 0, 0, 0, 0, 0.55, 0.4, 0.55), color: rime, flex: TREE_FLEX * 0.6 });
+  return parts;
+}
+
+// A grey-blue boulder with a cap of snow on top.
+export function snowRockParts(rng) {
+  const G = sceneryGeometries();
+  return [
+    { geo: G.rock, matrix: new THREE.Matrix4(), color: tone(0x7f858c, rng, 0.02, 0.1) },
+    { geo: G.lump, matrix: xform(0, 0.55, 0, 0, rng() * 6, 0, 0.82, 0.38, 0.82), color: tone(0xf0f4f7, rng, 0.01, 0.04) },
+  ];
+}
+
+// A wind-carved snowdrift: a few flattened lumps.
+export function driftParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  for (let i = 0; i < 3; i++) {
+    const a = rng() * 6.28, d = i ? 0.8 + rng() * 0.8 : 0;
+    parts.push({ geo: G.lump, matrix: xform(Math.sin(a) * d, -0.15, Math.cos(a) * d, 0, rng() * 6, 0, 1.2 + rng() * 0.8, 0.35 + rng() * 0.25, 0.8 + rng() * 0.6), color: tone(0xeaf0f4, rng, 0.01, 0.05) });
+  }
+  return parts;
+}
+
 export const BROAD_HUES = [0xb5832e, 0xc29a3a, 0x8f7a2e, 0xa4612a];
 
 export function broadParts(rng) {

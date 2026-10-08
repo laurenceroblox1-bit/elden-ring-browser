@@ -227,7 +227,53 @@ export const DIALOGUE = {
   castle() {
     return {
       name: 'Castle Dunmarrow',
-      lines: ['The great doors are barred from within. Beyond them lies the next region of the Vale, which is not built yet.'],
+      lines: ['The great doors are barred from within. Somewhere behind the walls, a bell answers the Warden\'s. While he keeps the gate, these will not open.'],
+    };
+  },
+
+  ormund(g) {
+    const q = g.quests;
+    const name = 'Ormund, Ice-Cutter';
+    if (q.status('brother') === 'active' && g.hasItem('brothers_lantern')) {
+      return {
+        name,
+        lines: [
+          'That\'s Eskil\'s lantern. The dent on the hood is from when he dropped it down the well. He was eight.',
+          'So he got as far as the steps. Further than me.',
+          'Take this. He made it for cutting the ice by the hall. It cuts other things too.',
+        ],
+        effect: () => {
+          g.takeItem('brothers_lantern');
+          q.complete('brother');
+        },
+      };
+    }
+    if (q.status('brother') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Through the castle and alive? Then the Warden is gone. Good riddance to his bells.',
+          'I cut ice on the tarn. My brother Eskil went north to the hall with his lantern, to see if the Winter Lantern still burns. That was two winters back.',
+          'If you go that way, look for a little brass lantern on the steps. I would like it back, whatever else you find.',
+        ],
+        effect: () => q.start('brother'),
+      };
+    }
+    if (q.status('troll') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'And watch the field to the east. Something big lives out there. It throws the ice I cut back at me.',
+          'Kill it and I will give you every flask I have hoarded. Which is one.',
+        ],
+        effect: () => q.start('troll'),
+      };
+    }
+    if (q.status('brother') === 'active') return { name, lines: ['The hall is due north, up the old road past the frozen statues. Eskil\'s lantern is brass, with a dent in the hood.'] };
+    if (q.status('troll') === 'active') return { name, lines: ['The Howling Field is east of the road. You will hear it before you see it.'] };
+    return {
+      name,
+      lines: [g.state.flags.saelithDead ? 'The cold is going out of the wind. First time I have seen the tarn sweat in years.' : 'The Winter Lantern still burns in the hall. As long as it does, the snow will not leave.'],
     };
   },
 };

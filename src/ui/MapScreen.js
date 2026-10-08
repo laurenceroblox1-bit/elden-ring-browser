@@ -2,9 +2,9 @@
 // height field: hypsometric tint in the Vale's palette with hill shading, the lake, roads, the
 // arena ring and Castle Dunmarrow. Live markers sit on top as DOM elements and are placed each
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
-import { WORLD, ZONES, ROADS, ARENA, LAKE } from '../data/world.js';
+import { WORLD, ZONES, ROADS, ARENA, LAKE, RIME } from '../data/world.js';
 
-const EXTENT = WORLD.playRadius + 20; // metres from the centre of the Vale to each edge of the map
+const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z) + 14; // metres from the centre to each edge of the map (the Rimewold reaches furthest)
 const RES = 512; // canvas pixels per side
 const LIGHT = norm([-0.55, 0.75, -0.55]); // hill shading from the north-west, as on old survey maps
 
@@ -177,12 +177,14 @@ export class MapScreen {
           if (level - h < 0.35) c = mix(c, [226, 214, 176], 0.45); // a pale shoreline
         } else {
           c = ramp(h);
+          if (z < RIME.snowZ) c = mix(c, [228, 234, 238], Math.min(1, (RIME.snowZ - z) / 20) * 0.75); // snow
           c = c.map((v) => v * (0.5 + shade * 0.72));
         }
         c = mix(c, tint, PARCHMENT[1]);
         // Beyond the walkable edge the mountains fade toward the frame.
-        const r = Math.hypot(x, z);
-        if (r > edge - 10) c = mix(c, [40, 33, 26], Math.min(0.55, (r - edge + 10) / 60));
+        // (the walkable area is the Vale's circle plus the Rimewold's lobe)
+        const r = Math.min(Math.hypot(x, z) - edge, Math.hypot(x - RIME.x, z - RIME.z) - RIME.r);
+        if (r > -10) c = mix(c, [40, 33, 26], Math.min(0.55, (r + 10) / 60));
         const o = (j * RES + i) * 4;
         d[o] = c[0];
         d[o + 1] = c[1];

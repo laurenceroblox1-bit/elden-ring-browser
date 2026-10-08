@@ -18,6 +18,40 @@ export const QUESTS = {
     reward: { weapon: 'bell_maul' },
     doneText: 'The Shattered Gate stands open. Castle Dunmarrow waits beyond, for another day.',
   },
+  winter: {
+    title: 'The Winter Lantern',
+    main: true,
+    giver: 'The open gate',
+    summary: 'With the Warden silenced, the gates of Castle Dunmarrow stand open. Beyond the castle lies the Rimewold, held in a winter that never ends while the Winter Lantern burns.',
+    stages: [
+      { text: 'Pass through Castle Dunmarrow, north of the Shattered Gate.', on: { type: 'zone', id: 'castle' }, marker: [0, -326] },
+      { text: 'Cross the castle courtyard and kindle the Rimegate Shrine.', on: { type: 'shrine', id: 'rimegate' }, marker: [10, -386] },
+      { text: 'Follow the frozen road north to the Hall of the Winter Lantern and face its keeper.', on: { type: 'boss', id: 'saelith' }, marker: [0, -548] },
+    ],
+    reward: { ash: 1500, flask: 1 },
+    doneText: 'The Winter Lantern is out. The Rimewold will thaw, slowly, the way old ice does.',
+  },
+  brother: {
+    title: 'A Lantern on the Steps',
+    giver: 'Ormund, Ice-Cutter',
+    summary: "Ormund's brother Eskil went north to the Hall of the Winter Lantern two winters ago and never came back.",
+    stages: [
+      { text: "Look for Eskil's brass lantern on the steps below the Hall of the Winter Lantern.", on: { type: 'item', id: 'brothers_lantern' }, marker: [-14, -534] },
+      { text: "Bring Eskil's lantern back to Ormund at his hut by the tarn.", on: { type: 'talk', id: 'ormund' }, marker: [-100, -425] },
+    ],
+    reward: { weapon: 'icicle_estoc', ash: 400 },
+    doneText: "Ormund hung his brother's lantern by the door of the hut. He lights it every night.",
+  },
+  troll: {
+    title: 'The Thing in the Howling Field',
+    giver: 'Ormund, Ice-Cutter',
+    summary: 'Something huge lives on the Howling Field east of the road, and it throws Ormund\'s ice back at him.',
+    stages: [
+      { text: 'Hunt down whatever lives on the Howling Field.', on: { type: 'boss', id: 'troll' }, marker: [80, -462] },
+    ],
+    reward: { ash: 700, flask: 1 },
+    doneText: 'The Howling Field is quiet. Ormund kept his word about the flask.',
+  },
   steed: {
     title: 'A Steed for the Road',
     giver: 'Brannoc, Stablemaster',

@@ -158,6 +158,23 @@ export function buildIlse() {
   return mergeHumanoid(r);
 }
 
+// Ormund the Ice-Cutter: a big man in a grey fur coat and a fur hat, beard white with frost, an ice
+// pick over his shoulder.
+export function buildOrmund() {
+  const fur = mat(0x7a7268);
+  const r = buildHumanoid({ skin: mat(0xb8907a), body: fur, arms: fur, legs: mat(0x4a3f36), boots: mat(0x2e2620), hands: mat(0x3b2f25) }, { chestW: 0.62, waistW: 0.54, shoulderW: 0.38 });
+  r.head.add(mesh(box(0.32, 0.16, 0.32), mat(0x5e554c), { y: 0.33 }));
+  r.head.add(mesh(box(0.36, 0.06, 0.36), mat(0x8a8178), { y: 0.25 }));
+  r.head.add(mesh(box(0.22, 0.16, 0.08), mat(0xe8e8e4), { y: 0.02, z: 0.14 })); // the frosted beard
+  r.torso.add(mesh(box(0.66, 0.12, 0.34), mat(0x9a9188), { y: 0.56 })); // fur collar
+  r.hips.add(mesh(cyl(0.3, 0.38, 0.5, 8, true), mat(0x7a7268, { side: THREE.DoubleSide }), { y: -0.22 }));
+  const pick = group();
+  pick.add(mesh(cyl(0.025, 0.025, 1.1, 5), mat(0x5a4632), { rx: Math.PI / 2, z: 0.3 }));
+  pick.add(mesh(box(0.06, 0.06, 0.4), mat(0x8e8a82, { metalness: 0.6 }), { z: 0.84, ry: Math.PI / 2 }));
+  r.armR.hand.add(pick);
+  return mergeHumanoid(r);
+}
+
 // Lantern Acolytes: hollowed keepers of the old lantern rites, hooded in ash-pale robes with a faceless
 // dark under the cowl. Each carries a hooked lantern-staff and flings its fire. The flame material is
 // unique per acolyte so a cast can brighten its own lantern.

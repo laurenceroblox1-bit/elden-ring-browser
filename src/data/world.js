@@ -2,8 +2,8 @@
 // so new areas start as data before they need code.
 
 export const WORLD = {
-  size: 1240, // terrain square edge, metres
-  segments: 372,
+  size: 1440, // terrain square edge, metres
+  segments: 432,
   playRadius: 470, // hard edge
   mountainStart: 385, // the ring of peaks starts rising here...
   mountainEnd: 560, // ...and is at full height here
@@ -19,7 +19,8 @@ export const ZONES = {
   moor: { name: 'The Western Moor', x: -228, z: -166, r: 18, flat: 10 },
   gatehouse: { name: 'Gatehouse Shrine', x: 16, z: -194, r: 12, flat: 11 },
   arena: { name: 'The Shattered Gate', x: 0, z: -252, r: 34, flat: 40 },
-  castle: { name: 'Castle Dunmarrow', x: 0, z: -318, r: 22, flat: 34 },
+  // Castle Dunmarrow holds the pass north: a gatehouse, a courtyard, and a rear gate onto the Rimewold.
+  castle: { name: 'Castle Dunmarrow', x: 0, z: -346, r: 30, flat: 40 },
   // A roofless chapel on the rise above Mirelake; its bell lies cracked in the grass.
   chapel: { name: 'Chapel of the Cracked Bell', x: -120, z: 80, r: 14, flat: 12 },
   // East of the Watch Ruins the land sinks into the Ashen Fen: grey reeds, black water, and in a hollow
@@ -27,7 +28,21 @@ export const ZONES = {
   fenwatch: { name: 'Fenwatch Shrine', x: 288, z: 60, r: 12, flat: 11 },
   fen: { name: 'The Ashen Fen', x: 312, z: 18, r: 40, flat: 26 },
   hollow: { name: "The Mother's Hollow", x: 345, z: -42, r: 26, flat: 34 },
+  // The Rimewold: the frozen highland past the castle. `flat: null` names a place without levelling it.
+  rimegate: { name: 'Rimegate Shrine', x: 10, z: -386, r: 12, flat: 10 },
+  rimewold: { name: 'The Rimewold', x: 10, z: -430, r: 40, flat: null },
+  tarn: { name: 'The Frozen Tarn', x: -62, z: -478, r: 36, flat: 38 },
+  hut: { name: "Ormund's Hut", x: -104, z: -428, r: 12, flat: 11 },
+  field: { name: 'The Howling Field', x: 78, z: -462, r: 34, flat: null },
+  hall: { name: 'Hall of the Winter Lantern', x: 0, z: -566, r: 30, flat: 40 },
 };
+
+// The Rimewold lobe: the play area bulges north here (World.resolve), the mountains stand back from it,
+// and everything north of the ridge wears snow. `ridgeZ` is the line of peaks the castle closes.
+export const RIME = { x: 0, z: -468, r: 140, ridgeZ: -336, snowZ: -342 };
+// The frozen tarn's ice (a sheet on the levelled ground) and Saelith's hall (a fight like Vharra's).
+export const TARN = { x: -62, z: -478, r: 33 };
+export const HALL = { x: 0, z: -566, r: 30, trigger: 21, leash: 46 };
 
 // Vharra's hollow: an open ring of standing stones. Stepping within `trigger` metres wakes her; leaving
 // `leash` metres while she fights resets the fight.
@@ -39,7 +54,11 @@ export const ROADS = [
   [[6, 170], [-52, 160]],
   [[-12, 115], [-70, 70], [-136, -22]],
   [[-136, -22], [-182, -100], [-226, -162]],
-  [[0, -280], [0, -302]],
+  [[0, -280], [0, -322]],
+  // Through the castle and north across the Rimewold to the Hall of the Winter Lantern.
+  [[0, -368], [6, -400], [-6, -440], [4, -490], [0, -536]],
+  [[-6, -440], [-50, -436], [-100, -432]],
+  [[6, -400], [50, -430], [78, -456]],
   // The fen road: east out of the Watch Ruins to the Fenwatch Shrine, then down into the hollow.
   [[122, 34], [190, 46], [248, 54], [288, 58]],
   [[288, 58], [314, 22], [334, -18]],
@@ -63,11 +82,14 @@ export const SHRINES = [
   { id: 'firstlight', name: 'Shrine of First Light', x: 5, z: 211 },
   { id: 'gatehouse', name: 'Gatehouse Shrine', x: 16, z: -194 },
   { id: 'fenwatch', name: 'Fenwatch Shrine', x: 288, z: 64 },
+  { id: 'rimegate', name: 'Rimegate Shrine', x: 10, z: -386 },
+  { id: 'hall', name: 'Lantern Steps Shrine', x: -12, z: -528 },
 ];
 
 export const NPCS = [
   { id: 'brannoc', name: 'Brannoc', title: 'Stablemaster', x: -55, z: 162, yaw: 2.2 },
   { id: 'ilse', name: 'Sister Ilse', title: 'Pilgrim', x: -143, z: -22, yaw: 2.4 },
+  { id: 'ormund', name: 'Ormund', title: 'Ice-Cutter', x: -100, z: -425, yaw: 0.6 },
 ];
 
 export const NOTICE = { x: 11, z: 206, yaw: -0.6 };
@@ -104,10 +126,32 @@ export const ENEMY_SPAWNS = [
   { kind: 'acolyte', x: 300, z: 0, yaw: 0.6 },
   // Vharra, Mother of the Mire, asleep in her hollow (entities/Matriarch.js).
   { kind: 'matriarch', x: 352, z: -50, yaw: -2.5 },
+  // Castle Dunmarrow: knights in the courtyard, bowmen on the inner wall walk.
+  { kind: 'knight', x: -6, z: -340, yaw: 0 },
+  { kind: 'knight', x: 10, z: -352, yaw: 0.3 },
+  { kind: 'bowman', x: 20, z: -362, yaw: 0 },
+  { kind: 'bowman', x: -22, z: -362, yaw: 0 },
+  // The Rimewold: frost wolves on the field, wraiths drifting over the tarn and the hall steps,
+  // knights of the old watch on the road, and the troll that owns the Howling Field.
+  { kind: 'wolf', pack: 'rimeroad', x: 22, z: -420, yaw: 2.8 },
+  { kind: 'wolf', pack: 'rimeroad', x: 26, z: -424, yaw: 2.6 },
+  { kind: 'wolf', pack: 'rimeroad', x: 18, z: -426, yaw: 3.0 },
+  { kind: 'wraith', x: -50, z: -470, yaw: 1.2 },
+  { kind: 'wraith', x: -78, z: -490, yaw: 0.4 },
+  { kind: 'knight', x: -4, z: -470, yaw: 3.1 },
+  { kind: 'bowman', x: 30, z: -500, yaw: 2.6 },
+  { kind: 'wolf', pack: 'rimefar', x: -40, z: -520, yaw: 2.0 },
+  { kind: 'wolf', pack: 'rimefar', x: -44, z: -516, yaw: 2.2 },
+  { kind: 'wraith', x: 20, z: -530, yaw: 3.0 },
+  { kind: 'knight', x: 12, z: -526, yaw: 3.1 },
+  { kind: 'troll', x: 82, z: -466, yaw: -2.2 },
+  // Saelith, the Winter Lantern, waits in her hall (entities/Saelith.js).
+  { kind: 'saelith', x: 0, z: -578, yaw: 0 },
 ];
 
 export const PICKUPS = [
   { item: 'locket', quest: 'locket', x: -231, z: -170 },
+  { item: 'brothers_lantern', quest: 'brother', x: -14, z: -534 },
 ];
 
 // Spots that scenery must leave clear: where gear lies in the Vale (mirrors data/loot.js) and the
@@ -123,6 +167,10 @@ export const KEEP_CLEAR = [
   { x: 20.5, z: -190, r: 3 }, // the Gatehouse Shrine
   { x: -197, z: -112, r: 3 }, // the moor road (Mirewatch Halberd)
   { x: -114, z: 86, r: 3 }, // the chapel bell (Captain's Cleaver)
+  { x: -4, z: -356, r: 3 }, // the castle keep's door (Dunmarrow Longsword)
+  { x: -14, z: -534, r: 3 }, // Eskil's lantern on the hall steps
+  { x: 108, z: -506, r: 3 }, // the frost chapel (Rite: Frost Nova)
+  { x: 140, z: -470, r: 3 }, // the troll's den (Rimeguard Greatshield)
 ];
 
 // Fires get a flickering light (campfires) or just a glow (braziers).
@@ -132,4 +180,7 @@ export const FIRES = [
   { x: -146, z: -19, light: true },
   { x: -6, z: -219, light: false },
   { x: 6, z: -219, light: false },
+  { x: -98, z: -432, light: true }, // Ormund's fire
+  { x: -8, z: -364, light: false }, // the castle's rear gate
+  { x: 8, z: -364, light: false },
 ];

@@ -10,11 +10,15 @@ export const WEATHER = {
   ashfall: { fogMul: 2.3, dim: 0.45, haze: 0.62, tint: 0x8f8a84, cover: 0.9, wind: 0.6, fall: 'ash' },
   rain: { fogMul: 1.6, dim: 0.7, haze: 0.55, tint: 0x8a929a, cover: 1, wind: 1.9, fall: 'rain' },
   mist: { fogMul: 3.6, dim: 0.35, haze: 0.75, tint: 0xd8d4c8, cover: 0.7, wind: 0.35, fall: null },
+  snow: { fogMul: 1.9, dim: 0.28, haze: 0.6, tint: 0xd4dee8, cover: 0.25, wind: 1.3, fall: 'snow' },
+  blizzard: { fogMul: 3.4, dim: 0.5, haze: 0.8, tint: 0xc8d4e0, cover: 0.05, wind: 2.6, fall: 'blizzard' },
 };
 
 const FALL = {
   ash: { count: 2200, speed: 0.9, size: 0.15, color: 0xd8d2c8, opacity: 0.85, sway: 0.7, streak: 0 },
   rain: { count: 2600, speed: 15, size: 0.55, color: 0xb8c4d2, opacity: 0.38, sway: 0, streak: 1 },
+  snow: { count: 2400, speed: 1.8, size: 0.17, color: 0xf6f9ff, opacity: 0.92, sway: 1.1, streak: 0 },
+  blizzard: { count: 2600, speed: 4.5, size: 0.2, color: 0xf2f6fc, opacity: 0.95, sway: 2.6, streak: 0 },
 };
 const MAX = 2600;
 const tmpTint = new THREE.Color();
