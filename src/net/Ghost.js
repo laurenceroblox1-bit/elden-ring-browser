@@ -7,6 +7,15 @@ import { buildPlayer } from '../models/characters.js';
 import { buildHorse } from '../models/horse.js';
 import { equipModel } from '../models/weapons.js';
 import { damp, dampAngle } from '../core/math.js';
+import { WEAPONS, SHIELDS } from '../data/weapons.js';
+
+// Messages come from other players: anything malformed is dropped rather than drawn.
+const nums = (a, n) => Array.isArray(a) && a.length >= n && a.length <= 200 && a.every((v) => typeof v === 'number' && Number.isFinite(v));
+function valid(m) {
+  if (!m || !nums(m.p, 3) || !nums(m.r, 3) || !nums(m.b, 3) || !Number.isFinite(m.py) || !Number.isFinite(m.hy)) return false;
+  if (m.h && (!nums(m.h.p, 3) || !nums(m.h.b, 3) || !Number.isFinite(m.h.y) || !Number.isFinite(m.h.by))) return false;
+  return true;
+}
 
 // Cloak colours handed out by player id.
 const CLOAKS = [0x8a3a30, 0x3a5a8a, 0x7a6a2a, 0x5a3a7a, 0x2a6a4a, 0x8a5a2a, 0x6a6a6a, 0x2a2a3a];
@@ -73,15 +82,28 @@ export class Ghost {
     });
   }
 
+  setName(name) {
+    this.name = name;
+    this.model.root.remove(this.tag);
+    this.tag.material.map.dispose();
+    this.tag.material.dispose();
+    this.tag = nameTag(name);
+    this.tag.position.y = 2.35;
+    this.model.root.add(this.tag);
+  }
+
   receive(m) {
+    if (!valid(m)) return;
     const first = !this.target;
     this.target = m;
     this.seen = 0;
-    if (m.w && (m.w !== this.weapon || (m.s ?? null) !== this.shield)) {
+    const w = Object.hasOwn(WEAPONS, m.w) ? m.w : null;
+    const sh = Object.hasOwn(SHIELDS, m.s) ? m.s : null;
+    if (w && (w !== this.weapon || sh !== this.shield)) {
       try {
-        equipModel(this.model, m.w, m.s ?? null);
-        this.weapon = m.w;
-        this.shield = m.s ?? null;
+        equipModel(this.model, w, sh);
+        this.weapon = w;
+        this.shield = sh;
       } catch { /* gear this build doesn't know: keep what they had */ }
     }
     if (first) this._snap();

@@ -18,8 +18,18 @@ export class NetPanel {
         </div>
         <p class="net-status" aria-live="polite"></p>
         <label class="net-field"><span>Your name</span><input class="net-name" maxlength="20" spellcheck="false"></label>
-        <label class="net-field"><span>Server</span><input class="net-url" spellcheck="false" placeholder="ws://192.168.1.20:8080/ws"></label>
-        <div class="test-btns"><button class="btn primary net-go"></button></div>
+        <div class="net-ws">
+          <label class="net-field"><span>Server</span><input class="net-url" spellcheck="false" placeholder="ws://192.168.1.20:8080/ws"></label>
+          <div class="test-btns"><button class="btn primary net-go"></button></div>
+        </div>
+        <div class="net-room" hidden>
+          <label class="net-field"><span>Party code (optional: only people with the same code see each other)</span><input class="net-party" maxlength="40" spellcheck="false" placeholder="e.g. ashfriends"></label>
+          <div class="test-btns">
+            <button class="btn primary net-party-go">Join party</button>
+            <button class="btn net-lobby">Back to everyone</button>
+            <button class="btn net-show"></button>
+          </div>
+        </div>
         <p class="test-sub net-help"></p>
         <h3 class="net-h">In the Vale</h3>
         <ul class="net-who"></ul>
@@ -34,6 +44,10 @@ export class NetPanel {
       if (net.status === 'offline') net.connect(this.$('.net-url').value, this.$('.net-name').value);
       else net.disconnect();
     });
+    this.$('.net-name').addEventListener('change', () => net.setName(this.$('.net-name').value));
+    this.$('.net-party-go').addEventListener('click', () => { game.audio.play('ui'); net.joinParty(this.$('.net-party').value); });
+    this.$('.net-lobby').addEventListener('click', () => { game.audio.play('ui'); this.$('.net-party').value = ''; net.joinParty(''); });
+    this.$('.net-show').addEventListener('click', () => { game.audio.play('ui'); net.setVisible(!net.visible); });
     net.onChange = () => { if (!this.root.hidden) this.render(); };
 
     // The chat bar lives in the HUD whether or not this panel is open.
@@ -61,7 +75,7 @@ export class NetPanel {
 
   openChat() {
     if (!this.game.net.online) {
-      this.game.hud.toast('Not connected. Press N to join a shared Vale.');
+      this.game.hud.toast(this.game.net.roomMode ? 'Connecting to the shared Vale…' : 'Not connected. Press N to join a shared Vale.');
       return;
     }
     this.game.input.down.clear(); // nothing stays held while you type
@@ -89,6 +103,7 @@ export class NetPanel {
     const net = this.game.net;
     this.$('.net-name').value = net.name;
     this.$('.net-url').value = net.url;
+    this.$('.net-party').value = net.party;
     this.render();
     this.root.hidden = false;
   }
@@ -99,6 +114,21 @@ export class NetPanel {
 
   render() {
     const net = this.game.net;
+    const room = net.roomMode;
+    this.$('.net-ws').hidden = room;
+    this.$('.net-room').hidden = !room;
+    if (room) {
+      this.$('.net-name').disabled = false;
+      const n = net.ghosts.size;
+      this.$('.net-status').textContent = net.error || (net.online
+        ? `${net.party ? `In party "${net.party}"` : 'In the shared Vale'} as ${net.name}. ${n ? `${n} other${n > 1 ? 's' : ''} here with you.` : 'Nobody else is here yet.'}${net.visible ? '' : ' (Hidden: others cannot see you.)'}`
+        : net.status === 'connecting' ? 'Connecting to the shared Vale…' : 'Playing alone.');
+      this.$('.net-show').textContent = `Show me to others: ${net.visible ? 'on' : 'off'}`;
+      this.$('.net-lobby').disabled = !net.party;
+      this.$('.net-help').textContent = 'Everyone who has this page open on claude.ai plays in the same Vale: you see each other move, fight and ride, and can chat with Enter. Share the page with friends (Share menu) so they can open it. Enemies, loot and bosses stay your own.';
+      this._lists(net);
+      return;
+    }
     const off = net.status === 'offline';
     this.$('.net-go').textContent = off ? 'Join the shared Vale' : net.status === 'connecting' ? 'Cancel' : 'Leave';
     this.$('.net-name').disabled = this.$('.net-url').disabled = !off;
@@ -110,6 +140,10 @@ export class NetPanel {
         ? 'This page came from a game server, so its address is filled in already. Share the page address with friends and they can join too.'
         : 'To play together, one of you runs "node server.js" in the game folder (see README), then everyone opens the address it prints. Enemies and bosses stay your own; you see each other, ride and fight side by side, and chat.')
       : 'Enemies, loot and bosses are still your own: each of you fights your own copy of them.';
+    this._lists(net);
+  }
+
+  _lists(net) {
     const who = [...net.ghosts.values()].map((g) => `<li>${esc(g.name)}</li>`);
     if (net.online) who.unshift(`<li class="self">${esc(net.name)} (you)</li>`);
     this.$('.net-who').innerHTML = who.join('') || '<li class="none">Nobody</li>';
