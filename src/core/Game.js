@@ -15,7 +15,7 @@ import { Interactions } from '../systems/Interactions.js';
 import { Save, newGameState, mergeSave, levelOf, levelCost } from '../systems/Save.js';
 import { Player } from '../entities/Player.js';
 import { Horse } from '../entities/Horse.js';
-import { Sentry } from '../entities/Sentry.js';
+import { createEnemy } from '../entities/spawn.js';
 import { Warden } from '../entities/Warden.js';
 import { NPC } from '../entities/NPC.js';
 import { HUD } from '../ui/HUD.js';
@@ -77,7 +77,7 @@ export class Game {
     this.interactions = new Interactions(this);
     this.player = new Player(this);
     this.horse = new Horse(this);
-    this.enemies = ENEMY_SPAWNS.map((s) => new Sentry(this, s));
+    this.enemies = ENEMY_SPAWNS.map((s) => createEnemy(this, s));
     this.boss = new Warden(this);
     this.npcs = NPCS.map((d) => new NPC(this, d));
     this.cam = new CameraRig(this);
