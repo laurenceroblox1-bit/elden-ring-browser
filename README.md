@@ -39,7 +39,42 @@ Google Fonts fall back to system serif faces when offline.
 | H | Call Wisp, or dismount |
 | J | Journal |
 | I | Equipment (also a button in the pause menu) |
+| M | Map, with fast travel between lit lanterns (also in the pause menu) |
 | Esc / P | Pause (graphics quality and sound toggles are here) |
+| ` (backquote) | Test menu (also in the pause menu) |
+
+### Gamepad
+
+Any controller the browser exposes with the standard mapping (Xbox and PlayStation pads in
+Chrome, Edge and Firefox) works alongside the keyboard and mouse; press a button once so the
+browser reveals it. A toast says when a pad connects or disconnects, and losing the pad mid-game
+pauses. While the pad is in use, the on-screen key hints and control lists switch to its buttons.
+
+| Button | Action |
+| --- | --- |
+| Left stick | Move. Tilt it partway to walk slower; a roll always goes the full length |
+| L3 (click the left stick) | Sprint, or gallop on Wisp, until the stick returns to centre |
+| Right stick | Look |
+| R3 (click the right stick) | Lock on |
+| A | Roll, backstep, horse jump; next line in a conversation |
+| B | Talk, pick up, kindle or rest, pass the mist; back out of any menu |
+| X | Drink from the flask |
+| Y | Call Wisp, or dismount |
+| RB | Light attack (riposte a reeling foe) |
+| RT | Heavy attack |
+| LB (hold) | Guard. Press it just as a blow lands to parry, as with right click |
+| LT | Weapon art |
+| D-pad up | Cast your rite |
+| D-pad down | Equipment |
+| D-pad right | Map |
+| Back / Select | Journal |
+| Start | Pause (Start or B closes it again) |
+
+In menus the D-pad or left stick moves between buttons (holding repeats), A presses the focused
+one and B or Start backs out; on the time slider, left and right change the value. D-pad left is
+free. Buttons become virtual key codes `Pad0` to `Pad16` (plus `PadSprint` while the L3 latch
+holds) in `core/Input.js`'s `BINDINGS`, so every `pressed()`/`held()` check works unchanged; the
+sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
 
 ## What's in the foundation
 
@@ -149,6 +184,44 @@ Balance check (a stepped bot in god mode with base stats and no shield, fighting
 light chains, the art and ripostes): every weapon kills him in 33 to 49 s and takes about three
 staggers. The bot would have taken 280 to 620 damage against 100 HP, so dodging is still on you.
 
+## Map and fast travel
+
+**M** (or *Map* in the pause menu, or D-pad right) opens a full-screen map of the Vale: shaded
+relief drawn once from the terrain's height field, with the lake, the roads, the arena ring and
+Castle Dunmarrow. Markers show where you are and which way you face, lit lanterns, the people you
+can talk to, quest objectives, the mist gate and any ash you dropped. A place gets its name on the
+map once you've walked into it; discovered places are saved (`state.discovered`), and saves from
+before the map count the places of kindled lanterns.
+
+Click a lit lantern, on the map or in the list beside it, to travel there. It's a plain teleport:
+it doesn't count as resting, so enemies stay as they are and your flask isn't refilled. You can't
+travel while the Warden's fight is on (the mist holds you) or while you're down.
+
+## Test menu
+
+Press **`** (backquote), or choose *Test menu* in the pause menu. It pauses the game and frees the
+cursor; ` or Esc closes it. It's always available, not only with `#debug`.
+
+- **Travel**: every place in `data/world.js` (new zones appear by themselves), the mist gate (you
+  stand in front of it, facing it), and *Start the boss fight* (inside the arena, Odran awake). If
+  the Warden is dead, *Revive the Warden* resets him, seals the mist and shuts the north gate.
+  Travel gets you off the horse, clears the lock-on, ends a running boss fight, shows the place's
+  banner and closes the menu.
+- **Player**: god mode, infinite stamina, infinite focus, restore everything (health, stamina,
+  focus, flasks), +5,000 ash, +5 to every stat, and *Fall* to test dying.
+- **Enemies**: kill everything within 30 m, respawn all, freeze enemy AI, and spawn any kind from
+  `enemyKinds()` 5 m in front of you. Spawned enemies vanish when you rest, die or respawn all, so
+  saves and quests stay sane.
+- **Gear and items**: give Wisp (and call her), give all gear, or any single weapon, shield, rite or
+  key item (read from the data files).
+- **Boss**: start the fight, force phase 2, stagger, kill, reset.
+- **Quests**: advance the main quest a stage, complete everything (with rewards), reset all.
+- **World**: a time-of-day slider (live), the day cycle, weather, the simulation speed (0.25x to 2x),
+  the HUD on or off, and a performance overlay (fps, draw calls, triangles, position, zone) that
+  sits under the health, focus and stamina bars.
+
+The `#debug` key shortcuts are listed at the bottom of the menu.
+
 ## Code map
 
 ```
@@ -156,7 +229,7 @@ index.html, style.css      page shell and all UI styles
 vendor/                    three.js r160 (MIT, see THREE_LICENSE)
 src/main.js                boot
 src/lib/three.js           the single three.js import, so CDN vs. vendored vs. bundler is one line
-src/core/                  Game (loop + glue), Input, CameraRig, Audio, Events, math/noise
+src/core/                  Game (loop + glue), Input (keys, mouse, gamepad), CameraRig, Audio, Events, math/noise
 src/world/                 World (terrain, colliders, set pieces), Sky
 src/models/                procedural models: humanoid rig, characters, horse, props, weapons + shields
                            (weapons.js, with the stances and move poses); pose.js animates them
@@ -165,7 +238,10 @@ src/systems/               Combat (hit detection), Quests, Interactions (E promp
 src/effects/               Particles, Effects (shockwaves, falling bells), Projectiles (bolts, crescents)
 src/data/                  world layout, quests, dialogue, items, weapons + shields, arts + rites
                            (abilities.js), gear pickups (loot.js): content lives here as data
-src/ui/HUD.js              DOM overlay and every menu
+src/core/Gamepad.js        Gamepad API polling (standard mapping) and D-pad menu navigation
+src/ui/HUD.js              DOM overlay and most menus
+src/ui/TestMenu.js         the test menu (`)
+src/ui/MapScreen.js        the map and fast travel (M)
 ```
 
 ### Adding things
@@ -199,7 +275,8 @@ elbow, hand, hip, knee) and the procedural pose system can keep driving them.
 
 ## Debug
 
-Add `#debug` to the URL for an FPS and position readout, plus these keys:
+Add `#debug` to the URL to start with the performance overlay on (fps, draw calls, triangles,
+position; the test menu toggles it any time), plus these keys:
 
 | Key | Action |
 | --- | --- |
@@ -223,7 +300,8 @@ Add `#debug` to the URL for an FPS and position readout, plus these keys:
 - **Performance**: each character is about 40 meshes. Merging meshes per bone, or skinned glTF
   models, would cut draw calls (about 500 in open areas today). Vegetation has no level of detail
   (LOD).
-- **Input**: no gamepad or touch controls yet; keyboard and mouse only.
+- **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
+- **Map**: fixed scale with no zoom or pan, and no custom waypoints.
 - **World**: Castle Dunmarrow is a facade with barred doors and is the hook for region two. The
   sentries are the only regular enemy type.
 - **Audio**: everything is synthesized. Recorded sounds and a real boss score would lift it a lot.

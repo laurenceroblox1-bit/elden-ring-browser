@@ -1,6 +1,7 @@
 // localStorage save. Every access is guarded: storage can be missing (private windows, embeds).
 import { gearOf } from '../data/loot.js';
 import { STARTING_WEAPON, WEAPONS } from '../data/weapons.js';
+import { ZONES } from '../data/world.js';
 
 const KEY = 'ashen-vale.save.v1';
 
@@ -47,6 +48,7 @@ export function newGameState() {
     flasksMax: 4,
     shrine: 'firstlight',
     shrinesLit: [],
+    discovered: [], // zone ids the player has walked into; the map labels these
     inventory: {},
     flags: { horse: false, wardenDead: false },
     remnant: null,
@@ -67,6 +69,9 @@ export function mergeSave(saved) {
   const ok = (id, slot) => (id && owned.includes(id) && gearOf(id).slot === slot ? id : null);
   st.gear = { owned, right: ok(g.right, 'weapon') ?? STARTING_WEAPON, left: ok(g.left, 'shield'), rite: ok(g.rite, 'rite') };
   if (WEAPONS[st.gear.right].hands > 1) st.gear.left = null; // two hands on the weapon: no shield
+  // Saves from before the map: count the zones of kindled shrines (their ids match) as discovered.
+  const found = Array.isArray(saved.discovered) ? saved.discovered : st.shrinesLit ?? [];
+  st.discovered = [...new Set(found)].filter((id) => ZONES[id]);
   return st;
 }
 

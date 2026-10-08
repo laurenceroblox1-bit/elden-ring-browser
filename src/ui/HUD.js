@@ -22,24 +22,51 @@ export const CONTROLS = [
   ['H', 'Call Wisp, or dismount'],
   ['J', 'Journal'],
   ['I', 'Equipment'],
+  ['M', 'Map · fast travel between lit lanterns'],
   ['Esc / P', 'Pause'],
+  ['`', 'Test menu'],
 ];
 
-const controlsHTML = () => CONTROLS.map(([k, v]) => `<div class="ctl"><kbd>${k}</kbd><span>${v}</span></div>`).join('');
+// Standard-mapping gamepad (see core/Gamepad.js). Shown instead of the keys while a pad is in use.
+export const PAD_CONTROLS = [
+  ['Left stick', 'Move (tilt to walk) · click L3 to sprint or gallop'],
+  ['Right stick', 'Look · click R3 to lock on'],
+  ['A', 'Roll · backstep · horse jump · next line'],
+  ['B', 'Talk, pick up, rest · back out of menus'],
+  ['RB', 'Light attack · riposte'],
+  ['RT', 'Heavy attack'],
+  ['Hold LB', 'Guard · tap as a blow lands to parry'],
+  ['LT', 'Weapon art'],
+  ['D-pad up', 'Cast your rite'],
+  ['X', 'Drink from your flask'],
+  ['Y', 'Call Wisp, or dismount'],
+  ['D-pad down', 'Equipment'],
+  ['D-pad right', 'Map'],
+  ['Back', 'Journal'],
+  ['Start', 'Pause'],
+];
+
+// Key glyphs that change with the device: [keyboard, gamepad].
+const GLYPHS = { interact: ['E', 'B'], art: ['C', 'LT'], rite: ['V', 'D-pad ↑'], light: ['Left click', 'RB'], next: ['E', 'A'], close: [null, 'B'] };
+
+// The title lists only what you play with; the test menu is mentioned in the pause menu and README.
+const forTitle = (list) => list.filter(([k]) => k !== '`');
+const controlsHTML = (list = CONTROLS) => list.map(([k, v]) => `<div class="ctl"><kbd>${k}</kbd><span>${v}</span></div>`).join('');
 
 const TEMPLATE = `
 <div class="vitals">
   <div class="bar hp"><div class="lag"></div><div class="fill"></div></div>
   <div class="bar fo"><div class="fill"></div></div>
   <div class="bar st"><div class="fill"></div></div>
+  <div class="perf" hidden aria-hidden="true"></div>
 </div>
 <div class="gear" aria-label="Equipped gear">
   <div class="gear-hands">
     <div class="gear-hand"><span class="gear-k">Right</span><b class="gear-r"></b></div>
     <div class="gear-hand"><span class="gear-k">Left</span><b class="gear-l"></b></div>
   </div>
-  <div class="gear-ab art"><kbd>C</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
-  <div class="gear-ab rite"><kbd>V</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
+  <div class="gear-ab art"><kbd data-glyph="art">C</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
+  <div class="gear-ab rite"><kbd data-glyph="rite">V</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
 </div>
 <div class="compass" aria-hidden="true"><div class="compass-track"></div><div class="compass-needle"></div></div>
 <aside class="tracker" aria-label="Current objectives"></aside>
@@ -50,7 +77,7 @@ const TEMPLATE = `
 <div class="toasts" role="status" aria-live="polite"></div>
 <div class="prompt" hidden></div>
 <div class="lock" hidden></div>
-<div class="riposte-hint" hidden><kbd>Left click</kbd> Riposte</div>
+<div class="riposte-hint" hidden><kbd data-glyph="light">Left click</kbd> Riposte</div>
 <div class="hint" hidden>Click to take control of the camera</div>
 <div class="banner" hidden><div class="banner-text"></div><div class="banner-sub"></div></div>
 <section class="bossbar" hidden>
@@ -60,9 +87,8 @@ const TEMPLATE = `
 <section class="dialogue" hidden>
   <div class="dlg-name"></div>
   <p class="dlg-text"></p>
-  <div class="dlg-next"><kbd>E</kbd> Continue</div>
+  <div class="dlg-next"><kbd data-glyph="next">E</kbd> Continue</div>
 </section>
-<div class="fps" hidden></div>
 
 <section class="screen title-screen">
   <div class="title-card">
@@ -73,9 +99,9 @@ const TEMPLATE = `
       <button class="btn primary" id="btn-new">Begin a new journey</button>
       <button class="btn" id="btn-continue" hidden>Continue</button>
     </div>
-    <p class="device-note">Ashen Vale needs a keyboard and mouse.</p>
+    <p class="device-note">Ashen Vale needs a keyboard and mouse, or a gamepad.</p>
   </div>
-  <div class="title-controls"><h2>Controls</h2><div class="ctl-grid">${controlsHTML()}</div></div>
+  <div class="title-controls"><h2>Controls <span class="ctl-device">· Keyboard and mouse</span></h2><div class="ctl-grid">${controlsHTML(forTitle(CONTROLS))}</div></div>
 </section>
 
 <section class="screen pause-screen" hidden>
@@ -84,8 +110,10 @@ const TEMPLATE = `
     <div class="menu">
       <button class="btn primary" id="btn-resume">Resume</button>
       <button class="btn" id="btn-equipment">Equipment</button>
+      <button class="btn" id="btn-map">Map</button>
       <button class="btn" id="btn-quality"></button>
       <button class="btn" id="btn-sound"></button>
+      <button class="btn" id="btn-testmenu">Test menu</button>
       <button class="btn danger" id="btn-quit">Quit to title</button>
     </div>
     <div class="ctl-grid">${controlsHTML()}</div>
@@ -94,14 +122,14 @@ const TEMPLATE = `
 
 <section class="screen journal-screen" hidden>
   <div class="panel wide">
-    <div class="panel-head"><h2>Journal</h2><span class="close-hint"><kbd>J</kbd> Close</span></div>
+    <div class="panel-head"><h2>Journal</h2><span class="close-hint"><kbd data-glyph="close" data-key="J">J</kbd> Close</span></div>
     <div class="journal-body"></div>
   </div>
 </section>
 
 <section class="screen equipment-screen" hidden>
   <div class="panel wide equip-panel">
-    <div class="panel-head"><h2>Equipment</h2><span class="close-hint"><kbd>I</kbd> Close</span></div>
+    <div class="panel-head"><h2>Equipment</h2><span class="close-hint"><kbd data-glyph="close" data-key="I">I</kbd> Close</span></div>
     <div class="equip-body">
       <div class="equip-slots" role="tablist" aria-label="Slots"></div>
       <div class="equip-list" role="list"></div>
@@ -159,7 +187,7 @@ export class HUD {
       tracker: $('.tracker'), compass: $('.compass-track'), toasts: $('.toasts'), prompt: $('.prompt'),
       lock: $('.lock'), riposte: $('.riposte-hint'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
       boss: $('.bossbar'), bossName: $('.boss-name'), bossFill: $('.boss-fill'), bossLag: $('.boss-lag'), bossDmg: $('.boss-dmg'),
-      dlg: $('.dialogue'), dlgName: $('.dlg-name'), dlgText: $('.dlg-text'), fps: $('.fps'),
+      dlg: $('.dialogue'), dlgName: $('.dlg-name'), dlgText: $('.dlg-text'), perf: $('.perf'),
       title: $('.title-screen'), pause: $('.pause-screen'), journal: $('.journal-screen'), shrine: $('.shrine-screen'),
       equipment: $('.equipment-screen'), eqSlots: $('.equip-slots'), eqList: $('.equip-list'), eqFoot: $('.equip-foot'),
       vitals: $('.vitals'),
@@ -177,6 +205,8 @@ export class HUD {
     this.trackerT = 0;
     this.fpsT = 0;
     this.frames = 0;
+    this.perf = false; // performance overlay (fps, draw calls, triangles, position); Game turns it on for #debug
+    this.padMode = false;
     this.bannerTimer = null;
 
     this.cardinals = CARDINALS.map(([label, b]) => {
@@ -192,6 +222,8 @@ export class HUD {
     $('#btn-continue').addEventListener('click', () => game.continueGame());
     $('#btn-resume').addEventListener('click', () => game.closeModal());
     $('#btn-equipment').addEventListener('click', () => game.openEquipment());
+    $('#btn-map').addEventListener('click', () => game.openMenu('map'));
+    $('#btn-testmenu').addEventListener('click', () => game.openMenu('testmenu'));
     // One delegated handler for the whole equipment screen: slot tabs and gear rows carry data attributes.
     $('.equip-panel').addEventListener('click', (ev) => {
       const b = ev.target.closest('button');
@@ -237,6 +269,31 @@ export class HUD {
     if (on && name === 'equipment') this.renderEquipment();
   }
 
+  // Gamepad in use: key glyphs and control lists switch to the pad's buttons, and focused menu
+  // buttons get a visible ring (there's no mouse hover to show where you are).
+  setPadMode(on) {
+    this.padMode = on;
+    this.root.classList.toggle('pad', on);
+    for (const k of this.root.querySelectorAll('kbd[data-glyph]')) {
+      const [key, pad] = GLYPHS[k.dataset.glyph];
+      k.textContent = on ? pad : key ?? k.dataset.key;
+    }
+    const list = on ? PAD_CONTROLS : CONTROLS;
+    for (const grid of this.root.querySelectorAll('.ctl-grid')) grid.innerHTML = controlsHTML(grid.closest('.title-screen') ? forTitle(list) : list);
+    const dev = this.$('.ctl-device');
+    if (dev) dev.textContent = on ? '· Gamepad' : '· Keyboard and mouse';
+    this.promptText = undefined; // re-render the E/B prompt
+  }
+
+  // Hides the in-world HUD (bars, compass, widgets, toasts) for clean screenshots; menus still show.
+  setVisible(on) {
+    this.root.classList.toggle('hud-off', !on);
+  }
+
+  get visible() {
+    return !this.root.classList.contains('hud-off');
+  }
+
   refreshPause() {
     const g = this.game;
     this.$('#btn-quality').textContent = `Graphics: ${g.quality === 'high' ? 'High (shadows on)' : 'Low (faster)'}`;
@@ -262,6 +319,20 @@ export class HUD {
   // Equipment: the three slots on the left, everything owned for the chosen slot on the right.
   // Rows are buttons; clicking one equips it at once (Game.equip swaps the model and moveset).
   renderEquipment() {
+    this._keepFocus(this.el.equipment, () => this._renderEquipment());
+  }
+
+  // Re-rendering replaces buttons; put the focus (gamepad navigation) back on the same one.
+  _keepFocus(root, render) {
+    const f = root.contains(document.activeElement) ? document.activeElement : null;
+    const keys = f ? Object.entries(f.dataset) : [];
+    render();
+    if (!keys.length) return;
+    const sel = 'button' + keys.map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase())}="${CSS.escape(v)}"]`).join('');
+    root.querySelector(sel)?.focus({ preventScroll: true });
+  }
+
+  _renderEquipment() {
     const g = this.game;
     const gear = g.state.gear;
     const p = g.player;
@@ -334,6 +405,10 @@ export class HUD {
   }
 
   refreshShrine() {
+    this._keepFocus(this.el.shrine, () => this._renderShrine());
+  }
+
+  _renderShrine() {
     const g = this.game;
     const s = g.state.stats;
     const lv = levelOf(s);
@@ -380,7 +455,7 @@ export class HUD {
     if (text === this.promptText) return;
     this.promptText = text;
     this.el.prompt.hidden = !text;
-    if (text) this.el.prompt.innerHTML = `<kbd>E</kbd> ${text}`;
+    if (text) this.el.prompt.innerHTML = `<kbd>${GLYPHS.interact[this.padMode ? 1 : 0]}</kbd> ${text}`;
   }
 
   toast(text, kind = '') {
@@ -468,22 +543,33 @@ export class HUD {
     this._boss(dt);
     this._lock();
 
-    const wantsHint = !g.input.locked && !g.input.lockFailed && (!g.modal || g.modal === 'dialogue' || g.modal === 'journal');
+    const wantsHint = !g.input.locked && !g.input.lockFailed && !g.input.usingPad && (!g.modal || g.modal === 'dialogue' || g.modal === 'journal');
     if (e.hint.hidden === wantsHint) e.hint.hidden = !wantsHint;
     if (g.input.lockFailed && !this.lockNoted) {
       this.lockNoted = true;
       this.toast('Mouse capture is not available here. Turn the camera with the arrow keys.');
     }
 
-    if (g.debug) {
-      this.frames++;
-      if ((this.fpsT += dt) >= 0.5) {
-        e.fps.hidden = false;
-        e.fps.textContent = `${Math.round(this.frames / this.fpsT)} fps · ${p.pos.x.toFixed(0)}, ${p.pos.z.toFixed(0)} · ${g.renderer.info.render.calls} calls`;
-        this.frames = 0;
-        this.fpsT = 0;
-      }
+    this._perf(dt);
+  }
+
+  // Performance overlay, under the bars so it never covers them. Updates twice a second; the
+  // renderer's counters describe the last rendered frame.
+  _perf(dt) {
+    const e = this.el.perf;
+    if (!this.perf) {
+      if (!e.hidden) e.hidden = true;
+      return;
     }
+    this.frames++;
+    if ((this.fpsT += dt) < 0.5 && !e.hidden) return;
+    const g = this.game, p = g.player.pos, r = g.renderer.info.render;
+    const fps = this.fpsT > 0 ? Math.round(this.frames / this.fpsT) : 0;
+    e.hidden = false;
+    e.textContent = `${fps} fps · ${r.calls} calls · ${(r.triangles / 1000).toFixed(0)}k tris\n`
+      + `${p.x.toFixed(1)}, ${p.y.toFixed(1)}, ${p.z.toFixed(1)}${g.zone ? ' · ' + g.zone : ''}${g.timeScale !== 1 ? ` · ${g.timeScale}x` : ''}`;
+    this.frames = 0;
+    this.fpsT = 0;
   }
 
   _abilityEls(root) {

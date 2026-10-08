@@ -17,6 +17,8 @@ export class CameraRig {
     this.shakeT = 0;
     this.shakeAmp = 0;
     this.sens = 0.0024;
+    this.padYaw = 2.8; // right-stick turn rates at full tilt, radians per second
+    this.padPitch = 1.6;
   }
 
   snapBehind(yaw) {
@@ -42,6 +44,9 @@ export class CameraRig {
       if (input.held('camRight')) this.yaw -= 2.2 * dt;
       if (input.held('camUp')) this.pitch -= 1.4 * dt;
       if (input.held('camDown')) this.pitch += 1.4 * dt;
+      const look = input.look;
+      this.yaw -= look.x * this.padYaw * dt;
+      this.pitch += look.y * this.padPitch * dt;
       this.zoom = clamp(this.zoom + input.wheel * 0.6, 3, 10);
     }
     const lock = g.lockTarget;

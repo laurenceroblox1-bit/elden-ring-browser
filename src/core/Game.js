@@ -19,6 +19,9 @@ import { createEnemy } from '../entities/spawn.js';
 import { Warden } from '../entities/Warden.js';
 import { NPC } from '../entities/NPC.js';
 import { HUD } from '../ui/HUD.js';
+import { TestMenu } from '../ui/TestMenu.js';
+import { MapScreen } from '../ui/MapScreen.js';
+import { navigate, focusFirst } from './Gamepad.js';
 import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
@@ -30,6 +33,8 @@ import { buildGearDisplay } from '../models/weapons.js';
 
 const tmp = new THREE.Vector3();
 const SCREENS = new Set(['pause', 'journal', 'shrine', 'equipment']); // modals with their own HUD screen
+const MENU_KEYS = ['interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment', 'map', 'testMenu', 'back', 'confirm', 'whistle', 'flask', 'lockOn'];
+const DPAD = ['Pad12', 'Pad13', 'Pad14', 'Pad15'];
 
 export class Game {
   constructor(app) {
@@ -59,6 +64,9 @@ export class Game {
     this.zoneT = 0;
     this.pickups = [];
     this.remnant = null;
+    this.timeScale = 1; // test menu: scales the simulation step
+    this.cheats = { stamina: false, focus: false, freeze: false };
+    this.extras = new Set(); // enemies spawned from the test menu; removed on rest, death and respawn-all
 
     this.events = new Events();
     this.input = new Input(this.canvas);
@@ -66,6 +74,7 @@ export class Game {
     this.audio.muted = !!Save.pref('muted');
     this.state = newGameState();
     this.hud = new HUD(app.querySelector('#hud'), this);
+    this.hud.perf = this.debug; // the performance overlay starts on with #debug
     this.particles = new Particles(this.scene);
     this.effects = new Effects(this);
     this.projectiles = new Projectiles(this);
@@ -81,6 +90,9 @@ export class Game {
     this.boss = new Warden(this);
     this.npcs = NPCS.map((d) => new NPC(this, d));
     this.cam = new CameraRig(this);
+    // Full-screen menus that build their own DOM (the others live in HUD's template).
+    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this) };
+    this.input.pad.onChange = (on, id) => this._onPad(on, id);
     this._registerInteractables();
     this._combatTips();
 
@@ -195,7 +207,7 @@ export class Game {
     }
     this.resetWorld();
     this._spawnAtShrine();
-    this.input.requestLock();
+    if (!this.input.usingPad) this.input.requestLock();
   }
 
   _spawnAtShrine() {
@@ -211,6 +223,7 @@ export class Game {
 
   // Respawns enemies and resets an unfinished boss fight. Called on rest and on death.
   resetWorld() {
+    this.despawnExtras();
     for (const e of this.enemies) e.reset();
     this.effects.clear();
     this.projectiles.clear();
@@ -368,6 +381,11 @@ export class Game {
     this.pickups.splice(this.pickups.indexOf(pk), 1);
   }
 
+  // Takes any pickup of `item` off the ground (the test menu hands it over directly).
+  removePickupsOf(item) {
+    for (const pk of [...this.pickups]) if (pk.item === item) this._removePickup(pk);
+  }
+
   _clearPickups() {
     while (this.pickups.length) this._removePickup(this.pickups[0]);
   }
@@ -522,25 +540,68 @@ export class Game {
       this.input.exitLock();
     }
     if (SCREENS.has(name)) this.hud.showScreen(name, true);
+    this.panels[name]?.show();
     this.hud.setPrompt(null);
+    if (this.input.usingPad) focusFirst(this._menuRoot());
   }
 
-  // The equipment screen needs the mouse; from the pause menu the cursor is already free.
-  openEquipment() {
+  // Menus that need the mouse (equipment, map, test menu). From the pause menu the cursor is
+  // already free, so the pause screen just gives way.
+  openMenu(name) {
     if (this.mode !== 'playing') return;
     if (this.modal === 'pause') {
       this.hud.showScreen('pause', false);
       this.modal = null;
     }
     if (this.modal) return;
-    this.openModal('equipment', true);
+    this.openModal(name, true);
+  }
+
+  openEquipment() {
+    this.openMenu('equipment');
   }
 
   closeModal() {
     const m = this.modal;
     this.modal = null;
     if (SCREENS.has(m)) this.hud.showScreen(m, false);
-    if (this.mode === 'playing' && !this.input.locked) this.input.requestLock();
+    this.panels[m]?.hide();
+    if (document.activeElement?.blur && this.hud.root.contains(document.activeElement)) document.activeElement.blur();
+    if (this.mode === 'playing' && !this.input.locked && !this.input.usingPad) this.input.requestLock();
+  }
+
+  // The DOM root of the open menu that the gamepad can move around in, or null (none, or a dialogue).
+  _menuRoot() {
+    if (this.mode !== 'playing') return this.hud.el.title;
+    if (SCREENS.has(this.modal)) return this.hud.el[this.modal];
+    return this.panels[this.modal]?.root ?? null;
+  }
+
+  // D-pad or left stick moves the focus between buttons, A presses the focused one. Returns true
+  // when A was used here, so the same press doesn't also close or act.
+  _padMenu(root) {
+    const i = this.input;
+    for (const c of DPAD) i.eat(c);
+    const n = i.pad.nav;
+    if (n.x || n.y) {
+      navigate(root, n.x, n.y);
+      this.audio.play('ui');
+    }
+    if (!i.pressed('confirm')) return false;
+    i.consume('confirm');
+    i.consume('roll');
+    const el = document.activeElement;
+    if (el && root.contains(el) && el.tagName === 'BUTTON') el.click();
+    else focusFirst(root);
+    return true;
+  }
+
+  _onPad(connected, id) {
+    const name = id.replace(/\s*\(.*$/, '').slice(0, 40) || 'Gamepad';
+    this.hud.toast(connected ? `Gamepad connected: ${name}` : 'Gamepad disconnected', connected ? 'item' : '');
+    this.hud.setPadMode(connected && this.input.usingPad);
+    // Losing the pad mid-fight shouldn't leave you standing there: pause.
+    if (!connected && this.mode === 'playing' && !this.modal) this.openModal('pause', true);
   }
 
   _onLockChange(locked) {
@@ -555,30 +616,29 @@ export class Game {
   _modalKeys() {
     const i = this.input;
     const hadModal = !!this.modal;
-    switch (this.modal) {
+    const root = this.modal ? this._menuRoot() : null;
+    const used = root ? this._padMenu(root) : false;
+    const shut = (...actions) => actions.some((a) => i.pressed(a)) && this.closeModal();
+    if (!used) switch (this.modal) {
       case 'dialogue':
         if (i.pressed('interact') || i.pressed('roll') || i.pressed('light')) this.hud.advanceDialogue();
         break;
-      case 'journal':
-        if (i.pressed('journal') || i.pressed('pause')) this.closeModal();
-        break;
-      case 'pause':
-        if (i.pressed('pause')) this.closeModal();
-        break;
-      case 'shrine':
-        if (i.pressed('pause') || i.pressed('interact')) this.closeModal();
-        break;
-      case 'equipment':
-        if (i.pressed('equipment') || i.pressed('pause')) this.closeModal();
-        break;
+      case 'journal': shut('journal', 'pause', 'back'); break;
+      case 'pause': shut('pause', 'back'); break;
+      case 'shrine': shut('pause', 'interact'); break;
+      case 'equipment': shut('equipment', 'pause', 'back'); break;
+      case 'testmenu': shut('testMenu', 'pause', 'back'); break;
+      case 'map': shut('map', 'pause', 'back'); break;
       case null:
         if (i.pressed('pause')) this.openModal('pause', true);
         else if (i.pressed('journal')) this.openModal('journal');
         else if (i.pressed('equipment')) this.openEquipment();
+        else if (i.pressed('map')) this.openMenu('map');
+        else if (i.pressed('testMenu')) this.openMenu('testmenu');
         break;
     }
     // The key that closes a menu or dialogue must not also act in the world this frame.
-    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment']) i.consume(a);
+    if (hadModal || this.modal) for (const a of MENU_KEYS) i.consume(a);
   }
 
   // ---------- loop ----------
@@ -590,8 +650,8 @@ export class Game {
     this.time += dt;
     if (this.mode === 'playing') this._play(dt);
     else this._title(dt);
-    this.particles.update(this.modal ? 0 : dt);
-    this.world.update(dt, this.time);
+    this.particles.update(this.modal ? 0 : dt * this.timeScale);
+    this.world.update(dt * this.timeScale, this.time);
     this.sky.update(this.camera.position, this.player.pos);
     this.hud.update(dt);
     this.renderer.render(this.scene, this.camera);
@@ -599,6 +659,11 @@ export class Game {
   }
 
   _title(dt) {
+    const i = this.input;
+    i.pad.menu = true;
+    i.poll();
+    this._padModeSync();
+    if (i.pad.connected) this._padMenu(this.hud.el.title);
     const s = this.world.shrines.get('firstlight');
     const a = this.time * 0.04 + 2.2;
     const y = this.world.getHeight(s.x, s.z);
@@ -610,25 +675,36 @@ export class Game {
   }
 
   _play(dt) {
+    const i = this.input;
+    i.pad.menu = !!(this.modal && this._menuRoot());
+    i.poll();
+    this._padModeSync();
     this._modalKeys();
     if (!this.modal) {
-      let sdt = dt;
+      // The test menu's time scale slows or speeds the whole simulation; hit-stop slows it further.
+      let sdt = dt * this.timeScale;
       if (this.hitstop > 0) {
-        this.hitstop -= dt;
-        sdt = dt * 0.12;
+        this.hitstop -= sdt;
+        sdt *= 0.12;
       }
       this._lockOn();
       this._whistle();
       if (this.debug) this._debugKeys();
+      // A roll takes its length from the stick: start it at full tilt even from a half-pushed stick.
+      i.fullTilt = i.pressed('roll') || this.player.buffer?.a === 'roll';
       this.player.update(sdt);
+      i.fullTilt = false;
+      this._cheats();
       this.horse.update(sdt);
-      for (const e of this.enemies) e.update(sdt);
-      this.boss.update(sdt);
+      if (!this.cheats.freeze) {
+        for (const e of this.enemies) e.update(sdt);
+        this.boss.update(sdt);
+      }
       this._separate();
       for (const n of this.npcs) n.update(sdt);
       this.effects.update(sdt);
       this.projectiles.update(sdt);
-      this.combat.update(dt);
+      this.combat.update(dt * this.timeScale);
       this.interactions.update();
       this._timers(sdt);
       this._zones(dt);
@@ -636,6 +712,21 @@ export class Game {
       this._ambient(dt, this.player.pos);
     }
     this.cam.update(dt, !this.modal || this.modal === 'dialogue');
+  }
+
+  // Keeps the HUD's key glyphs and control lists in step with the device in use.
+  _padModeSync() {
+    const pad = this.input.usingPad && this.input.pad.connected;
+    if (pad !== this.hud.padMode) this.hud.setPadMode(pad);
+  }
+
+  _cheats() {
+    const p = this.player, c = this.cheats;
+    if (c.stamina) {
+      p.stamina = p.maxStamina;
+      p.winded = false;
+    }
+    if (c.focus) p.focus = p.maxFocus;
   }
 
   _timers(dt) {
@@ -708,10 +799,153 @@ export class Game {
     if ((this.zoneT -= dt) > 0) return;
     this.zoneT = 0.5;
     const p = this.player.pos;
-    let found = null;
-    for (const [id, z] of Object.entries(ZONES)) if (Math.hypot(p.x - z.x, p.z - z.z) < z.r) found = id;
+    const found = this.zoneAt(p.x, p.z);
     if (found && found !== this.zone && !this.bossFight && this.player.alive) this.hud.banner(ZONES[found].name, '', 'area');
-    if (found) this.zone = found;
+    if (found) {
+      this.zone = found;
+      this._discover(found);
+    }
+  }
+
+  zoneAt(x, z) {
+    let found = null;
+    for (const [id, zn] of Object.entries(ZONES)) if (Math.hypot(x - zn.x, z - zn.z) < zn.r) found = id;
+    return found;
+  }
+
+  // The map labels places once you've been there.
+  _discover(id) {
+    const d = this.state.discovered;
+    if (!id || d.includes(id)) return;
+    d.push(id);
+    this.save();
+  }
+
+  // ---------- travel and test tools (test menu, map) ----------
+
+  // Puts the player at (x, z) facing `yaw`, leaving the game consistent: off the horse, no lock-on,
+  // any running boss fight ended (unless `keepFight`), the zone banner shown. False while fallen.
+  teleport(x, z, yaw = Math.PI, { keepFight = false, banner = true } = {}) {
+    const p = this.player;
+    if (!p.alive) return false;
+    if (this.horse.ridden) this.horse.dismount(true);
+    this.horse.hideNow();
+    this.lockTarget = null;
+    if (this.bossFight && !keepFight) this.endBossFight();
+    if (p.state === 'fog') this.world.fogGate.collider.enabled = true; // the walk's onDone won't run now
+    p.pos.set(x, 0, z);
+    this.world.resolve(p.pos, p.radius);
+    p.pos.y = this.world.getHeight(p.pos.x, p.pos.z);
+    p.vel.set(0, 0, 0);
+    p.vy = 0;
+    p.onGround = true;
+    p.yaw = yaw;
+    p.state = 'move';
+    p.atk = p.act = p.buffer = p.rip = null;
+    p.invuln = false;
+    p.model.flask.visible = false;
+    this.cam.snapBehind(yaw);
+    const zone = this.zoneAt(p.pos.x, p.pos.z);
+    this.zone = zone;
+    this._discover(zone);
+    if (banner && zone) this.hud.banner(ZONES[zone].name, '', 'area');
+    return true;
+  }
+
+  // Stops a running Warden fight without a winner: he kneels again and the mist seals.
+  endBossFight() {
+    if (!this.bossFight) return;
+    this.bossFight = false;
+    this.hud.setBoss(null);
+    this.audio.setMusic(false);
+    if (this.lockTarget === this.boss) this.lockTarget = null;
+    if (!this.boss.alive) return; // already beaten: let the victory play out
+    this.boss.reset();
+    this.effects.clear();
+    this.projectiles.clear();
+    this.world.setFogGate(true);
+    this.world.fogGate.collider.enabled = true;
+  }
+
+  // Inside the arena, facing Odran, and the fight begins (a fresh one if one was running).
+  enterBossFight() {
+    if (this.state.flags.wardenDead || !this.player.alive) return false;
+    this.endBossFight();
+    if (this.boss.state !== 'dormant') this.boss.reset();
+    const f = this.world.fogGate;
+    this.teleport(f.x, f.z - 5, Math.PI);
+    this.startBossFight();
+    return true;
+  }
+
+  // Undoes the Warden's defeat: he kneels in the arena again, the mist re-seals and the north gate shuts.
+  reviveWarden() {
+    this.state.flags.wardenDead = false;
+    this.bossFight = false;
+    this.boss.reset();
+    this.hud.setBoss(null);
+    this.audio.setMusic(false);
+    this.world.setFogGate(true);
+    this.world.fogGate.collider.enabled = true;
+    this.world.closeGate();
+    const p = this.player.pos;
+    if (this.world.inArena(p.x, p.z, 2)) this.teleport(this.world.fogGate.x, this.world.fogGate.z + 4, Math.PI);
+    this.save();
+  }
+
+  // Map fast travel: a rest-free hop to a lit lantern. Returns a reason it can't happen, or null.
+  fastTravel(id) {
+    const s = this.world.shrines.get(id);
+    if (!s || !s.lit) return 'That lantern has not been kindled.';
+    if (this.bossFight) return 'The mist holds you here until the fight is done.';
+    if (!this.player.alive) return 'You cannot travel while fallen.';
+    if (this.player.state === 'fog') return 'Not while passing through the mist.';
+    this.teleport(s.x, s.z + 2.5, Math.PI, { banner: false });
+    this.hud.banner(s.name, 'The lantern answers', 'kindle', 3000);
+    this.audio.play('mist');
+    return null;
+  }
+
+  // Spawns an enemy of `kind` a few metres in front of the player, facing them.
+  spawnEnemy(kind, dist = 5) {
+    const p = this.player;
+    tmp.set(p.pos.x + Math.sin(p.yaw) * dist, 0, p.pos.z + Math.cos(p.yaw) * dist);
+    this.world.resolve(tmp, 0.6);
+    const e = createEnemy(this, { kind, x: tmp.x, z: tmp.z, yaw: p.yaw + Math.PI });
+    this.enemies.push(e);
+    this.extras.add(e);
+    return e;
+  }
+
+  despawnExtras() {
+    if (!this.extras.size) return;
+    for (const e of this.extras) {
+      this.scene.remove(e.model.root);
+      this.combat.unregister(e);
+      e.dispose?.();
+      if (this.lockTarget === e) this.lockTarget = null;
+    }
+    this.enemies = this.enemies.filter((e) => !this.extras.has(e));
+    this.extras.clear();
+  }
+
+  respawnEnemies() {
+    this.despawnExtras();
+    for (const e of this.enemies) e.reset();
+    this.lockTarget = null;
+  }
+
+  // Fells every living enemy within `r` metres (not the Warden). Returns how many.
+  killNearby(r = 30) {
+    const p = this.player;
+    let n = 0;
+    for (const e of [...this.enemies]) {
+      if (!e.alive || Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) > r) continue;
+      e.invuln = false;
+      this.combat.strike(p, e, { dmg: 1e6, poise: 1e3, heavy: true, unblockable: true });
+      n++;
+    }
+    return n;
   }
 
   _pickupFx(dt) {
@@ -743,10 +977,7 @@ export class Game {
 
   _debugKeys() {
     const i = this.input;
-    const go = (x, z) => {
-      if (this.horse.ridden) this.horse.dismount();
-      this.player.pos.set(x, this.world.getHeight(x, z), z);
-    };
+    const go = (x, z) => this.teleport(x, z, this.player.yaw, { banner: false });
     const jumps = { Digit1: ZONES.firstlight, Digit2: ZONES.camp, Digit3: ZONES.ruins, Digit4: ZONES.lake, Digit5: ZONES.moor, Digit6: ZONES.gatehouse };
     for (const [code, z] of Object.entries(jumps)) if (i.justDown.has(code)) go(z.x + 3, z.z + 3);
     if (i.justDown.has('Digit7')) go(ARENA.x, ARENA.z + ARENA.r + 4);
