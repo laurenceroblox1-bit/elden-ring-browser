@@ -75,6 +75,7 @@ export class Quests {
       g.player.flasks = Math.min(g.player.flasks + r.flask, g.player.flasksMax);
     }
     if (r.horse) g.state.flags.horse = true;
+    for (const id of [r.weapon, r.shield, r.rite]) if (id) g.giveGear(id);
     g.hud.toast(`Quest complete: ${def.title}`, 'quest');
     if (def.doneText) g.hud.toast(def.doneText);
     g.audio.play('quest');

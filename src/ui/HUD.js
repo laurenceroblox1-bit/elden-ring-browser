@@ -1,6 +1,8 @@
 // DOM overlay: bars, compass, quest tracker, prompts, toasts, banners, boss bar, and every menu screen.
 import * as THREE from '../lib/three.js';
 import { ITEMS } from '../data/items.js';
+import { WEAPONS, SHIELDS, speedLabel } from '../data/weapons.js';
+import { ARTS, RITES } from '../data/abilities.js';
 import { levelOf, levelCost } from '../systems/Save.js';
 import { wrapAngle } from '../core/math.js';
 
@@ -9,14 +11,17 @@ export const CONTROLS = [
   ['Mouse', 'Look (arrow keys also work)'],
   ['Shift', 'Sprint, or gallop on Wisp'],
   ['Space', 'Roll · backstep (no direction) · horse jump'],
-  ['Left click', 'Light attack, up to three in a chain · riposte a reeling foe'],
+  ['Left click', 'Light attack, press again to chain · riposte a reeling foe'],
   ['Hold right click', 'Guard · raise it just as a blow lands to parry'],
   ['F', 'Heavy attack'],
+  ['C', 'Weapon art (spends focus)'],
+  ['V', 'Cast your rite (spends focus)'],
   ['Q / middle click', 'Lock on to an enemy'],
   ['R', 'Drink from your flask'],
   ['E', 'Talk, pick up, rest, pass the mist'],
   ['H', 'Call Wisp, or dismount'],
   ['J', 'Journal'],
+  ['I', 'Equipment'],
   ['Esc / P', 'Pause'],
 ];
 
@@ -25,7 +30,16 @@ const controlsHTML = () => CONTROLS.map(([k, v]) => `<div class="ctl"><kbd>${k}<
 const TEMPLATE = `
 <div class="vitals">
   <div class="bar hp"><div class="lag"></div><div class="fill"></div></div>
+  <div class="bar fo"><div class="fill"></div></div>
   <div class="bar st"><div class="fill"></div></div>
+</div>
+<div class="gear" aria-label="Equipped gear">
+  <div class="gear-hands">
+    <div class="gear-hand"><span class="gear-k">Right</span><b class="gear-r"></b></div>
+    <div class="gear-hand"><span class="gear-k">Left</span><b class="gear-l"></b></div>
+  </div>
+  <div class="gear-ab art"><kbd>C</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
+  <div class="gear-ab rite"><kbd>V</kbd><span class="gear-ab-name"></span><span class="gear-ab-cost"></span><i class="gear-cd"></i></div>
 </div>
 <div class="compass" aria-hidden="true"><div class="compass-track"></div><div class="compass-needle"></div></div>
 <aside class="tracker" aria-label="Current objectives"></aside>
@@ -69,6 +83,7 @@ const TEMPLATE = `
     <h2>Paused</h2>
     <div class="menu">
       <button class="btn primary" id="btn-resume">Resume</button>
+      <button class="btn" id="btn-equipment">Equipment</button>
       <button class="btn" id="btn-quality"></button>
       <button class="btn" id="btn-sound"></button>
       <button class="btn danger" id="btn-quit">Quit to title</button>
@@ -81,6 +96,17 @@ const TEMPLATE = `
   <div class="panel wide">
     <div class="panel-head"><h2>Journal</h2><span class="close-hint"><kbd>J</kbd> Close</span></div>
     <div class="journal-body"></div>
+  </div>
+</section>
+
+<section class="screen equipment-screen" hidden>
+  <div class="panel wide equip-panel">
+    <div class="panel-head"><h2>Equipment</h2><span class="close-hint"><kbd>I</kbd> Close</span></div>
+    <div class="equip-body">
+      <div class="equip-slots" role="tablist" aria-label="Slots"></div>
+      <div class="equip-list" role="list"></div>
+    </div>
+    <div class="equip-foot"></div>
   </div>
 </section>
 
@@ -104,7 +130,16 @@ const STATS = [
   ['vigor', 'Vigor', 'Health'],
   ['endurance', 'Endurance', 'Stamina'],
   ['strength', 'Strength', 'Damage'],
+  ['mind', 'Mind', 'Focus and rites'],
 ];
+
+// Equipment screen slots: which gear each lists, and what an empty slot means.
+const SLOTS = [
+  ['right', 'Right hand', 'weapon'],
+  ['left', 'Left hand', 'shield'],
+  ['rite', 'Rite', 'rite'],
+];
+const pct = (f) => `${Math.round(f * 100)}%`;
 
 const CARDINALS = [['N', 0], ['NE', Math.PI / 4], ['E', Math.PI / 2], ['SE', (3 * Math.PI) / 4], ['S', Math.PI], ['SW', (-3 * Math.PI) / 4], ['W', -Math.PI / 2], ['NW', -Math.PI / 4]];
 
@@ -119,15 +154,20 @@ export class HUD {
     this.$ = $;
     this.el = {
       hpBar: $('.bar.hp'), hpFill: $('.bar.hp .fill'), hpLag: $('.bar.hp .lag'),
-      stBar: $('.bar.st'), stFill: $('.bar.st .fill'),
+      stBar: $('.bar.st'), stFill: $('.bar.st .fill'), foBar: $('.bar.fo'), foFill: $('.bar.fo .fill'),
       flaskN: $('.flask-n'), flask: $('.flask'), ashN: $('.ash-n'),
       tracker: $('.tracker'), compass: $('.compass-track'), toasts: $('.toasts'), prompt: $('.prompt'),
       lock: $('.lock'), riposte: $('.riposte-hint'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
       boss: $('.bossbar'), bossName: $('.boss-name'), bossFill: $('.boss-fill'), bossLag: $('.boss-lag'), bossDmg: $('.boss-dmg'),
       dlg: $('.dialogue'), dlgName: $('.dlg-name'), dlgText: $('.dlg-text'), fps: $('.fps'),
       title: $('.title-screen'), pause: $('.pause-screen'), journal: $('.journal-screen'), shrine: $('.shrine-screen'),
+      equipment: $('.equipment-screen'), eqSlots: $('.equip-slots'), eqList: $('.equip-list'), eqFoot: $('.equip-foot'),
       vitals: $('.vitals'),
+      gearR: $('.gear-r'), gearL: $('.gear-l'),
+      art: this._abilityEls($('.gear-ab.art')), rite: this._abilityEls($('.gear-ab.rite')),
     };
+    this.eqSlot = 'right'; // which slot the equipment screen is listing
+    this.gearKey = '';
     this.hpLag = 1;
     this.lagHold = 0;
     this.lastHp = 1;
@@ -151,7 +191,19 @@ export class HUD {
     $('#btn-new').addEventListener('click', () => game.newGame());
     $('#btn-continue').addEventListener('click', () => game.continueGame());
     $('#btn-resume').addEventListener('click', () => game.closeModal());
-    $('#btn-leave').addEventListener('click', () => game.closeModal());
+    $('#btn-equipment').addEventListener('click', () => game.openEquipment());
+    // One delegated handler for the whole equipment screen: slot tabs and gear rows carry data attributes.
+    $('.equip-panel').addEventListener('click', (ev) => {
+      const b = ev.target.closest('button');
+      if (!b || b.disabled) return;
+      if (b.dataset.slot) {
+        this.eqSlot = b.dataset.slot;
+        game.audio.play('ui');
+      } else if (b.dataset.equip !== undefined) {
+        game.equip(b.dataset.for, b.dataset.equip || null);
+      }
+      this.renderEquipment();
+    });    $('#btn-leave').addEventListener('click', () => game.closeModal());
     $('#btn-quality').addEventListener('click', () => { game.setQuality(game.quality === 'high' ? 'low' : 'high'); this.refreshPause(); });
     $('#btn-sound').addEventListener('click', () => { game.setMuted(!game.audio.muted); this.refreshPause(); });
     const quit = $('#btn-quit');
@@ -182,6 +234,7 @@ export class HUD {
     this.el[name].hidden = !on;
     if (on && name === 'pause') this.refreshPause();
     if (on && name === 'journal') this.renderJournal();
+    if (on && name === 'equipment') this.renderEquipment();
   }
 
   refreshPause() {
@@ -204,6 +257,74 @@ export class HUD {
     this.$('.journal-body').innerHTML = `
       <div class="jcol">${entries.length ? entries.map(quest).join('') : '<p class="empty">No quests yet. Talk to the people of the Vale, and read the notice by the first shrine.</p>'}</div>
       <div class="jcol items"><h3>Key items</h3>${items.length ? items.map(([id]) => `<div class="item"><b>${ITEMS[id]?.name ?? id}</b><p>${ITEMS[id]?.desc ?? ''}</p></div>`).join('') : '<p class="empty">Nothing yet.</p>'}</div>`;
+  }
+
+  // Equipment: the three slots on the left, everything owned for the chosen slot on the right.
+  // Rows are buttons; clicking one equips it at once (Game.equip swaps the model and moveset).
+  renderEquipment() {
+    const g = this.game;
+    const gear = g.state.gear;
+    const p = g.player;
+    const twoHanded = WEAPONS[gear.right].hands > 1;
+    const nameOf = (slot) => {
+      if (slot === 'right') return WEAPONS[gear.right].name;
+      if (slot === 'left') return twoHanded ? 'Both hands on the weapon' : gear.left ? SHIELDS[gear.left].name : 'Nothing';
+      return gear.rite ? RITES[gear.rite].name : 'None prepared';
+    };
+    this.el.eqSlots.innerHTML = SLOTS.map(([slot, label]) => `
+      <button class="eq-slot${slot === this.eqSlot ? ' on' : ''}" data-slot="${slot}" role="tab" aria-selected="${slot === this.eqSlot}">
+        <span class="eq-slot-k">${label}</span><b>${nameOf(slot)}</b>
+      </button>`).join('');
+
+    const [slot, , kind] = SLOTS.find(([s]) => s === this.eqSlot);
+    const table = kind === 'weapon' ? WEAPONS : kind === 'shield' ? SHIELDS : RITES;
+    const owned = gear.owned.filter((id) => table[id]);
+    const current = gear[slot];
+    const str = g.state.stats.strength;
+    const row = (id, title, sub, stats, desc, disabledWhy = '') => `
+      <button class="eq-item${id === (current ?? '') ? ' on' : ''}" data-for="${slot}" data-equip="${id}" role="listitem" ${disabledWhy ? 'disabled' : ''}>
+        <span class="eq-item-head"><b>${title}</b><span>${id === (current ?? '') ? 'Equipped' : disabledWhy || sub}</span></span>
+        ${stats ? `<span class="eq-stats">${stats.map(([k, v]) => `<span><i>${k}</i>${v}</span>`).join('')}</span>` : ''}
+        ${desc ? `<span class="eq-desc">${desc}</span>` : ''}
+      </button>`;
+    let rows = '';
+    if (kind === 'weapon') {
+      rows = owned.map((id) => {
+        const w = WEAPONS[id], art = ARTS[w.art];
+        const m = 1 + (str - 10) * 0.05 * w.scale;
+        return row(id, w.name, `${w.type} · ${w.hands > 1 ? 'two hands' : 'one hand'}`, [
+          ['Damage', `${Math.round(w.moves.light1.dmg * m)} / ${Math.round(w.moves.heavy.dmg * m)}`],
+          ['Speed', speedLabel(w)],
+          ['Reach', `${w.moves.light1.reach.toFixed(1)} m`],
+          ['Guard', pct(w.guard.absorb)],
+          ['Art', `${art.name} · ${art.focus} focus`],
+        ], w.desc);
+      }).join('');
+    } else if (kind === 'shield') {
+      const why = twoHanded ? 'Needs a one-handed weapon' : '';
+      rows = row('', 'Nothing', 'Block with your weapon', [['Guard', pct(WEAPONS[gear.right].guard.absorb)], ['Parry', `${WEAPONS[gear.right].guard.parryWindow.toFixed(2)} s`]], '', '')
+        + owned.map((id) => {
+          const sh = SHIELDS[id], gs = sh.guard;
+          return row(id, sh.name, sh.type, [
+            ['Guard', pct(gs.absorb)],
+            ['Stamina', `${gs.cost.toFixed(2)} per damage`],
+            ['Parry', `${gs.parryWindow.toFixed(2)} s`],
+            ['Guard walk', gs.speed ? 'Slow' : 'Normal'],
+          ], sh.desc, why);
+        }).join('');
+    } else {
+      rows = row('', 'None', 'No rite prepared', null, '')
+        + owned.map((id) => {
+          const r = RITES[id];
+          return row(id, r.name, r.type, [['Focus', r.focus], ['Cooldown', `${r.cooldown} s`]], r.desc);
+        }).join('');
+    }
+    if (!owned.length) rows += `<p class="empty">${kind === 'shield' ? 'You carry no shield yet.' : 'You know no rites yet. They are found in the Vale, and earned.'}</p>`;
+    this.el.eqList.innerHTML = rows;
+    this.el.eqFoot.innerHTML = `
+      <span>Focus <b>${Math.floor(p.focus)} / ${p.maxFocus}</b></span>
+      <span>Strength <b>${str}</b></span><span>Mind <b>${g.state.stats.mind}</b></span>
+      <span class="equip-tip">Damage is light / heavy. Strength adds more to heavy weapons, Mind to rites.</span>`;
   }
 
   openShrine(shrine) {
@@ -310,6 +431,8 @@ export class HUD {
 
     e.hpBar.style.width = `min(${p.maxHp * 2.3}px, 52vw)`;
     e.stBar.style.width = `min(${p.maxStamina * 2.3}px, 52vw)`;
+    e.foBar.style.width = `min(${p.maxFocus * 2.3}px, 52vw)`;
+    e.foFill.style.transform = `scaleX(${Math.max(0, p.focus / p.maxFocus)})`;
     const hpF = p.hp / p.maxHp;
     if (hpF < this.lastHp) this.lagHold = 0.7;
     this.lastHp = hpF;
@@ -340,6 +463,7 @@ export class HUD {
       }
     }
 
+    this._gear();
     this._compass();
     this._boss(dt);
     this._lock();
@@ -360,6 +484,51 @@ export class HUD {
         this.fpsT = 0;
       }
     }
+  }
+
+  _abilityEls(root) {
+    return { root, name: root.querySelector('.gear-ab-name'), cost: root.querySelector('.gear-ab-cost'), cd: root.querySelector('.gear-cd'), state: '' };
+  }
+
+  // Low focus: the focus bar blinks once (an art or rite was refused).
+  flashFocus() {
+    const b = this.el.foBar;
+    b.classList.remove('flash');
+    void b.offsetWidth;
+    b.classList.add('flash');
+  }
+
+  // Bottom-left gear widget. Names only change on equip; the art and rite rows track ready, cooling
+  // (a draining sweep) and short on focus. DOM writes happen only when something visible changes.
+  _gear() {
+    const p = this.game.player;
+    const key = `${p.weaponId}|${p.shieldId}|${p.riteId}`;
+    if (key !== this.gearKey) {
+      this.gearKey = key;
+      this.el.gearR.textContent = p.weapon.name;
+      this.el.gearL.textContent = p.weapon.hands > 1 ? 'Both hands' : p.shield ? p.shield.name : 'Nothing';
+      const set = (ab, def) => {
+        ab.name.textContent = def ? def.name : 'No rite';
+        ab.cost.textContent = def ? `${def.focus}` : '';
+        ab.cost.title = def ? `${def.focus} focus` : '';
+      };
+      set(this.el.art, p.art);
+      set(this.el.rite, p.rite);
+    }
+    const show = (ab, def, cd) => {
+      const state = !def ? 'none' : cd > 0 ? 'cool' : p.focus < def.focus ? 'low' : 'ready';
+      if (state !== ab.state) {
+        ab.state = state;
+        ab.root.dataset.state = state;
+      }
+      const f = state === 'cool' ? Math.round((cd / def.cooldown) * 40) / 40 : 0;
+      if (f !== ab.f) {
+        ab.f = f;
+        ab.cd.style.transform = `scaleX(${f})`;
+      }
+    };
+    show(this.el.art, p.art, p.artCd);
+    show(this.el.rite, p.rite, p.riteCd);
   }
 
   _compass() {

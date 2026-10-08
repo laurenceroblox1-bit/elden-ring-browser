@@ -1,53 +1,46 @@
 // The Unbound. Stamina-gated soulslike moveset: light combo, heavy, roll with i-frames,
-// backstep, flask, guard / parry / riposte, lock-on strafing, and riding.
+// backstep, flask, guard / parry / riposte, lock-on strafing, and riding. Gear comes from data:
+// the weapon (data/weapons.js) sets the moveset, stance, damage scaling and weapon art; a shield sets
+// the guard; the rite (data/abilities.js) is the spell on V. Arts and rites spend focus.
+import * as THREE from '../lib/three.js';
 import { Actor } from './Actor.js';
 import { buildPlayer } from '../models/characters.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
+import { STANCES, MOVE_POSES, SHIELD_GUARD, SHIELD_HIT, ARM_L, overlay, guardHitOf, equipModel } from '../models/weapons.js';
+import { WEAPONS, SHIELDS, MOUNTED, STARTING_WEAPON } from '../data/weapons.js';
+import { ARTS, RITES } from '../data/abilities.js';
 import { clamp, damp, dampK, dampAngle, yawTo, angleDiff, easeOut, easeInOut } from '../core/math.js';
 
+// The starting sword's moves, kept under the old name for tools and tests that read them.
 export const ATTACKS = {
-  light1: { stamina: 14, dmg: 17, poise: 14, windup: 0.16, active: 0.14, recover: 0.36, lunge: 2.6, reach: 2.3, arc: 1.0, pose: 'slashR', next: 'light2', sfx: 'swing' },
-  light2: { stamina: 14, dmg: 17, poise: 14, windup: 0.14, active: 0.14, recover: 0.36, lunge: 2.6, reach: 2.3, arc: 1.0, pose: 'slashL', next: 'light3', sfx: 'swing' },
-  light3: { stamina: 18, dmg: 24, poise: 22, windup: 0.22, active: 0.12, recover: 0.44, lunge: 3.6, reach: 2.7, arc: 0.5, pose: 'thrust', next: 'light1', sfx: 'swing' },
-  heavy: { stamina: 30, dmg: 42, poise: 48, windup: 0.52, active: 0.15, recover: 0.52, lunge: 3.2, reach: 2.6, arc: 0.65, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
-  rolling: { stamina: 14, dmg: 15, poise: 10, windup: 0.1, active: 0.14, recover: 0.36, lunge: 3.0, reach: 2.4, arc: 0.6, pose: 'thrust', next: 'light2', sfx: 'swing' },
-  mounted: { stamina: 10, dmg: 22, poise: 20, windup: 0.2, active: 0.18, recover: 0.38, reach: 3.2, arc: 1.1, yawOffset: -0.75, height: 3.5, pose: 'mounted', sfx: 'swing' },
+  ...WEAPONS[STARTING_WEAPON].moves,
+  mounted: MOUNTED,
   // Scripted critical thrust on an opened foe: dmg x crit lands once, at `impact`. The player is
   // invulnerable for the whole `time`. `reach` is measured from the foe's body, `spacing` is where we stand.
+  // A weapon's `riposte` ({ dmg, crit }) overrides the damage.
   riposte: { dmg: 24, crit: 3, time: 1.1, stab: 0.36, impact: 0.62, reach: 2.6, spacing: 0.8, sfx: 'swing' },
 };
 
-// How the current guard holds. Weapons and shields swap in their own object (player.guardStats):
+// How the current guard holds. Weapons and shields carry their own (player.guardStats):
 //   absorb      fraction of a blocked hit's damage the guard stops
 //   cost        stamina lost per point of incoming damage; run dry and the guard breaks
 //   parryWindow seconds after a fresh guard press in which a parryable blow is parried (0 = can't parry)
 //   raiseTime   seconds before a raised guard starts blocking
 //   arc         half-angle (radians) of the guarded front
+//   speed       walk speed while guarding (default GUARD_SPEED)
 // The sword alone is a poor shield: much of the blow still gets through and it costs a lot of stamina.
-export const SWORD_GUARD = { name: 'sword', absorb: 0.6, cost: 1.5, parryWindow: 0.2, raiseTime: 0.1, arc: 1.75 };
+export const SWORD_GUARD = WEAPONS[STARTING_WEAPON].guard;
 
 const POSES = {
-  rest: pose({ sRx: -0.2, eR: -0.55, hRx: 1.1, sLx: 0.05, eL: -0.25 }),
-  sprint: pose({ torsoX: 0.28, headX: -0.2, sRx: 0.2, eR: -0.4, hRx: 1.4, sLx: 0.1, eL: -0.6 }),
-  slashR: [pose({ sRx: -1.35, sRy: -1.4, eR: -0.25, hRx: 1.3, torsoY: -0.6, sLx: -0.3, eL: -0.5 }),
-    pose({ sRx: -1.3, sRy: 1.0, eR: -0.1, hRx: 1.3, torsoY: 0.6, torsoX: 0.1, sLx: 0.2 })],
-  slashL: [pose({ sRx: -1.3, sRy: 1.1, eR: -0.3, hRx: 1.3, torsoY: 0.55, sLx: 0.2 }),
-    pose({ sRx: -1.3, sRy: -1.3, eR: -0.1, hRx: 1.3, torsoY: -0.55, torsoX: 0.1, sLx: -0.3 })],
-  thrust: [pose({ sRx: -0.5, sRy: -0.2, eR: -1.5, hRx: 1.9, torsoY: -0.45, lRx: 0.3, lLx: -0.4, kL: 0.3 }),
-    pose({ sRx: -1.5, eR: 0, hRx: 1.5, torsoY: 0.25, torsoX: 0.18, lRx: -0.5, kR: 0.3, lLx: 0.4, hipsH: -0.08 })],
-  overhead: [pose({ sRx: -2.9, eR: -0.6, hRx: 1.0, sLx: -2.6, eL: -0.6, torsoX: -0.22, torsoY: -0.15 }),
-    pose({ sRx: -0.7, eR: -0.1, hRx: 1.0, sLx: -0.7, eL: -0.2, torsoX: 0.45, hipsH: -0.14, lRx: -0.6, kR: 0.5, lLx: 0.3 })],
+  rest: STANCES.blade.rest,
   riding: pose({ lRx: -1.35, lRz: -0.5, kR: 1.5, lLx: -1.35, lLz: 0.5, kL: 1.5, sRx: -0.5, eR: -0.9, hRx: 1.4, sLx: -0.5, eL: -0.9, torsoX: 0.15 }),
-  mounted: [pose({ sRx: -2.5, sRz: -0.4, eR: -0.4, hRx: 1.0 }), pose({ sRx: -0.5, sRz: -1.0, eR: -0.1, hRx: 1.1, torsoY: -0.45 })],
+  mountedSwing: [pose({ sRx: -2.5, sRz: -0.4, eR: -0.4, hRx: 1.0 }), pose({ sRx: -0.5, sRz: -1.0, eR: -0.1, hRx: 1.1, torsoY: -0.45 })],
   tuck: pose({ torsoX: 0.7, headX: 0.5, lRx: -1.6, kR: 2.0, lLx: -1.6, kL: 2.0, sRx: -0.8, eR: -1.2, hRx: 1.6, sLx: -0.8, eL: -1.2 }),
   backstep: pose({ torsoX: -0.2, lRx: 0.4, lLx: -0.3, kL: 0.4, sRx: -0.3, eR: -0.7, hRx: 1.2 }),
   heal: pose({ sRx: -0.2, eR: -0.55, hRx: 1.1, sLx: -1.75, sLz: -0.2, eL: -1.7, hLx: 0.4, headX: -0.25 }),
   hurt: pose({ torsoX: -0.35, headX: -0.3, sRz: -0.6, sLz: 0.6, sRx: 0.2, hRx: 1.1, hipsH: -0.06, lRx: 0.3, lLx: -0.3 }),
   dead: pose({ pivotX: -1.45, pivotH: -0.72, sRz: -1.2, sLz: 1.2, headX: -0.2, lRx: -0.2, lLx: 0.15 }),
   fog: pose({ sRx: -0.2, eR: -0.55, hRx: 1.1, sLx: -1.1, eL: -0.4, sLz: -0.3, torsoX: 0.12 }),
-  // Blade held up across the body, off hand braced behind it, weight on the back foot.
-  guard: pose({ sRx: -0.9, sRy: 0.7, eR: -1.3, hRx: 1.0, hRy: -0.5, sLx: -0.9, sLy: -0.3, eL: -1.1, torsoY: -0.25, torsoX: 0.08, headX: -0.05, lRx: 0.25, lLx: -0.35, kL: 0.35, kR: 0.15, hipsH: -0.06 }),
-  guardHit: pose({ sRx: -0.7, sRy: 0.65, eR: -1.4, hRx: 1.1, hRy: -0.5, sLx: -0.7, sLy: -0.3, eL: -1.2, torsoY: -0.3, torsoX: -0.14, headX: -0.15, lRx: 0.45, kR: 0.2, lLx: -0.3, kL: 0.45, hipsH: -0.1 }),
   guardBreak: pose({ sRx: -2.3, sRz: -0.7, eR: -0.4, hRx: 1.0, sLx: -1.0, sLz: 0.9, eL: -0.3, torsoX: -0.45, headX: -0.45, hipsH: -0.12, lRx: 0.45, kR: 0.4, lLx: -0.35, kL: 0.2 }),
   // Riposte: draw back, drive the blade in, lean on it, wrench it free.
   ripWind: pose({ sRx: -0.35, sRy: -0.25, eR: -1.7, hRx: 2.0, torsoY: -0.65, torsoX: -0.05, sLx: -1.1, eL: -0.6, lRx: 0.45, lLx: -0.5, kL: 0.45, hipsH: -0.06 }),
@@ -68,6 +61,22 @@ const GUARD_SPEED = 2.4;
 const GUARD_REGEN = 0.4; // stamina regen multiplier while the guard is up
 const PARRY_REARM = 0.45; // a guard press only opens a parry window if the previous press was this long ago
 const GUARD_BREAK_TIME = 1.0;
+const FOCUS_REGEN = 1.5; // per second, always
+const BRACE = { torsoX: 0.1, headX: -0.08, lRx: 0.25, lLx: -0.35, kL: 0.35, kR: 0.15, hipsH: -0.06 };
+const GUARD_KIT = new Map(); // `${stance}|${shield}` -> { guard, hit }, built on first equip
+
+// Guard and flinch poses for a stance, with or without a shield on the left arm. With a shield the
+// weapon stays cocked at rest and the shield arm comes up across the chest.
+function guardPoses(stanceId, shield) {
+  const key = `${stanceId}|${!!shield}`;
+  if (!GUARD_KIT.has(key)) {
+    const st = STANCES[stanceId];
+    const guard = shield ? overlay({ ...st.rest, ...BRACE, sRx: st.rest.sRx - 0.25 }, SHIELD_GUARD, ARM_L) : st.guard;
+    const hit = shield ? overlay(guardHitOf(guard), SHIELD_HIT, ARM_L) : guardHitOf(guard);
+    GUARD_KIT.set(key, { guard, hit });
+  }
+  return GUARD_KIT.get(key);
+}
 
 export class Player extends Actor {
   constructor(game) {
@@ -92,22 +101,65 @@ export class Player extends Actor {
     this.horse = null;
     this.god = false;
     this.lastStep = 0;
-    this.guardStats = { ...SWORD_GUARD };
     this.parryT = 0; // parry window left from the last fresh guard press
     this.sincePress = 99; // seconds since the guard button was last pressed
     this.guardRecoil = 0;
-    this.stats = { blocks: 0, parries: 0, guardBreaks: 0, ripostes: 0 }; // session counters (tests, future feats)
+    this.stats = { blocks: 0, parries: 0, guardBreaks: 0, ripostes: 0, arts: 0, rites: 0 }; // session counters (tests, future feats)
     this.atkSeq = 0; // bumps on every attack start so enemies can react once per swing
     this.rip = null;
     this.riposteCandidate = null;
+    // Focus feeds weapon arts and rites. Mind raises it; it refills at shrines and creeps back on its own.
+    this.focus = this.maxFocus = 60;
+    this.riteMult = 1;
+    this.artCd = 0;
+    this.riteCd = 0;
+    this.act = null; // the art or rite being performed
+    this.ward = null; // { t, reduce } from Ward of Ash
+    this.mend = null; // { t, rate } from Mending Light
+    this.wardFx = this._buildWardFx();
+    this.statsRef = { strength: 10 };
+    this.equip({});
     game.combat.register(this);
   }
 
   applyStats(stats, flasksMax) {
+    this.statsRef = stats;
     this.maxHp = 100 + (stats.vigor - 10) * 9;
     this.maxStamina = 90 + (stats.endurance - 10) * 6;
-    this.dmgMult = 1 + (stats.strength - 10) * 0.05;
+    this.maxFocus = 60 + ((stats.mind ?? 10) - 10) * 6;
+    this.riteMult = 1 + ((stats.mind ?? 10) - 10) * 0.06;
     this.flasksMax = flasksMax;
+    this._scaleDamage();
+  }
+
+  // Strength scales each weapon by its own `scale`: heavy weapons gain the most from it.
+  _scaleDamage() {
+    this.dmgMult = 1 + ((this.statsRef.strength ?? 10) - 10) * 0.05 * (this.weapon?.scale ?? 1);
+  }
+
+  // Equips gear by id: { right: weapon, left: shield | null, rite: rite | null }. Unknown ids fall back
+  // to the starting sword / empty slots, and a two-handed weapon leaves no room for a shield.
+  equip({ right = STARTING_WEAPON, left = null, rite = null }) {
+    this.weaponId = WEAPONS[right] ? right : STARTING_WEAPON;
+    this.weapon = WEAPONS[this.weaponId];
+    this.shieldId = this.weapon.hands === 1 && SHIELDS[left] ? left : null;
+    this.shield = this.shieldId ? SHIELDS[this.shieldId] : null;
+    this.riteId = RITES[rite] ? rite : null;
+    this.rite = this.riteId ? RITES[this.riteId] : null;
+    this.art = ARTS[this.weapon.art] ?? null;
+    this.moves = this.weapon.moves;
+    this.stance = STANCES[this.weapon.stance];
+    this.guardKit = guardPoses(this.weapon.stance, this.shield);
+    this.guardStats = { ...(this.shield ? this.shield.guard : this.weapon.guard) };
+    equipModel(this.model, this.weaponId, this.shieldId);
+    this._scaleDamage();
+    // Whatever was mid-swing used the old weapon's timings: settle back to standing.
+    if (['attack', 'art', 'guard'].includes(this.state)) {
+      this.state = 'move';
+      this.atk = null;
+      this.act = null;
+    }
+    this.atkGuard = false;
   }
 
   respawn(x, z, yaw) {
@@ -115,6 +167,11 @@ export class Player extends Actor {
     this.hp = this.maxHp;
     this.stamina = this.maxStamina;
     this.flasks = this.flasksMax;
+    this.focus = this.maxFocus;
+    this.artCd = this.riteCd = 0;
+    this.act = null;
+    this.ward = this.mend = null;
+    this.wardFx.visible = false;
     this.poise = this.maxPoise;
     this.pos.set(x, this.game.world.getHeight(x, z), z);
     this.vel.set(0, 0, 0);
@@ -130,8 +187,19 @@ export class Player extends Actor {
     this.riposteCandidate = null;
     this.model.pivot.rotation.x = 0;
     this.model.flask.visible = false;
-    copyPose(this.poseBuf, POSES.rest);
+    copyPose(this.poseBuf, this.stance.rest);
     applyPose(this.model, this.poseBuf, 1);
+  }
+
+  // A thin ring of warm ash at the feet while Ward of Ash holds. Hidden (no draw call) otherwise.
+  _buildWardFx() {
+    const geo = new THREE.RingGeometry(0.75, 0.95, 28);
+    geo.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    m.visible = false;
+    m.renderOrder = 4;
+    this.game.scene.add(m);
+    return m;
   }
 
   // ---------- intent ----------
@@ -148,7 +216,7 @@ export class Player extends Actor {
 
   _readBuffer(dt) {
     const input = this.game.input;
-    for (const a of ['roll', 'light', 'heavy', 'flask']) {
+    for (const a of ['roll', 'light', 'heavy', 'flask', 'art', 'rite']) {
       if (input.pressed(a)) this.buffer = { a, t: a === 'flask' ? 0.2 : 0.38 };
     }
     if (this.buffer && (this.buffer.t -= dt) <= 0) this.buffer = null;
@@ -164,11 +232,12 @@ export class Player extends Actor {
 
   startAttack(name, mi = this.moveIntent()) {
     if (this.stamina <= 0) return false;
-    const def = ATTACKS[name];
+    const def = name === 'mounted' ? MOUNTED : this.moves[name] ?? this.moves.light1;
     this.stamina = Math.max(0, this.stamina - def.stamina);
     this.staminaDelay = 0.75;
     this.state = this.mounted ? 'mounted' : 'attack';
     this.atkSeq++;
+    this.atkGuard = false;
     this.atk = def;
     this.atkT = 0;
     this.t = 0;
@@ -238,6 +307,57 @@ export class Player extends Actor {
     return true;
   }
 
+  // Weapon art (C). False if it can't start; a short focus never wastes the stamina.
+  startArt(mi) {
+    if (this.mounted || !this.art || this.artCd > 0 || this.stamina <= 0) return false;
+    if (this.focus < this.art.focus) return this._noFocus();
+    this.artCd = this.art.cooldown;
+    this.stamina = Math.max(0, this.stamina - (this.art.stamina ?? 0));
+    this.staminaDelay = 0.8;
+    this.stats.arts++;
+    this.atkSeq++; // sentries may raise their shields against it like any other swing
+    return this._act(this.art, 'art', mi);
+  }
+
+  // Cast the equipped rite (V).
+  startRite(mi) {
+    if (this.mounted) return false;
+    if (!this.rite) {
+      this.game.hud.toast('No rite is prepared. Choose one in your equipment (I).');
+      return false;
+    }
+    if (this.riteCd > 0) return false;
+    if (this.focus < this.rite.focus) return this._noFocus();
+    this.riteCd = this.rite.cooldown;
+    this.stats.rites++;
+    return this._act(this.rite, 'rite', mi);
+  }
+
+  _noFocus() {
+    this.game.events.emit('noFocus');
+    this.game.audio.play('noFocus');
+    this.game.hud.flashFocus();
+    return false;
+  }
+
+  _act(def, kind, mi) {
+    this.focus -= def.focus;
+    this.state = 'art';
+    this.t = 0;
+    this.atk = null;
+    this.atkGuard = false;
+    const rest = this.stance.rest;
+    this.act = {
+      def, kind, next: 0,
+      keys: def.keys.map(([t, n]) => [t, n === 'rest' ? rest : def.overlay ? overlay(rest, MOVE_POSES[n], ARM_L) : MOVE_POSES[n]]),
+    };
+    const lock = this.game.lockTarget;
+    if (lock) this.yaw = yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z);
+    else if (mi.mag > 0) this.yaw = Math.atan2(mi.x, mi.z);
+    this.game.events.emit(kind === 'art' ? 'weaponArt' : 'rite', def);
+    return true;
+  }
+
   _raiseGuard() {
     this.state = 'guard';
     this.t = 0;
@@ -290,10 +410,13 @@ export class Player extends Actor {
   }
 
   // null (the guard doesn't apply), 'parry' or 'block'.
+  // A spear thrust made from behind a shield (atkGuard) still blocks, but can't parry.
   _guardOutcome(hit) {
-    if (this.state !== 'guard' || hit.unblockable) return null;
+    const guarding = this.state === 'guard' || (this.state === 'attack' && this.atkGuard);
+    if (!guarding || hit.unblockable) return null;
     const gs = this.guardStats;
     if (Math.abs(angleDiff(this.yaw, Math.atan2(-hit.dirX, -hit.dirZ))) > gs.arc) return null;
+    if (this.state !== 'guard') return 'block';
     if (hit.parryable && gs.parryWindow > 0 && this.parryT > 0) return 'parry';
     return this.t >= gs.raiseTime ? 'block' : null;
   }
@@ -315,7 +438,7 @@ export class Player extends Actor {
     const covered = need > 0 ? Math.min(1, this.stamina / need) : 1;
     this.stamina = Math.max(0, this.stamina - need);
     this.staminaDelay = Math.max(this.staminaDelay, 0.5);
-    const dmg = hit.dmg * (1 - gs.absorb) + hit.dmg * gs.absorb * (1 - covered);
+    const dmg = (hit.dmg * (1 - gs.absorb) + hit.dmg * gs.absorb * (1 - covered)) * this._wardMult();
     if (!this.god) this.hp -= dmg;
     this.game.events.emit('playerHurt', { ...hit, dmg, blocked: true });
     if (this.hp <= 0) {
@@ -325,6 +448,7 @@ export class Player extends Actor {
     }
     const k = hit.knock ?? (hit.heavy ? 4.5 : 2.4);
     if (covered < 1) {
+      this.atkGuard = false;
       this.state = 'guardbreak';
       this.t = 0;
       this.vel.set(hit.dirX * k * 1.3, 0, hit.dirZ * k * 1.3);
@@ -343,8 +467,9 @@ export class Player extends Actor {
     const guard = this._guardOutcome(hit);
     if (guard === 'parry') return this._parry(hit);
     if (guard === 'block') return this._block(hit);
-    if (!this.god) this.hp -= hit.dmg;
-    this.game.events.emit('playerHurt', hit);
+    const dmg = hit.dmg * this._wardMult();
+    if (!this.god) this.hp -= dmg;
+    this.game.events.emit('playerHurt', { ...hit, dmg });
     if (this.mounted && (hit.heavy || this.hp <= 0)) this.game.horse.dismount(true);
     if (this.hp <= 0) {
       this.hp = 0;
@@ -361,13 +486,22 @@ export class Player extends Actor {
       const k = hit.knock ?? (hit.heavy ? 7 : 3.5);
       this.vel.set(hit.dirX * k, 0, hit.dirZ * k);
       this.atk = null;
+      this.act = null;
+      this.atkGuard = false;
       this.model.flask.visible = false;
     }
     return true;
   }
 
+  _wardMult() {
+    return this.ward ? 1 - this.ward.reduce : 1;
+  }
+
   die() {
     this.alive = false;
+    this.act = null;
+    this.ward = this.mend = null;
+    this.wardFx.visible = false;
     this.state = 'dead';
     this.t = 0;
     this.vel.set(0, 0, 0);
@@ -387,6 +521,7 @@ export class Player extends Actor {
     }
     this._readBuffer(dt);
     this._guardTimers(dt);
+    this._focusAndBuffs(dt);
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
     if (this.staminaDelay > 0) this.staminaDelay -= dt;
     else if (!this.sprinting) this.stamina = Math.min(this.maxStamina, this.stamina + 50 * dt * (this.state === 'guard' ? GUARD_REGEN : 1));
@@ -414,6 +549,7 @@ export class Player extends Actor {
         if (this.t >= GUARD_BREAK_TIME) this.state = 'move';
         break;
       case 'riposte': this._riposte(dt); break;
+      case 'art': this._art(dt, mi, lock); break;
     }
     const s = this.state;
     this.riposteCandidate = s === 'move' || s === 'guard' || s === 'attack' ? this.findRiposteTarget() : null;
@@ -434,11 +570,43 @@ export class Player extends Actor {
     this.sincePress = 0;
   }
 
+  // Focus creeps back, cooldowns run down, and the ward and mending tick.
+  _focusAndBuffs(dt) {
+    this.focus = Math.min(this.maxFocus, this.focus + FOCUS_REGEN * dt);
+    if (this.artCd > 0) this.artCd -= dt;
+    if (this.riteCd > 0) this.riteCd -= dt;
+    const g = this.game;
+    if (this.mend) {
+      this.hp = Math.min(this.maxHp, this.hp + this.mend.rate * dt);
+      if (Math.random() < dt * 14) g.particles.emit({ x: this.pos.x, y: this.pos.y + 0.3 + Math.random() * 1.4, z: this.pos.z, count: 1, speed: 0.3, up: 1.4, color: 0xffe08a, color2: 0xfff6c8, life: [0.6, 1.1], size: [0.06, 0.12], jitter: 0.45, drag: 1 });
+      if ((this.mend.t -= dt) <= 0) this.mend = null;
+    }
+    const fx = this.wardFx;
+    if (this.ward) {
+      const left = (this.ward.t -= dt);
+      fx.visible = true;
+      fx.position.set(this.pos.x, this.pos.y + 0.06, this.pos.z);
+      fx.rotation.y += dt * 1.5;
+      // Flickers in its last two seconds so you know it is about to fail.
+      fx.material.opacity = left < 2 ? 0.25 + 0.3 * Math.abs(Math.sin(left * 9)) : 0.5 + Math.sin(g.time * 3) * 0.08;
+      if (Math.random() < dt * 10) {
+        const a = Math.random() * Math.PI * 2;
+        g.particles.emit({ x: this.pos.x + Math.sin(a) * 0.85, y: this.pos.y + 0.15, z: this.pos.z + Math.cos(a) * 0.85, count: 1, speed: 0.2, up: 1.1, color: 0xcfc2a8, color2: 0xffe0a0, life: [0.6, 1.2], size: [0.05, 0.1], drag: 0.6 });
+      }
+      if (left <= 0) {
+        this.ward = null;
+        fx.visible = false;
+      }
+    }
+  }
+
   _move(dt, mi, lock) {
     const input = this.game.input;
     if (this._take('roll') && this.startRoll(mi)) return;
     if (this._take('light') && this._light(mi)) return;
     if (this._take('heavy') && this.startAttack('heavy', mi)) return;
+    if (this._take('art') && this.startArt(mi)) return;
+    if (this._take('rite') && this.startRite(mi)) return;
     if (this._take('flask') && this.startHeal()) return;
     if (input.held('guard')) { this._raiseGuard(); return; }
 
@@ -497,24 +665,45 @@ export class Player extends Actor {
     }
     if (t >= tw && t < ta) this.game.combat.melee(this, this.hit, this.hitSet);
     if (t >= ta) {
-      if (d.next && t >= ta + 0.04 && this._take('light')) { this._light(mi, d.next); return; }
+      if (d.next && t >= ta + 0.04 && this._take('light')) {
+        const keep = this.atkGuard && this.game.input.held('guard');
+        this._light(mi, d.next);
+        if (keep && this.state === 'attack') this.atkGuard = true;
+        return;
+      }
       if (t >= ta + 0.1 && this._take('heavy')) { this.startAttack('heavy', mi); return; }
+      if (t >= ta + 0.1 && this.buffer?.a === 'art' && this.startArt(mi)) { this.buffer = null; return; }
+      if (t >= ta + 0.1 && this.buffer?.a === 'rite' && this.startRite(mi)) { this.buffer = null; return; }
       if (t >= ta + d.recover * 0.3 && this._take('roll')) { this.state = 'move'; this.startRoll(mi); return; }
     }
-    if (t >= tr) this.state = 'move';
+    if (t >= tr) {
+      // A thrust from behind the shield drops straight back into the guard.
+      if (this.atkGuard && this.game.input.held('guard')) {
+        this._raiseGuard();
+        this.t = this.guardStats.raiseTime;
+      } else this.state = 'move';
+      this.atkGuard = false;
+    }
   }
 
   _guard(dt, mi, lock) {
     const input = this.game.input;
     if (this._take('roll') && this.startRoll(mi)) return;
-    if (this._take('light') && this._light(mi)) return;
+    if (this._take('light')) {
+      // Spear and shield: thrust from behind the raised shield instead of lowering it.
+      if (this.weapon.guardAttack && this.shield && !this.findRiposteTarget()) {
+        if (this.startAttack('light1', mi)) { this.atkGuard = true; return; }
+      } else if (this._light(mi)) return;
+    }
     if (this._take('heavy') && this.startAttack('heavy', mi)) return;
+    if (this._take('art') && this.startArt(mi)) return;
+    if (this._take('rite') && this.startRite(mi)) return;
     if (this._take('flask') && this.startHeal()) return;
     if (!input.held('guard')) { this.state = 'move'; return; }
     if (this.guardRecoil > 0) {
       this.vel.multiplyScalar(Math.exp(-7 * dt)); // ride out the knockback of the blocked blow
     } else {
-      const speed = GUARD_SPEED * (this.game.world.isWater(this.pos.x, this.pos.z) ? 0.55 : 1);
+      const speed = (this.guardStats.speed ?? GUARD_SPEED) * (this.game.world.isWater(this.pos.x, this.pos.z) ? 0.55 : 1);
       this.vel.x = damp(this.vel.x, mi.x * speed, 10, dt);
       this.vel.z = damp(this.vel.z, mi.z * speed, 10, dt);
     }
@@ -543,7 +732,8 @@ export class Player extends Actor {
     if (!r.struck && t >= R.impact) {
       r.struck = true;
       // The foe may have died or vanished mid-animation (a rest, a reset): then the blow simply misses.
-      if (foe.alive && g.combat.strike(this, foe, { dmg: R.dmg * R.crit * this.dmgMult, poise: 0, heavy: true, riposte: true })) {
+      const wr = this.weapon.riposte ?? {};
+      if (foe.alive && g.combat.strike(this, foe, { dmg: (wr.dmg ?? R.dmg) * (wr.crit ?? R.crit) * this.dmgMult, poise: 0, heavy: true, riposte: true })) {
         g.audio.play('riposte');
         g.cameraShake(0.5);
         g.hitstop = Math.max(g.hitstop, 0.14);
@@ -553,6 +743,34 @@ export class Player extends Actor {
     if (t >= R.time) {
       this.state = 'move';
       this.rip = null;
+    }
+  }
+
+  // Weapon arts and rites: a scripted action driven by its data (see data/abilities.js).
+  _art(dt, mi, lock) {
+    const a = this.act, d = a.def, t = this.t;
+    if (d.invuln) this.invuln = t >= d.invuln[0] && t < d.invuln[1];
+    if (lock && t < (d.track ?? 0)) this.turnTo(yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z), 10, dt);
+    // Events first, so a move() that reads what an event set up sees it on the same frame.
+    while (a.next < d.events.length && t >= d.events[a.next][0]) {
+      d.events[a.next++][1](this, a);
+      if (this.state !== 'art' || this.act !== a) return; // the event ended it (a death, a reset)
+    }
+    if (d.move) d.move(this, a, dt);
+    else {
+      const sp = d.walk ?? 0;
+      this.vel.x = damp(this.vel.x, mi.x * sp, 10, dt);
+      this.vel.z = damp(this.vel.z, mi.z * sp, 10, dt);
+    }
+    if (d.cancel !== undefined && t >= d.cancel && this._take('roll')) {
+      this.state = 'move';
+      this.act = null;
+      this.startRoll(mi);
+      return;
+    }
+    if (t >= d.time) {
+      this.state = 'move';
+      this.act = null;
     }
   }
 
@@ -613,7 +831,7 @@ export class Player extends Actor {
     let pivotOverride = null;
     switch (this.state) {
       case 'move': {
-        copyPose(p, this.sprinting ? POSES.sprint : POSES.rest);
+        copyPose(p, this.sprinting ? this.stance.sprint : this.stance.rest);
         const amp = clamp(speed / 6.5, 0, 1.1);
         this.gait += dt * (2.2 + speed * 1.35);
         addGait(p, this.gait, amp, 0.5);
@@ -622,7 +840,7 @@ export class Player extends Actor {
         break;
       }
       case 'guard': {
-        copyPose(p, this.guardRecoil > 0 ? POSES.guardHit : POSES.guard);
+        copyPose(p, this.guardRecoil > 0 ? this.guardKit.hit : this.guardKit.guard);
         const amp = clamp(speed / 3.2, 0, 0.6);
         this.gait += dt * (2.2 + speed * 1.8);
         addGait(p, this.gait, amp, 0); // arms stay up
@@ -643,7 +861,7 @@ export class Player extends Actor {
         copyPose(p, POSES.tuck);
         const u = clamp(this.t / 0.5, 0, 1);
         pivotOverride = { x: easeOut(u) * Math.PI * 2, h: -Math.sin(u * Math.PI) * 0.5 };
-        if (u >= 1) copyPose(p, POSES.rest);
+        if (u >= 1) copyPose(p, this.stance.rest);
         k = dampK(24, dt);
         break;
       }
@@ -654,16 +872,24 @@ export class Player extends Actor {
         break;
       case 'attack': {
         const d = this.atk;
-        const [wind, strike] = POSES[d.pose];
-        attackPose(p, POSES.rest, wind, strike, this.t, d.windup, d.active, d.recover, easeOut);
+        const [wind, strike] = MOVE_POSES[d.pose];
+        attackPose(p, this.stance.rest, wind, strike, this.t, d.windup, d.active, d.recover, easeOut);
+        if (this.atkGuard) for (const j of ARM_L) p[j] = SHIELD_GUARD[j]; // the shield stays up
         k = dampK(32, dt);
+        break;
+      }
+      case 'art': {
+        framePose(p, this.act.keys, this.t, easeInOut);
+        const amp = clamp(speed / 3, 0, 0.5);
+        if (amp > 0.05) addGait(p, (this.gait += dt * (2.2 + speed * 1.8)), amp, 0);
+        k = dampK(28, dt);
         break;
       }
       case 'mounted': {
         copyPose(p, POSES.riding);
         if (this.atk) {
           const d = this.atk;
-          const [wind, strike] = POSES.mounted;
+          const [wind, strike] = POSES.mountedSwing;
           attackPose(p, POSES.riding, { ...POSES.riding, ...pick(wind) }, { ...POSES.riding, ...pick(strike) }, this.atkT, d.windup, d.active, d.recover, easeOut);
           k = dampK(30, dt);
         }

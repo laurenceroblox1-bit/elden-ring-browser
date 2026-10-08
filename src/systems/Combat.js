@@ -6,6 +6,7 @@
 //   unblockable - goes straight through any guard (must be rolled). Defaults to false.
 //   heavy       - bigger stagger and knockback; breaks an enemy's shield guard.
 //   riposte     - a scripted critical blow (see Player riposte); targets skip their poise logic.
+//   backstab    - melee only: damage multiplier when the attacker strikes the target's back (it also staggers).
 // takeHit(hit) returns false (ignored), true (landed), or a guard outcome: 'block', 'parry' or 'break'.
 import * as THREE from '../lib/three.js';
 import { clamp, angleDiff } from '../core/math.js';
@@ -50,7 +51,10 @@ export class Combat {
       const allowance = Math.atan2(t.radius, Math.max(d, 0.01));
       const facing = attacker.yaw + (hit.yawOffset ?? 0);
       if (d > 0.6 && Math.abs(angleDiff(facing, Math.atan2(dx, dz))) > hit.arc + allowance) continue;
-      this.apply(attacker, t, hit, hitSet, attacker.pos.x, attacker.pos.z, hit.parryable ?? attacker.team !== 'player');
+      // From behind: the attacker stands within ~70 degrees of straight behind the target.
+      const h = hit.backstab && Math.abs(angleDiff(t.yaw, Math.atan2(-dx, -dz))) > 1.95
+        ? { ...hit, dmg: hit.dmg * hit.backstab, heavy: true, backstabbed: true } : hit;
+      this.apply(attacker, t, h, hitSet, attacker.pos.x, attacker.pos.z, hit.parryable ?? attacker.team !== 'player');
     }
   }
 
@@ -129,7 +133,7 @@ export class Combat {
       g.hitstop = Math.max(g.hitstop, 0.12);
       g.cameraShake(0.22);
     } else if (result === 'block') {
-      const shield = target !== g.player;
+      const shield = target !== g.player || !!g.player.shield;
       sparks(shield ? 10 : 18, 5, shield ? 0xffd9a0 : 0xfff0d0, 0xff9a40);
       g.audio.play(shield ? 'shield' : 'block');
       if (playerHurt || byPlayer) g.hitstop = Math.max(g.hitstop, 0.05);

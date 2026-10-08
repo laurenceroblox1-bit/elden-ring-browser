@@ -6,7 +6,7 @@ export const ITEMS = {
   },
   locket: {
     name: "Ilse's Locket",
-    desc: 'A tarnished silver locket. Inside, a pressed sprig of sunmoss and a child\'s lock of hair.',
+    desc: 'A blackened silver locket. Inside, a pressed sprig of sunmoss and a child\'s lock of hair.',
   },
   warden_bell: {
     name: "Warden's Bell",

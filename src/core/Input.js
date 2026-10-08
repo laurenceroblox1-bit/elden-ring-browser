@@ -9,11 +9,14 @@ export const BINDINGS = {
   light: ['Mouse0'],
   heavy: ['KeyF'],
   guard: ['Mouse2'], // hold to guard; a fresh press opens a short parry window
+  art: ['KeyC'], // weapon art
+  rite: ['KeyV'], // cast the equipped rite
   lockOn: ['KeyQ', 'Mouse1'],
   flask: ['KeyR'],
   interact: ['KeyE'],
   whistle: ['KeyH'],
   journal: ['KeyJ'],
+  equipment: ['KeyI'],
   pause: ['Escape', 'KeyP'],
   camLeft: ['ArrowLeft'],
   camRight: ['ArrowRight'],

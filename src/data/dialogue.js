@@ -84,7 +84,7 @@ export const DIALOGUE = {
       return {
         name,
         lines: [
-          '"BOUNTY. The hollow sentries of the old watchtower have taken to the road. Five of them put down earns the bearer four hundred ash, paid at any lantern."',
+          '"BOUNTY. The hollow sentries of the old watchtower have taken to the road. Five of them put down earns the bearer four hundred ash, paid at any lantern, and the lantern-keeper will teach the bearer a rite of fire."',
           'Below, in a different hand: "they get back up."',
         ],
         effect: () => q.start('sentries'),

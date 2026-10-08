@@ -28,14 +28,17 @@ Google Fonts fall back to system serif faces when offline.
 | Mouse (click the game to capture it) | Look. Arrow keys also turn the camera |
 | Shift | Sprint; gallop when riding |
 | Space | Roll (with a direction), backstep (without), jump on horseback |
-| Left click | Light attack, chains three hits. Riposte a reeling foe |
+| Left click | Light attack; press again to chain (2 to 4 hits, by weapon). Riposte a reeling foe |
 | Hold right click | Guard. Raise it just as a blow lands to parry |
 | F | Heavy attack |
+| C | Weapon art (costs focus and some stamina) |
+| V | Cast your equipped rite (costs focus) |
 | Q / middle click | Lock on |
 | R | Drink from the flask |
 | E | Talk, pick up, kindle or rest at a shrine, pass through the mist |
 | H | Call Wisp, or dismount |
 | J | Journal |
+| I | Equipment (also a button in the pause menu) |
 | Esc / P | Pause (graphics quality and sound toggles are here) |
 
 ## What's in the foundation
@@ -46,6 +49,8 @@ Google Fonts fall back to system serif faces when offline.
 - **Combat**: stamina-gated light combo, heavy attack, roll with i-frames, backstep, rolling
   attack, poise and stagger, lock-on with strafing, hit-stop, camera shake and sparks.
 - **Guard, parry, riposte**: see *Guarding* below.
+- **Gear**: five weapons with their own movesets and weapon arts, two shields, and three rites cast
+  with focus. See *Weapons, shields and rites* below.
 - **The Warden**: a two-phase boss with six attacks. Phase 1 has the sweep, backsweep, a delayed
   overhead slam with a shockwave, and a leaping strike. Phase 2 starts at half health and adds a
   bell toll ring (roll through it) and spectral bells falling from the sky. He staggers when his
@@ -56,9 +61,10 @@ Google Fonts fall back to system serif faces when offline.
   - *The Warden at the Gate* (main quest)
   - *A Steed for the Road* (Brannoc unlocks Wisp)
   - *The Pilgrim's Locket* (Sister Ilse gives you an extra flask charge)
-  - *Ash in the Watchtower* (a bounty from the notice board)
+  - *Ash in the Watchtower* (a bounty from the notice board; pays ash and the Lantern Bolt rite)
 - **Soulslike loop**: lantern shrines are your checkpoints. Resting refills your flask and respawns
-  enemies, and you level up there with ash (Vigor, Endurance, Strength). If you die, you drop your
+  enemies, and you level up there with ash (Vigor, Endurance, Strength, Mind). Resting also refills
+  focus. If you die, you drop your
   ash where you fell and can reclaim it. Progress autosaves to localStorage.
 - **Presentation**: golden-hour sky with sun and fog, a sky-baked environment map, shadows,
   particles, a HUD (bars with damage lag, compass, boss bar, toasts, banners), and synthesized
@@ -93,12 +99,55 @@ Google Fonts fall back to system serif faces when offline.
   second and takes 60 from his poise, and three parries within 10 s force his full stagger. His
   slam and leap can only be blocked.
 
-For the next weapon or shield, `player.guardStats` (default `SWORD_GUARD` in `entities/Player.js`)
-holds `absorb`, `cost`, `parryWindow`, `raiseTime` and `arc`, and `ATTACKS.riposte` holds the
-riposte's damage, multiplier and timing. Hit objects carry `parryable`, `unblockable`, `heavy` and
+`player.guardStats` comes from the shield in your left hand, or from the weapon's own `guard` when
+there's no shield (see the table below). It holds `absorb`, `cost`, `parryWindow`, `raiseTime`, `arc`
+and an optional guard walk `speed`. `ATTACKS.riposte` in `entities/Player.js` holds the riposte's
+timing, and a weapon's `riposte` field sets its damage. Hit objects carry `parryable`, `unblockable`, `heavy` and
 `riposte` flags (see the header of `systems/Combat.js`). An actor joins in by overriding
 `isOpen()`, `onParried(by)` and `onRiposte(by)` from `Actor`. `takeHit` returns `true`, `'block'`,
 `'parry'` or `'break'`, and Combat plays the matching sparks, flash, sound and hit-stop.
+
+## Weapons, shields and rites
+
+Open the equipment screen with **I** (or *Equipment* in the pause menu). It pauses the game and
+lists what you own for the right hand, the left hand and the rite slot, with damage, speed, reach,
+guard and the weapon art's focus cost. Click a row to equip it at once: the model swaps in your hand
+and the moveset changes. A two-handed weapon stows your shield, and a shield needs a one-handed
+weapon. The bottom-left widget shows what you're holding, plus the art (C) and rite (V) with their
+focus costs. Each one dims while it cools down and its cost turns red when you're short of focus.
+
+| Weapon | Hands | Light chain | Character | Art (C) | Where |
+| --- | --- | --- | --- | --- | --- |
+| Wayfarer's Blade | One | 3 hits | The all-rounder you start with | **Ember Arc** (12 focus): a burning crescent that skims the ground and cuts through every foe in its path | Start |
+| Ashen Greatblade | Two | 2 sweeps | Slow and wide, with heavy poise damage | **Quake** (18): drive it into the ground; the blow and the shockwave stagger | Watch Ruins, in the tower stump |
+| Pilgrim's Spear | One | 3 thrusts | Longest reach. With a shield, a light press while guarding thrusts from behind it | **Lunging Pierce** (10): a long dash thrust with i-frames | Brannoc's camp |
+| Twin Fangs | Two (paired) | 4 quick stabs | Cheap on stamina, weakest guard, widest parry window | **Ghoststep** (10): blink behind your lock target (or a few strides ahead) and stab; 1.6x from behind | By the wreck on the Western Moor |
+| Warden's Bell-Maul | Two | 2 swings | Very slow, huge damage and poise | **Toll of Silence** (22): a ring shockwave around you, then an echo | Reward for silencing the Warden |
+
+| Guard | Absorbs | Stamina per damage | Parry window | Notes |
+| --- | --- | --- | --- | --- |
+| Pilgrim's Buckler (near the First Light notice board) | 80% | 0.95 | 0.24 s | Quick to raise |
+| Gatewarden Greatshield (by the Gatehouse Shrine) | 100% | 0.6 | 0.12 s | Wider arc; you walk at 1.6 m/s behind it |
+| No shield | 40% to 72% by weapon | 1.25 to 1.7 | 0.1 s to 0.26 s | See each weapon's `guard` |
+
+**Focus** is the blue bar between health and stamina. It starts at 60, and each point of **Mind**
+adds 6 to it and 6% to rite strength. It comes back at 1.5 per second and refills when you rest at
+a shrine or level up. Arts also cost stamina, and both arts and rites have short cooldowns. Pressing
+C or V without enough focus just blinks the bar.
+
+| Rite (V) | Focus | Cooldown | Effect | Where |
+| --- | --- | --- | --- | --- |
+| Lantern Bolt | 14 | 0.9 s | A fire bolt that flies at your lock target, or at the foe in front of you | Bounty reward (*Ash in the Watchtower*) |
+| Ward of Ash | 25 | 14 s | 8 s of 40% less damage taken (a ring of ash at your feet; it flickers before it fails) | Among the graves on the road north |
+| Mending Light | 30 | 12 s | Heals 80 over 6 s | Beside the cairn at Mirelake Shore |
+
+Gear on the ground shows as the item itself turning over a pale glow. Press E to take it and you'll
+see *Acquired: ...*. Pickups you've taken never come back, because owned gear doesn't respawn.
+Owned gear, equipped slots and Mind are saved, and older saves load with the starting gear.
+
+Balance check (a stepped bot in god mode with base stats and no shield, fighting the Warden with
+light chains, the art and ripostes): every weapon kills him in 33 to 49 s and takes about three
+staggers. The bot would have taken 280 to 620 damage against 100 HP, so dodging is still on you.
 
 ## Code map
 
@@ -109,11 +158,13 @@ src/main.js                boot
 src/lib/three.js           the single three.js import, so CDN vs. vendored vs. bundler is one line
 src/core/                  Game (loop + glue), Input, CameraRig, Audio, Events, math/noise
 src/world/                 World (terrain, colliders, set pieces), Sky
-src/models/                procedural models: humanoid rig, characters, horse, props; pose.js animates them
+src/models/                procedural models: humanoid rig, characters, horse, props, weapons + shields
+                           (weapons.js, with the stances and move poses); pose.js animates them
 src/entities/              Player, Horse, Sentry (common enemy), Warden (boss), NPC
 src/systems/               Combat (hit detection), Quests, Interactions (E prompts), Save
-src/effects/               Particles, Effects (shockwaves, falling bells)
-src/data/                  world layout, quests, dialogue, items: content lives here as data
+src/effects/               Particles, Effects (shockwaves, falling bells), Projectiles (bolts, crescents)
+src/data/                  world layout, quests, dialogue, items, weapons + shields, arts + rites
+                           (abilities.js), gear pickups (loot.js): content lives here as data
 src/ui/HUD.js              DOM overlay and every menu
 ```
 
@@ -125,6 +176,16 @@ src/ui/HUD.js              DOM overlay and every menu
   hurt, return, dead) and its move table are the template. Add spawns in `ENEMY_SPAWNS`.
 - **A quest**: add an entry to `data/quests.js`. Stages complete on events (`shrine`, `boss`,
   `item`, `kill`, `talk`), and NPC scripts in `data/dialogue.js` start or finish quests.
+- **A weapon**: add an entry to `WEAPONS` in `data/weapons.js` (moves, `guard`, `stance`, `art`), a
+  builder in `BUILD` in `models/weapons.js` (6 meshes or fewer, grip at the origin along +Z), and
+  its poses in `MOVE_POSES`. Poses for new weapons are hand targets that `held()` solves into joint
+  angles, and it closes the off hand on two-handed hafts. Then place it in `data/loot.js` or give it
+  as a quest `reward.weapon`.
+- **A shield or rite**: `SHIELDS` (a `guard` object plus a builder in `BUILD_SHIELD`), or `RITES`
+  in `data/abilities.js`. Arts and rites are scripted actions: a pose track (`keys`), timed `events`,
+  optional `move`, i-frames (`invuln`) and a roll `cancel` time. Anything that flies goes through
+  `game.projectiles.spawn(owner, {...})`, which enemies can use too: it hits the owner's foes via
+  `Combat.sphere`, so rolls and guards work against it.
 - **An attack or animation**: poses are flat joint-angle objects (`models/pose.js`). An attack is a
   wind pose plus a strike pose, timed by windup, active and recover. For a longer scripted move
   like the riposte, use `framePose` with a list of `[time, pose]` keys.
@@ -148,13 +209,15 @@ Add `#debug` to the URL for an FPS and position readout, plus these keys:
 | U | Unlock Wisp |
 | L | Gain 5000 ash |
 | K | Kill the boss (during the fight) |
+| Y | Give every weapon, shield and rite |
 
 `window.game` is exposed in the console.
 
 ## Known gaps and next steps
 
-- **Combat depth**: more weapons and shields (each with its own `guardStats`), an equipment
-  screen, backstabs, jump attacks.
+- **Combat depth**: weapon upgrades, backstabs on ordinary attacks (only Ghoststep has one today),
+  jump attacks. Enemies don't use projectiles yet, though the system supports it. Ripostes use the
+  sword's animation for every weapon.
 - **Camera**: it avoids terrain and stays inside the arena, but it can still clip through ruins and
   castle walls.
 - **Performance**: each character is about 40 meshes. Merging meshes per bone, or skinned glTF

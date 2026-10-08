@@ -179,6 +179,46 @@ export class AudioFx {
         this._bell(523, 0.08, 6);
         break;
       case 'ui': this._tone({ freq: 880, dur: 0.07, gain: 0.05 }); break;
+      // Gear, weapon arts and rites.
+      case 'equip':
+        this._noise({ dur: 0.1, freq: 2600, q: 3, gain: 0.18 });
+        this._tone({ freq: 620, type: 'triangle', dur: 0.12, gain: 0.08 });
+        break;
+      case 'noFocus': this._tone({ freq: 220, to: 160, type: 'triangle', dur: 0.16, gain: 0.12 }); break;
+      case 'emberArc':
+        this._noise({ dur: 0.5, freq: 600, to: 2400, q: 0.7, gain: 0.32 });
+        this._noise({ dur: 0.7, type: 'lowpass', freq: 900, to: 300, gain: 0.25, attack: 0.04 });
+        break;
+      case 'pierce':
+        this._noise({ dur: 0.32, freq: 1400, to: 3800, q: 1.2, gain: 0.3 });
+        this._tone({ freq: 300, to: 900, type: 'triangle', dur: 0.2, gain: 0.08 });
+        break;
+      case 'ghost':
+        this._noise({ dur: 0.3, type: 'highpass', freq: 3000, to: 900, gain: 0.2 });
+        this._tone({ freq: 1320, to: 440, dur: 0.35, gain: 0.07 });
+        break;
+      case 'toll':
+        this._bell(147, 0.3, 4.5);
+        this._noise({ dur: 0.7, type: 'lowpass', freq: 500, to: 80, gain: 0.7 });
+        this._tone({ freq: 60, to: 30, dur: 0.9, gain: 0.5 });
+        break;
+      case 'cast': this._noise({ dur: 0.35, type: 'lowpass', freq: 300, to: 2200, gain: 0.16, attack: 0.08 }); break;
+      case 'bolt':
+        this._noise({ dur: 0.4, freq: 800, to: 2000, q: 0.8, gain: 0.25 });
+        this._tone({ freq: 330, to: 520, type: 'triangle', dur: 0.25, gain: 0.07 });
+        break;
+      case 'boltHit':
+        this._noise({ dur: 0.45, type: 'lowpass', freq: 1800, to: 200, gain: 0.5 });
+        this._tone({ freq: 160, to: 60, dur: 0.3, gain: 0.3 });
+        break;
+      case 'ward':
+        this._noise({ dur: 1.0, type: 'lowpass', freq: 200, to: 1200, gain: 0.2, attack: 0.15 });
+        this._bell(440, 0.06, 2);
+        break;
+      case 'mend':
+        this._tone({ freq: 392, to: 587, dur: 0.8, gain: 0.1, attack: 0.1 });
+        this._tone({ freq: 587, to: 784, dur: 1.0, gain: 0.07, attack: 0.15, delay: 0.15 });
+        break;
     }
   }
 

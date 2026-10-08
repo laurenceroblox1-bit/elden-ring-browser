@@ -12,9 +12,12 @@
   --blood-lag: #d9b46a;
   --moss: #6f8f43;
   --frost: #9fd0ff;
+  --focus: #4f7fc4;
+  --focus-deep: #26467a;
   --font-display: 'IM Fell English SC', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --font-body: 'EB Garamond', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gear-w: min(224px, 40vw);
   color-scheme: dark;
 }
 
@@ -42,6 +45,11 @@ kbd {
 .bar.hp .lag { background: var(--blood-lag); opacity: 0.8; }
 .bar.st .fill { background: linear-gradient(var(--moss), #485e2a); }
 .bar.st.winded .fill { filter: saturate(0.3) brightness(0.8); }
+/* Focus: a deep lantern-blue, darker than the Warden's spectral blue so it never reads as "roll this". */
+.bar.fo { height: 8px; }
+.bar.fo .fill { background: linear-gradient(var(--focus), var(--focus-deep)); }
+.bar.fo.flash { animation: focus-flash 0.6s ease-out; }
+@keyframes focus-flash { 0%, 40% { border-color: #9fc0ef; box-shadow: 0 0 12px rgba(120, 165, 230, 0.9); } }
 /* Guard up: the stamina bar is what the guard spends, so it gets a steel edge. */
 .bar.st.guarding { border-color: #c9cdd2; box-shadow: 0 0 8px rgba(201, 205, 210, 0.45); }
 
@@ -103,7 +111,34 @@ kbd {
   background: rgba(40, 8, 4, 0.72); border: 1px solid rgba(255, 106, 74, 0.7); color: #ffd2c4; font-size: 0.9rem; pointer-events: none;
 }
 .riposte-hint kbd { color: #ffd2c4; border-color: rgba(255, 106, 74, 0.6); }
-.fps { position: absolute; left: var(--gutter); bottom: 12px; font: 12px/1 ui-monospace, monospace; color: var(--muted); }
+.fps { position: absolute; left: var(--gutter); top: calc(64px + env(safe-area-inset-top, 0px)); font: 12px/1 ui-monospace, monospace; color: var(--muted); }
+
+/* ---------- gear widget (bottom-left) ---------- */
+.gear {
+  position: absolute; left: var(--gutter); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); width: var(--gear-w);
+  display: grid; gap: 5px; text-shadow: 0 1px 3px #000;
+}
+.gear-hands { display: grid; gap: 2px; padding: 6px 10px; border: 1px solid var(--panel-edge); background: rgba(0, 0, 0, 0.45); }
+.gear-hand { display: grid; grid-template-columns: 3.4em 1fr; gap: 8px; align-items: baseline; min-width: 0; }
+.gear-k { font: 0.7rem/1 var(--font-display); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.gear-hand b { font: 400 0.95rem/1.2 var(--font-display); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gear-ab {
+  position: relative; display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; overflow: hidden;
+  padding: 4px 10px 4px 6px; border: 1px solid var(--panel-edge); background: rgba(0, 0, 0, 0.45); font-size: 0.92rem;
+}
+.gear-ab-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gear-ab-cost { font: 0.85rem/1 var(--font-display); color: #9fc0ef; font-variant-numeric: tabular-nums; }
+.gear-ab-cost::after { content: ' focus'; font: 0.72rem/1 var(--font-body); color: var(--muted); }
+.gear-ab-cost:empty::after { content: none; }
+/* Cooldown: a dark veil that drains to the left as the art comes back. */
+.gear-cd { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.55); transform-origin: right; transform: scaleX(0); pointer-events: none; }
+.gear-ab[data-state='ready'] { border-color: var(--gold); }
+.gear-ab[data-state='ready'] kbd { box-shadow: 0 0 8px rgba(242, 213, 143, 0.6); }
+.gear-ab[data-state='cool'] .gear-ab-name, .gear-ab[data-state='none'] .gear-ab-name { color: var(--muted); }
+.gear-ab[data-state='low'] .gear-ab-cost { color: #e0857c; }
+.gear-ab[data-state='none'] { opacity: 0.6; }
+/* A conversation takes the bottom of the screen. */
+#hud:has(> .dialogue:not([hidden])) .gear { display: none; }
 
 /* ---------- banners ---------- */
 .banner {
@@ -127,7 +162,10 @@ kbd {
 }
 
 /* ---------- boss bar ---------- */
-.bossbar { position: absolute; left: 50%; bottom: calc(46px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(760px, 86vw); }
+.bossbar {
+  position: absolute; left: 50%; bottom: calc(46px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  width: min(760px, 86vw, calc(100vw - 2 * (var(--gear-w) + 2 * var(--gutter)))); /* clear of the gear widget */
+}
 .boss-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; text-shadow: 0 1px 4px #000; }
 .boss-name { font: 1.15rem/1 var(--font-display); letter-spacing: 0.05em; }
 .boss-dmg { font: 1.05rem/1 var(--font-display); color: var(--gold-hi); font-variant-numeric: tabular-nums; }
@@ -214,13 +252,41 @@ kbd {
 .stat span { font-size: 0.88rem; color: var(--muted); }
 .stat .stat-v { font: 1.3rem/1 var(--font-display); color: var(--text); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
 
+/* equipment */
+.equip-body { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr); gap: 20px; align-items: start; }
+.equip-slots { display: grid; gap: 8px; }
+.eq-slot, .eq-item {
+  display: grid; gap: 4px; width: 100%; text-align: left; cursor: pointer; color: var(--text); font: inherit;
+  padding: 10px 14px; border: 1px solid rgba(201, 164, 92, 0.18); background: rgba(0, 0, 0, 0.25); transition: background 0.15s, border-color 0.15s;
+}
+.eq-slot:hover, .eq-item:hover:not(:disabled) { border-color: var(--gold); background: rgba(201, 164, 92, 0.1); }
+.eq-slot:focus-visible, .eq-item:focus-visible { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+.eq-slot.on { border-color: var(--gold); background: rgba(201, 164, 92, 0.14); }
+.eq-slot-k { font: 0.75rem/1 var(--font-display); letter-spacing: 0.16em; color: var(--muted); text-transform: uppercase; }
+.eq-slot b { font: 400 1.1rem/1.2 var(--font-display); color: var(--gold-hi); }
+.equip-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+.eq-item-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.eq-item-head b { font: 400 1.15rem/1.2 var(--font-display); color: var(--text); }
+.eq-item-head span { font-size: 0.82rem; letter-spacing: 0.08em; color: var(--muted); text-transform: uppercase; white-space: nowrap; }
+.eq-item.on { border-color: var(--gold); }
+.eq-item.on .eq-item-head b { color: var(--gold-hi); }
+.eq-item.on .eq-item-head span { color: var(--gold); }
+.eq-item:disabled { opacity: 0.45; cursor: not-allowed; }
+.eq-stats { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 0.95rem; }
+.eq-stats i { font-style: normal; color: var(--muted); margin-right: 6px; font-size: 0.85rem; }
+.eq-desc { font-style: italic; color: var(--muted); font-size: 0.9rem; text-wrap: pretty; }
+.equip-foot { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 0.92rem; border-top: 1px solid rgba(201, 164, 92, 0.18); padding-top: 10px; }
+.equip-foot b { color: var(--gold-hi); font-family: var(--font-display); font-weight: 400; font-variant-numeric: tabular-nums; }
+.equip-tip { flex-basis: 100%; font-style: italic; }
+
 .fatal pre { white-space: pre-wrap; color: var(--muted); font-size: 0.85rem; }
 
 @media (max-width: 720px) {
-  .journal-body, .shrine-panel { grid-template-columns: 1fr; }
+  .journal-body, .shrine-panel, .equip-body { grid-template-columns: 1fr; }
+  .bossbar { width: 86vw; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
   .tracker { width: min(240px, 46vw); }
   .tq span { font-size: 0.82rem; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .toast, .banner { animation-duration: 1ms; }
+  .toast, .banner, .bar.fo.flash { animation-duration: 1ms; }
 }

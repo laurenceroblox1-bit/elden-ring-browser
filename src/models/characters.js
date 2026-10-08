@@ -2,6 +2,7 @@
 import * as THREE from '../lib/three.js';
 import { buildHumanoid } from './humanoid.js';
 import { mat, mesh, box, cyl, cone, group, glowSprite } from './kit.js';
+import { equipModel } from './weapons.js';
 
 function addWeaponMarkers(handGroup, length) {
   const mid = group({ z: length * 0.55 });
@@ -10,7 +11,7 @@ function addWeaponMarkers(handGroup, length) {
   return { mid, tip };
 }
 
-// The Unbound: the player. Weathered steel, teal cloak, straight sword.
+// The Unbound: the player. Weathered steel, teal cloak. Weapons and shields come from models/weapons.js.
 export function buildPlayer() {
   const steel = mat(0x7d828a, { metalness: 0.55, roughness: 0.45 });
   const darkSteel = mat(0x4a4e55, { metalness: 0.5, roughness: 0.5 });
@@ -36,21 +37,15 @@ export function buildPlayer() {
   cloak.add(mesh(cloakGeo, cloth));
   r.torso.add(cloak);
 
-  // Straight sword along the hand's +Z.
-  const sword = group();
-  sword.add(mesh(box(0.045, 0.045, 0.22), leather, { z: -0.02 }));
-  sword.add(mesh(box(0.26, 0.04, 0.05), trim, { z: 0.1 }));
-  sword.add(mesh(box(0.065, 0.016, 1.0), mat(0xc9cdd2, { metalness: 0.8, roughness: 0.25 }), { z: 0.62 }));
-  r.armR.hand.add(sword);
-  const markers = addWeaponMarkers(r.armR.hand, 1.1);
-
   // Flask in the off hand, only shown while drinking.
   const flask = group();
   flask.add(mesh(cyl(0.05, 0.07, 0.16, 6), mat(0xd9c46a, { emissive: 0x8a6d1d, emissiveIntensity: 1.4 })));
   flask.visible = false;
   r.armL.hand.add(flask);
 
-  return { ...r, cloak, sword, flask, markers };
+  const out = { ...r, cloak, flask };
+  equipModel(out, 'wayfarer_blade', null);
+  return out;
 }
 
 // Hollow sentries: rusted kettle helms, ragged cloth, sword and round shield.

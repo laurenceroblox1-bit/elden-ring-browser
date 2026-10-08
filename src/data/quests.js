@@ -2,6 +2,7 @@
 //   { type: 'shrine', id } kindle a shrine     { type: 'boss', id }  defeat a boss
 //   { type: 'item', id }   hold an item         { type: 'kill', tag, count } kill tagged enemies
 //   { type: 'talk', id }   advanced from dialogue (see data/dialogue.js)
+// `reward` may hold ash, flask, horse, and gear ids: weapon, shield, rite (see data/weapons.js, abilities.js).
 // `marker` puts a pin on the compass while the stage is current.
 export const QUESTS = {
   warden: {
@@ -13,7 +14,7 @@ export const QUESTS = {
       { text: 'Follow the old road north and kindle the Gatehouse Shrine.', on: { type: 'shrine', id: 'gatehouse' }, marker: [16, -194] },
       { text: 'Pass through the mist and silence the Bell-Warden.', on: { type: 'boss', id: 'warden' }, marker: [0, -222] },
     ],
-    reward: {},
+    reward: { weapon: 'bell_maul' },
     doneText: 'The Shattered Gate stands open. Castle Dunmarrow waits beyond, for another day.',
   },
   steed: {
@@ -45,7 +46,7 @@ export const QUESTS = {
     stages: [
       { text: 'Put down hollow sentries', on: { type: 'kill', tag: 'sentry', count: 5 }, marker: [130, 32] },
     ],
-    reward: { ash: 400 },
-    doneText: 'The bounty is yours. The road is a little quieter.',
+    reward: { ash: 400, rite: 'lantern_bolt' },
+    doneText: 'The bounty is yours, and the lantern-keeper\'s rite with it: Lantern Bolt. Prepare it in your equipment (I) and cast it with V.',
   },
 };

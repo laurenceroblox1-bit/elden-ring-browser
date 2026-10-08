@@ -8,10 +8,11 @@ import { World } from '../world/World.js';
 import { Sky } from '../world/Sky.js';
 import { Particles } from '../effects/Particles.js';
 import { Effects } from '../effects/Effects.js';
+import { Projectiles } from '../effects/Projectiles.js';
 import { Combat } from '../systems/Combat.js';
 import { Quests } from '../systems/Quests.js';
 import { Interactions } from '../systems/Interactions.js';
-import { Save, newGameState, levelOf, levelCost } from '../systems/Save.js';
+import { Save, newGameState, mergeSave, levelOf, levelCost } from '../systems/Save.js';
 import { Player } from '../entities/Player.js';
 import { Horse } from '../entities/Horse.js';
 import { Sentry } from '../entities/Sentry.js';
@@ -22,9 +23,13 @@ import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
 import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA } from '../data/world.js';
+import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
+import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
+import { buildGearDisplay } from '../models/weapons.js';
 
 const tmp = new THREE.Vector3();
+const SCREENS = new Set(['pause', 'journal', 'shrine', 'equipment']); // modals with their own HUD screen
 
 export class Game {
   constructor(app) {
@@ -63,6 +68,7 @@ export class Game {
     this.hud = new HUD(app.querySelector('#hud'), this);
     this.particles = new Particles(this.scene);
     this.effects = new Effects(this);
+    this.projectiles = new Projectiles(this);
     this.sky = new Sky(this.scene);
     this.sky.bakeEnvironment(r);
     this.world = new World(this);
@@ -116,7 +122,8 @@ export class Game {
       this.after(0.4, () => this.hud.toast(text));
     });
     tip('parry', 'A clean parry. Strike while your foe reels to riposte.');
-    tip('guardBreak', 'Your guard broke. Blocking costs stamina, and a sword alone stops little.');
+    tip('guardBreak', 'Your guard broke. Blocking costs stamina, and a blade alone stops little. A shield stops more.');
+    tip('noFocus', 'Not enough focus. It creeps back on its own and refills at a lantern. Mind raises it.');
   }
 
   resize() {
@@ -158,7 +165,7 @@ export class Game {
   continueGame() {
     const saved = Save.load();
     if (!saved) return this.newGame();
-    this.state = { ...newGameState(), ...saved, flags: { ...newGameState().flags, ...saved.flags } };
+    this.state = mergeSave(saved);
     this.quests.load(saved.quests);
     this._enterWorld();
     const s = this.world.shrines.get(this.state.shrine);
@@ -174,8 +181,10 @@ export class Game {
     this.modal = null;
     for (const s of this.world.shrines.values()) s.lit = st.shrinesLit.includes(s.id);
     this.player.applyStats(st.stats, st.flasksMax);
+    this.player.equip(st.gear);
     this._clearPickups();
     for (const p of PICKUPS) if (!this.hasItem(p.item) && (!p.quest || this.quests.status(p.quest) !== 'done')) this.spawnPickup(p.item, p.x, p.z);
+    for (const l of LOOT) if (!this.hasGear(l.gear)) this.spawnPickup(l.gear, l.x, l.z);
     if (st.remnant) this.spawnRemnant(st.remnant.x, st.remnant.z, st.remnant.amount);
     else this._removeRemnant();
     if (st.flags.wardenDead) {
@@ -204,6 +213,7 @@ export class Game {
   resetWorld() {
     for (const e of this.enemies) e.reset();
     this.effects.clear();
+    this.projectiles.clear();
     this.lockTarget = null;
     if (!this.state.flags.wardenDead) {
       this.boss.reset();
@@ -257,6 +267,56 @@ export class Game {
     if (this.hasItem(id)) this.state.inventory[id]--;
   }
 
+  // ---------- gear ----------
+
+  hasGear(id) { return this.state.gear.owned.includes(id); }
+
+  // Adds a weapon, shield or rite to what you own. Returns false if it was already yours.
+  giveGear(id) {
+    const info = gearOf(id);
+    if (!info || this.hasGear(id)) return false;
+    this.state.gear.owned.push(id);
+    this.hud.toast(`Acquired: ${info.def.name}`, 'item');
+    this.audio.play('pickup');
+    this.events.emit('gearGained', id);
+    if (!this.state.flags.gearTip) {
+      this.state.flags.gearTip = true;
+      this.after(1.6, () => this.hud.toast('Press I to open your equipment and take it in hand.'));
+    }
+    this.save();
+    return true;
+  }
+
+  // Puts owned gear `id` in `slot` ('right' | 'left' | 'rite'), or empties the slot with id null.
+  // A two-handed weapon stows the shield; a shield takes a one-handed weapon, or it can't be raised.
+  equip(slot, id) {
+    const g = this.state.gear;
+    if (id && !this.hasGear(id)) return false;
+    if (slot === 'right') {
+      if (!WEAPONS[id]) return false;
+      g.right = id;
+      if (WEAPONS[id].hands > 1 && g.left) {
+        g.left = null;
+        this.hud.toast('Both hands on the weapon: your shield is stowed.');
+      }
+    } else if (slot === 'left') {
+      if (id && gearOf(id)?.slot !== 'shield') return false;
+      if (id && WEAPONS[g.right].hands > 1) {
+        this.hud.toast(`The ${WEAPONS[g.right].name} needs both hands.`);
+        return false;
+      }
+      g.left = id;
+    } else if (slot === 'rite') {
+      if (id && gearOf(id)?.slot !== 'rite') return false;
+      g.rite = id;
+    } else return false;
+    this.player.equip(g);
+    this.audio.play('equip');
+    this.events.emit('equipped', { slot, id });
+    this.save();
+    return true;
+  }
+
   addAsh(n) {
     this.state.ash += Math.round(n);
   }
@@ -270,6 +330,7 @@ export class Game {
     p.applyStats(this.state.stats, this.state.flasksMax);
     p.hp = p.maxHp;
     p.stamina = p.maxStamina;
+    p.focus = p.maxFocus;
     this.audio.play('kindle');
     this.save();
     this.hud.refreshShrine();
@@ -277,15 +338,25 @@ export class Game {
 
   // ---------- world objects ----------
 
+  // A key item (a glinting gem) or a piece of gear (the thing itself, turning slowly over a cooler glow).
   spawnPickup(item, x, z) {
     const y = this.world.getHeight(x, z);
-    const glow = glowSprite(0xfff0c0, 1.6, 0.9);
+    const gear = gearOf(item);
+    const glow = glowSprite(gear ? 0xd8e6ff : 0xfff0c0, gear ? 2.2 : 1.6, 0.9);
     glow.position.set(x, y + 0.5, z);
-    const gem = mesh(ico(0.12, 0), mat(0xfff4d0, { emissive: 0xffd080, emissiveIntensity: 2 }), { x, y: y + 0.45, z, shadow: false });
+    let gem;
+    if (gear) {
+      gem = buildGearDisplay(item);
+      gem.position.set(x, y + (gear.slot === 'rite' ? 0.7 : 0.95), z);
+      gem.traverse((o) => { o.castShadow = false; }); // small and glowing: the shadow pass isn't worth its calls
+    } else {
+      gem = mesh(ico(0.12, 0), mat(0xfff4d0, { emissive: 0xffd080, emissiveIntensity: 2 }), { x, y: y + 0.45, z, shadow: false });
+    }
     this.scene.add(glow, gem);
-    const pk = { item, x, z, y, glow, gem };
-    pk.inter = this.interactions.add({ x, z, radius: 2.2, label: () => 'Pick up', action: () => {
-      this.giveItem(item);
+    const pk = { item, x, z, y, glow, gem, spin: gear ? 0.8 : 2 };
+    pk.inter = this.interactions.add({ x, z, radius: gear ? 2.6 : 2.2, label: () => (gear ? `Take the ${gear.def.name}` : 'Pick up'), action: () => {
+      if (gear) this.giveGear(item);
+      else this.giveItem(item);
       this._removePickup(pk);
     } });
     this.pickups.push(pk);
@@ -338,6 +409,7 @@ export class Game {
     const p = this.player;
     p.hp = p.maxHp;
     p.flasks = p.flasksMax;
+    p.focus = p.maxFocus;
     this.audio.play('kindle');
     this.hud.banner('Lantern Kindled', s.name, 'kindle', 3200);
     this.particles.emit({ x: s.x + 0.38, y: this.world.getHeight(s.x, s.z) + 2, z: s.z, count: 60, speed: 3, up: 2, color: 0xffb050, color2: 0xfff0c0, life: [0.6, 1.4], size: [0.08, 0.18], drag: 1.5 });
@@ -352,6 +424,7 @@ export class Game {
     p.hp = p.maxHp;
     p.stamina = p.maxStamina;
     p.flasks = p.flasksMax;
+    p.focus = p.maxFocus;
     this.save();
     this.openModal('shrine', true);
     this.hud.openShrine(s);
@@ -414,6 +487,7 @@ export class Game {
       this.world.openGate();
       this.events.emit('bossDefeated', 'warden');
       this.after(2.5, () => this.giveItem('warden_bell'));
+      this.after(3.4, () => this.giveGear('bell_maul')); // no-op if the quest reward already gave it
       this.save();
     });
   }
@@ -447,14 +521,25 @@ export class Game {
       this.expectUnlock = true;
       this.input.exitLock();
     }
-    if (name === 'pause' || name === 'journal' || name === 'shrine') this.hud.showScreen(name, true);
+    if (SCREENS.has(name)) this.hud.showScreen(name, true);
     this.hud.setPrompt(null);
+  }
+
+  // The equipment screen needs the mouse; from the pause menu the cursor is already free.
+  openEquipment() {
+    if (this.mode !== 'playing') return;
+    if (this.modal === 'pause') {
+      this.hud.showScreen('pause', false);
+      this.modal = null;
+    }
+    if (this.modal) return;
+    this.openModal('equipment', true);
   }
 
   closeModal() {
     const m = this.modal;
     this.modal = null;
-    if (m === 'pause' || m === 'journal' || m === 'shrine') this.hud.showScreen(m, false);
+    if (SCREENS.has(m)) this.hud.showScreen(m, false);
     if (this.mode === 'playing' && !this.input.locked) this.input.requestLock();
   }
 
@@ -483,13 +568,17 @@ export class Game {
       case 'shrine':
         if (i.pressed('pause') || i.pressed('interact')) this.closeModal();
         break;
+      case 'equipment':
+        if (i.pressed('equipment') || i.pressed('pause')) this.closeModal();
+        break;
       case null:
         if (i.pressed('pause')) this.openModal('pause', true);
         else if (i.pressed('journal')) this.openModal('journal');
+        else if (i.pressed('equipment')) this.openEquipment();
         break;
     }
     // The key that closes a menu or dialogue must not also act in the world this frame.
-    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'guard', 'pause', 'journal']) i.consume(a);
+    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment']) i.consume(a);
   }
 
   // ---------- loop ----------
@@ -538,6 +627,7 @@ export class Game {
       this._separate();
       for (const n of this.npcs) n.update(sdt);
       this.effects.update(sdt);
+      this.projectiles.update(sdt);
       this.combat.update(dt);
       this.interactions.update();
       this._timers(sdt);
@@ -625,8 +715,11 @@ export class Game {
   }
 
   _pickupFx(dt) {
+    const pp = this.player.pos;
     for (const pk of this.pickups) {
-      pk.gem.rotation.y += dt * 2;
+      // Far away only the glow shows, as a beacon; the model (several draw calls) appears up close.
+      pk.gem.visible = Math.abs(pk.x - pp.x) + Math.abs(pk.z - pp.z) < 80;
+      pk.gem.rotation.y += dt * pk.spin;
       pk.glow.material.opacity = 0.7 + Math.sin(this.time * 3 + pk.x) * 0.2;
       if (Math.random() < dt * 4) this.particles.emit({ x: pk.x, y: pk.y + 0.4, z: pk.z, count: 1, speed: 0.2, up: 1, color: 0xfff0c0, life: [0.8, 1.4], size: [0.04, 0.08], jitter: 0.2 });
     }
@@ -661,6 +754,7 @@ export class Game {
     if (i.justDown.has('KeyU')) { this.state.flags.horse = true; this.hud.toast('Wisp unlocked'); }
     if (i.justDown.has('KeyK') && this.bossFight) this.boss.takeHit({ dmg: 9999, poise: 0, dirX: 0, dirZ: 1 });
     if (i.justDown.has('KeyL')) { this.state.ash += 5000; }
+    if (i.justDown.has('KeyY')) { for (const id of ALL_GEAR) this.giveGear(id); }
   }
 }
 
