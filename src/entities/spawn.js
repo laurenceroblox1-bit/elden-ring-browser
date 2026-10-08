@@ -12,3 +12,6 @@ export function createEnemy(game, spawn) {
   const Kind = KINDS[spawn.kind] ?? Sentry;
   return new Kind(game, spawn);
 }
+
+// Kind names, e.g. for a test menu's spawn list.
+export const enemyKinds = () => Object.keys(KINDS);
