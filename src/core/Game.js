@@ -456,6 +456,7 @@ export class Game {
 
   _modalKeys() {
     const i = this.input;
+    const hadModal = !!this.modal;
     switch (this.modal) {
       case 'dialogue':
         if (i.pressed('interact') || i.pressed('roll') || i.pressed('light')) this.hud.advanceDialogue();
@@ -474,7 +475,8 @@ export class Game {
         else if (i.pressed('journal')) this.openModal('journal');
         break;
     }
-    if (this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'pause', 'journal']) i.consume(a);
+    // The key that closes a menu or dialogue must not also act in the world this frame.
+    if (hadModal || this.modal) for (const a of ['interact', 'roll', 'light', 'heavy', 'pause', 'journal']) i.consume(a);
   }
 
   // ---------- loop ----------
