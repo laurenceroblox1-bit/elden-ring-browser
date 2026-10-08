@@ -24,6 +24,7 @@ export const CONTROLS = [
   ['J', 'Journal'],
   ['I', 'Equipment'],
   ['M', 'Map · fast travel between lit lanterns'],
+  ['N', 'Multiplayer · Enter to chat'],
   ['Esc / P', 'Pause'],
   ['`', 'Test menu'],
 ];
@@ -112,6 +113,7 @@ const TEMPLATE = `
       <button class="btn primary" id="btn-resume">Resume</button>
       <button class="btn" id="btn-equipment">Equipment</button>
       <button class="btn" id="btn-map">Map</button>
+      <button class="btn" id="btn-multiplayer">Multiplayer</button>
       <button class="btn" id="btn-quality"></button>
       <button class="btn" id="btn-sound"></button>
       <button class="btn" id="btn-testmenu">Test menu</button>
@@ -225,6 +227,7 @@ export class HUD {
     $('#btn-equipment').addEventListener('click', () => game.openEquipment());
     $('#btn-map').addEventListener('click', () => game.openMenu('map'));
     $('#btn-testmenu').addEventListener('click', () => game.openMenu('testmenu'));
+    $('#btn-multiplayer').addEventListener('click', () => game.openMenu('multiplayer'));
     // One delegated handler for the whole equipment screen: slot tabs and gear rows carry data attributes.
     $('.equip-panel').addEventListener('click', (ev) => {
       const b = ev.target.closest('button');

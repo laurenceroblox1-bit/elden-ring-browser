@@ -23,6 +23,8 @@ export const BINDINGS = {
   equipment: ['KeyI', 'Pad13'], // D-pad down
   map: ['KeyM', 'Pad15'], // D-pad right
   testMenu: ['Backquote'],
+  multiplayer: ['KeyN'],
+  chat: ['Enter', 'NumpadEnter'],
   pause: ['Escape', 'KeyP', 'Pad9'], // Start
   back: ['Pad1'], // B closes menus
   confirm: ['Pad0'], // A presses the focused menu button
@@ -50,6 +52,8 @@ export class Input {
     this.pad = new Gamepad(this);
 
     addEventListener('keydown', (e) => {
+      // Typing in a text field (chat, save codes) isn't playing. Key-ups still count, so nothing sticks.
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (PREVENT.has(e.code)) e.preventDefault();
       this.usingPad = false;
       if (e.repeat) return;

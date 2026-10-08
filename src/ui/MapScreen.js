@@ -4,7 +4,7 @@
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
 import { WORLD, ZONES, ROADS, ARENA, LAKE } from '../data/world.js';
 
-const EXTENT = 345; // metres from the centre of the Vale to each edge of the map
+const EXTENT = WORLD.playRadius + 20; // metres from the centre of the Vale to each edge of the map
 const RES = 512; // canvas pixels per side
 const LIGHT = norm([-0.55, 0.75, -0.55]); // hill shading from the north-west, as on old survey maps
 
@@ -169,10 +169,12 @@ export class MapScreen {
         const shade = Math.max(0, (nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / nl);
         const x = -EXTENT + (i + 0.5) * m, z = -EXTENT + (j + 0.5) * m;
         let c;
-        // Only the lake holds water (World.isWater); other hollows below its level are dry ground.
-        if (h < wl && Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) {
-          c = mix(rgb(WATER[0]), rgb(WATER[1]), Math.min(1, (wl - h) / 4));
-          if (wl - h < 0.35) c = mix(c, [226, 214, 176], 0.45); // a pale shoreline
+        // Only the lake and the fen pools hold water (World.isWater); other hollows are dry ground.
+        const lake = Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r;
+        const level = lake ? wl : w.fenLevel;
+        if (h < level && (lake || w.fenPoolDepth(x, z) > 0)) {
+          c = mix(rgb(lake ? WATER[0] : 0x4a5240), rgb(lake ? WATER[1] : 0x1c2424), Math.min(1, (level - h) / 4));
+          if (level - h < 0.35) c = mix(c, [226, 214, 176], 0.45); // a pale shoreline
         } else {
           c = ramp(h);
           c = c.map((v) => v * (0.5 + shade * 0.72));

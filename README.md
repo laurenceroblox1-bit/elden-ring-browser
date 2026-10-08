@@ -6,18 +6,22 @@ project can grow into its own game.
 
 Walk north up the old road through the Vale and kindle lantern shrines. Help the people you meet,
 call your spectral mare Wisp, and pass through the mist at the Shattered Gate to face **Odran, the
-Bell-Warden**.
+Bell-Warden**. Out east, past the Watch Ruins, the road sinks into the Ashen Fen, where **Vharra,
+Mother of the Mire** sleeps in a ring of standing stones. Play alone, or with friends in a shared
+Vale (see *Multiplayer*).
 
 ## Run it
 
-ES modules need a web server (opening `index.html` straight from disk won't work):
+ES modules need a web server (opening `index.html` straight from disk won't work). The game comes
+with its own, which is also the multiplayer server. It needs Node 18 or newer and nothing else:
 
 ```sh
-cd ashen-vale
-npx http-server -c-1 -p 8080 .      # or: python3 -m http.server 8080
+cd elden-ring-browser
+node server.js            # or: npm start. PORT=3000 node server.js for another port
 ```
 
-Then open http://localhost:8080. Everything is local, three.js included (`vendor/`). The two
+Then open http://localhost:8080. Any static server works too if you only want to play alone
+(`python3 -m http.server 8080`). Everything is local, three.js included (`vendor/`). The two
 Google Fonts fall back to system serif faces when offline.
 
 ## Controls
@@ -40,6 +44,8 @@ Google Fonts fall back to system serif faces when offline.
 | J | Journal |
 | I | Equipment (also a button in the pause menu) |
 | M | Map, with fast travel between lit lanterns (also in the pause menu) |
+| N | Multiplayer: join a shared Vale, see who's there, read the chat |
+| Enter | Chat (when connected): Enter sends, Esc cancels |
 | Esc / P | Pause (graphics quality and sound toggles are here) |
 | ` (backquote) | Test menu (also in the pause menu) |
 
@@ -78,9 +84,18 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
 
 ## What's in the foundation
 
-- **Open vale** (about 660 m across): procedural heightmap terrain, roads, a lake, forests, ruins,
-  a graveyard approach, the walled arena and Castle Dunmarrow's facade. The Hollow Bell spire stands
-  on the eastern peaks as a landmark.
+- **Open vale** (about 900 m across inside the mountains): procedural heightmap terrain, roads, a
+  lake, forests, ruins, a roofless chapel, a graveyard approach, the walled arena and Castle
+  Dunmarrow's facade. East of the Watch Ruins, the fen road leads down into the **Ashen Fen**: a
+  basin of grey ash ground, black pools, reed beds and dead trees, with the Fenwatch Shrine at its
+  edge and the Mother's Hollow at its heart. The Hollow Bell spire stands on the far peaks.
+- **Look**: chunky, faceted blocks (slightly bevelled, flat-shaded), golden-hour light, and on
+  *High* graphics a bloom-and-grade pass (`core/PostFX.js`) that makes fires, lanterns, spells and
+  Wisp glow. Distant enemies and scenery aren't drawn (and far-off idle enemies don't think), and
+  the resolution drops a little when the frame rate sags.
+- **Enemies**: hollow sentries and their captain, packs of Mire Hounds that circle and take turns
+  to lunge, and lantern-bearing Acolytes that throw fire. Floating health bars appear over whatever
+  you're fighting, with damage numbers.
 - **Combat**: stamina-gated light combo, heavy attack, roll with i-frames, backstep, rolling
   attack, poise and stagger, lock-on with strafing, hit-stop, camera shake and sparks.
 - **Guard, parry, riposte**: see *Guarding* below.
@@ -89,14 +104,29 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
 - **The Warden**: a two-phase boss with six attacks. Phase 1 has the sweep, backsweep, a delayed
   overhead slam with a shockwave, and a leaping strike. Phase 2 starts at half health and adds a
   bell toll ring (roll through it) and spectral bells falling from the sky. He staggers when his
-  poise breaks, and a fog gate seals the arena during the fight.
+  poise breaks, and a fog gate seals the arena during the fight. Passing the mist plays his opening
+  cutscene (skippable with E, Space or a click): he rises from his knees, roars, and his name card
+  appears.
+- **Vharra, Mother of the Mire**: the second boss, a hound the size of a cart. Step into her
+  hollow and she wakes in her own cutscene, rising and howling. She bites (parryable), pounces onto
+  you and lands in a shockwave, and spins her tail at anyone standing at her flank. At half health
+  she rears and screams (the wave goes through guards) and adds a fan of ember spit and a howl that
+  calls her litter. Leave the hollow and she goes back to sleep, healed. Beating her gives the
+  **Mother's Fang**.
 - **Wisp, the horse**: summoned and dismissed with H. She has camera-relative steering, a walk and
-  gallop gait, and a jump, and you can attack from the saddle. She won't enter the arena.
-- **Quests**: data-driven, with a journal, a tracker, and compass pins. There are four to start:
+  gallop gait, and a jump, and you can attack from the saddle. She won't enter the arena or join a
+  boss fight. She's built like a horse now: deep chest, crested neck with a glowing mane, jointed
+  legs with fetlocks, bridle and reins.
+- **Quests**: data-driven, with a journal, a tracker, and compass pins:
   - *The Warden at the Gate* (main quest)
   - *A Steed for the Road* (Brannoc unlocks Wisp)
   - *The Pilgrim's Locket* (Sister Ilse gives you an extra flask charge)
   - *Ash in the Watchtower* (a bounty from the notice board; pays ash and the Lantern Bolt rite)
+  - *Teeth in the Mire* (Ilse: thin the hound packs)
+  - *The Mother of the Mire* (Ilse, after the hounds: find the fen and put Vharra to rest)
+  - *Snuff the Lanterns* (Brannoc: the acolytes; pays the Cinder Saber)
+  - *A Letter for Mirelake* (Brannoc's letter to Ilse)
+  - *The Cracked Bell* (Ilse: visit the chapel bell)
 - **Soulslike loop**: lantern shrines are your checkpoints. Resting refills your flask and respawns
   enemies, and you level up there with ash (Vigor, Endurance, Strength, Mind). Resting also refills
   focus. If you die, you drop your
@@ -158,6 +188,10 @@ focus costs. Each one dims while it cools down and its cost turns red when you'r
 | Pilgrim's Spear | One | 3 thrusts | Longest reach. With a shield, a light press while guarding thrusts from behind it | **Lunging Pierce** (10): a long dash thrust with i-frames | Brannoc's camp |
 | Twin Fangs | Two (paired) | 4 quick stabs | Cheap on stamina, weakest guard, widest parry window | **Ghoststep** (10): blink behind your lock target (or a few strides ahead) and stab; 1.6x from behind | By the wreck on the Western Moor |
 | Warden's Bell-Maul | Two | 2 swings | Very slow, huge damage and poise | **Toll of Silence** (22): a ring shockwave around you, then an echo | Reward for silencing the Warden |
+| Cinder Saber | One | 4 quick cuts | Fast, light, wide arcs | **Ember Arc** (12) | Reward for *Snuff the Lanterns* |
+| Mirewatch Halberd | Two | 3 thrusts | Long reach, sweeping heavy | **Lunging Pierce** (10) | On the moor road among the hound packs |
+| Captain's Cleaver | One | 2 heavy chops | Slow for a one-hander, hits like a greatsword | **Toll of Silence** (22) | Against the cracked bell in the chapel |
+| Mother's Fang | Two | 3 swings | A greatsword of bone: big poise damage | **Mother's Pounce** (16): leap onto your foe and land in a ring of ash, untouchable at the top | Reward for beating Vharra |
 
 | Guard | Absorbs | Stamina per damage | Parry window | Notes |
 | --- | --- | --- | --- | --- |
@@ -195,7 +229,7 @@ before the map count the places of kindled lanterns.
 
 Click a lit lantern, on the map or in the list beside it, to travel there. It's a plain teleport:
 it doesn't count as resting, so enemies stay as they are and your flask isn't refilled. You can't
-travel while the Warden's fight is on (the mist holds you) or while you're down.
+travel during a boss fight or while you're down. The fen pools show on the map in black.
 
 ## Test menu
 
@@ -214,7 +248,13 @@ cursor; ` or Esc closes it. It's always available, not only with `#debug`.
   saves and quests stay sane.
 - **Gear and items**: give Wisp (and call her), give all gear, or any single weapon, shield, rite or
   key item (read from the data files).
-- **Boss**: start the fight, force phase 2, stagger, kill, reset.
+- **Boss**: start the fight, force phase 2, stagger, kill, reset, set his health, and *Rehearse*
+  (full restore, then straight into the fight, with or without the cutscene).
+- **Second boss**: fight Vharra (with or without her cutscene; revives her if she's beaten), set
+  her to 50% (phase 2) or 10%, kill her, or put her back to sleep.
+- **Debug views**: hitboxes (body capsules, red while invulnerable, and attack reach wedges),
+  colliders near you, and a free camera (WASD, mouse, E up, Q down, Shift fast).
+- **Saves**: save now, wipe (asks twice), and copy or paste a save code to share a moment.
 - **Quests**: advance the main quest a stage, complete everything (with rewards), reset all.
 - **World**: a time-of-day slider (live), the day cycle, weather, the simulation speed (0.25x to 2x),
   the HUD on or off, and a performance overlay (fps, draw calls, triangles, position, zone) that
@@ -242,7 +282,45 @@ src/core/Gamepad.js        Gamepad API polling (standard mapping) and D-pad menu
 src/ui/HUD.js              DOM overlay and most menus
 src/ui/TestMenu.js         the test menu (`)
 src/ui/MapScreen.js        the map and fast travel (M)
+src/ui/NetPanel.js         the multiplayer screen (N) and the chat bar
+src/ui/EnemyBars.js        floating enemy health bars and damage numbers
+src/ui/DebugViews.js       hitbox, collider and free-camera views for the test menu
+src/net/                   Net (multiplayer client) and Ghost (another player's knight)
+src/core/Cutscene.js       boss opening cutscenes (letterbox, camera shots, name card)
+src/core/PostFX.js         bloom, colour grade and vignette on High graphics
+server.js                  static server + multiplayer relay (Node, no dependencies)
 ```
+
+### Where the animations are
+
+Everything moves procedurally; there are no animation files. Look here:
+
+- `src/models/pose.js`: the pose system. A pose is a flat object of joint angles; `attackPose`,
+  `framePose` and `addGait` blend them over time.
+- `src/models/weapons.js`: `STANCES` (how each weapon is held at rest, guarding, sprinting) and
+  `MOVE_POSES` (every attack's wind-up and strike poses).
+- `src/entities/Player.js`: the player's states (rolls, attacks, guard, ripostes, flask, riding).
+- `src/entities/Warden.js`: Odran's moves and his cutscene intro (kneel, rise, roar).
+- `src/entities/Hound.js` (`_pose`) and `src/entities/Matriarch.js`: the hounds and Vharra (sleep,
+  rise, howl, bite, pounce, tail sweep).
+- `src/entities/Horse.js`: Wisp's walk and gallop gaits.
+- `src/data/abilities.js`: weapon arts and rites as pose tracks (`keys`) plus timed events.
+
+## Multiplayer
+
+Run `node server.js` on one computer. It prints the addresses to open: `http://localhost:8080` on
+that computer, and `http://<its-ip>:8080` for friends on the same network. To play over the
+internet, put the folder on any Node host (Render, Railway, Fly.io, a small VPS) and share that
+address. Then press **N** in game and choose *Join the shared Vale*. The server address is filled in
+automatically when the page came from the game server.
+
+What's shared: everyone sees everyone else's knight, posed joint for joint (walking, rolling,
+swinging, drinking, riding Wisp), with their name over their head and their own cloak colour. Chat
+with Enter. What isn't shared yet: each player still runs their own enemies, loot and bosses, so
+you fight side by side but against your own copies. Up to 16 players per server.
+
+The published artifact link can't connect to a server (the sandbox blocks outside connections), so
+multiplayer needs the game served by `server.js`.
 
 ### Adding things
 
@@ -297,12 +375,13 @@ position; the test menu toggles it any time), plus these keys:
   sword's animation for every weapon.
 - **Camera**: it avoids terrain and stays inside the arena, but it can still clip through ruins and
   castle walls.
-- **Performance**: each character is about 40 meshes. Merging meshes per bone, or skinned glTF
-  models, would cut draw calls (about 500 in open areas today). Vegetation has no level of detail
-  (LOD).
+- **Performance**: characters are merged into a few skinned meshes and distant things are culled
+  (about 150 to 250 draw calls in open areas). Vegetation has no level of detail (LOD).
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
 - **Map**: fixed scale with no zoom or pan, and no custom waypoints.
-- **World**: Castle Dunmarrow is a facade with barred doors and is the hook for region two. The
-  sentries are the only regular enemy type.
+- **World**: Castle Dunmarrow is a facade with barred doors and is the hook for region three.
+- **Multiplayer**: positions, poses and chat are shared, but enemies and bosses are simulated by
+  each player separately. Shared enemies need one player (or the server) to own each enemy and
+  send its state, and hits to be relayed to that owner.
 - **Audio**: everything is synthesized. Recorded sounds and a real boss score would lift it a lot.
 - **Saves**: a single autosave slot in localStorage.

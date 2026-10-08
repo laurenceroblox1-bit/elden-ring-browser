@@ -23,6 +23,8 @@ import { Warden } from '../entities/Warden.js';
 import { NPC } from '../entities/NPC.js';
 import { HUD } from '../ui/HUD.js';
 import { TestMenu } from '../ui/TestMenu.js';
+import { NetPanel } from '../ui/NetPanel.js';
+import { Net } from '../net/Net.js';
 import { MapScreen } from '../ui/MapScreen.js';
 import { navigate, focusFirst } from './Gamepad.js';
 import { QUESTS } from '../data/quests.js';
@@ -36,7 +38,7 @@ import { buildGearDisplay } from '../models/weapons.js';
 
 const tmp = new THREE.Vector3();
 const SCREENS = new Set(['pause', 'journal', 'shrine', 'equipment']); // modals with their own HUD screen
-const MENU_KEYS = ['interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment', 'map', 'testMenu', 'back', 'confirm', 'whistle', 'flask', 'lockOn'];
+const MENU_KEYS = ['multiplayer', 'chat', 'interact', 'roll', 'light', 'heavy', 'guard', 'art', 'rite', 'pause', 'journal', 'equipment', 'map', 'testMenu', 'back', 'confirm', 'whistle', 'flask', 'lockOn'];
 const DPAD = ['Pad12', 'Pad13', 'Pad14', 'Pad15'];
 
 const DRAW_DIST = 150; // metres from the camera beyond which enemies aren't drawn
@@ -100,7 +102,8 @@ export class Game {
     this.cam = new CameraRig(this);
     this.debugViews = new DebugViews(this);
     // Full-screen menus that build their own DOM (the others live in HUD's template).
-    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this) };
+    this.net = new Net(this);
+    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this), multiplayer: new NetPanel(this.hud.root, this) };
     this.input.pad.onChange = (on, id) => this._onPad(on, id);
     this._registerInteractables();
     this._combatTips();
@@ -723,12 +726,15 @@ export class Game {
       case 'equipment': shut('equipment', 'pause', 'back'); break;
       case 'testmenu': shut('testMenu', 'pause', 'back'); break;
       case 'map': shut('map', 'pause', 'back'); break;
+      case 'multiplayer': shut('multiplayer', 'pause', 'back'); break;
       case null:
         if (i.pressed('pause')) this.openModal('pause', true);
         else if (i.pressed('journal')) this.openModal('journal');
         else if (i.pressed('equipment')) this.openEquipment();
         else if (i.pressed('map')) this.openMenu('map');
         else if (i.pressed('testMenu')) this.openMenu('testmenu');
+        else if (i.pressed('multiplayer')) this.openMenu('multiplayer');
+        else if (i.pressed('chat')) this.panels.multiplayer.openChat();
         break;
     }
     // The key that closes a menu or dialogue must not also act in the world this frame.
@@ -745,6 +751,7 @@ export class Game {
     this.time += dt;
     if (this.mode === 'playing') this._play(dt);
     else this._title(dt);
+    this.net.update(dt);
     this.particles.update(this.modal ? 0 : dt * this.timeScale);
     this.world.update(dt * this.timeScale, this.time);
     this.sky.update(this.camera.position, this.player.pos);
