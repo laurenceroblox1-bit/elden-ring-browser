@@ -22,8 +22,8 @@ export class CameraRig {
   }
 
   snapBehind(yaw) {
-    this.yaw = yaw + Math.PI;
-    this.pitch = 0.28;
+    this.yaw = this.viewYaw = yaw + Math.PI;
+    this.pitch = this.viewPitch = 0.28;
     const p = this.game.player.pos;
     this.focus.set(p.x, p.y + 1.55, p.z);
   }
@@ -67,17 +67,26 @@ export class CameraRig {
     const want = this.zoom + (p.mounted ? 2 : 0) + (lock ? 0.9 : 0) + (lock === g.boss ? 2.2 : 0);
     this.dist = damp(this.dist, want, 5, dt);
 
-    const cp = Math.cos(this.pitch);
-    const ox = Math.sin(this.yaw) * cp, oy = Math.sin(this.pitch), oz = Math.cos(this.yaw) * cp;
-    // March toward the camera and pull in where the terrain would block the view.
+    // The view follows the aim with a very short ease: input still feels instant, but turning glides
+    // instead of stepping frame to frame (that stepping read as the camera "clicking").
+    this.viewYaw = this.viewYaw === undefined ? this.yaw : dampAngle(this.viewYaw, this.yaw, 28, dt);
+    this.viewPitch = this.viewPitch === undefined ? this.pitch : damp(this.viewPitch, this.pitch, 28, dt);
+    const cp = Math.cos(this.viewPitch);
+    const ox = Math.sin(this.viewYaw) * cp, oy = Math.sin(this.viewPitch), oz = Math.cos(this.viewYaw) * cp;
+    // March toward the camera in fine steps and interpolate the exact point where terrain blocks the view.
     let d = this.dist;
-    for (let i = 1; i <= 10; i++) {
-      const f = (i / 10) * this.dist;
+    const STEPS = 24;
+    let prevGap = this.focus.y - g.world.getHeight(this.focus.x, this.focus.z) - 0.45;
+    for (let i = 1; i <= STEPS; i++) {
+      const f = (i / STEPS) * this.dist;
       const x = this.focus.x + ox * f, y = this.focus.y + oy * f, z = this.focus.z + oz * f;
-      if (g.world.getHeight(x, z) + 0.45 > y) {
-        d = Math.max(1.2, f - this.dist / 10);
+      const gap = y - (g.world.getHeight(x, z) + 0.45);
+      if (gap < 0) {
+        const u = prevGap > 0 ? prevGap / (prevGap - gap) : 0;
+        d = Math.max(1.2, ((i - 1 + u) / STEPS) * this.dist - 0.15);
         break;
       }
+      prevGap = gap;
     }
     // Inside the Warden's arena the boom stays within the wall ring, so walls and mist never block the fight.
     if (g.world.inArena(p.pos.x, p.pos.z)) {
@@ -87,6 +96,9 @@ export class CameraRig {
       const disc = b * b - 4 * a * c;
       if (a > 1e-6 && disc > 0) d = Math.max(1.2, Math.min(d, (-b + Math.sqrt(disc)) / (2 * a)));
     }
+    // Ease the boom: pull in fast when something blocks the view, drift back out gently.
+    this.boom = this.boom === undefined ? d : damp(this.boom, d, d < this.boom ? 18 : 3.5, dt);
+    d = this.boom;
     const cam = this.camera;
     cam.position.set(this.focus.x + ox * d, this.focus.y + oy * d, this.focus.z + oz * d);
     // Squeezed boom (walls, arena edge): rise a little and look past the player instead of at their back.
