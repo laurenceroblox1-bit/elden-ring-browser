@@ -18,6 +18,8 @@ export const ZONES = {
   gatehouse: { name: 'Gatehouse Shrine', x: 16, z: -194, r: 12, flat: 11 },
   arena: { name: 'The Shattered Gate', x: 0, z: -252, r: 34, flat: 40 },
   castle: { name: 'Castle Dunmarrow', x: 0, z: -318, r: 22, flat: 34 },
+  // A roofless chapel on the rise above Mirelake; its bell lies cracked in the grass.
+  chapel: { name: 'Chapel of the Cracked Bell', x: -120, z: 80, r: 14, flat: 12 },
 };
 
 export const ROADS = [
@@ -58,6 +60,19 @@ export const ENEMY_SPAWNS = [
 
 export const PICKUPS = [
   { item: 'locket', quest: 'locket', x: -231, z: -170 },
+];
+
+// Spots that scenery must leave clear: where gear lies in the Vale (mirrors data/loot.js) and the
+// Watch Ruins tower stump. Nothing is planted or scattered within `r` metres of these.
+export const KEEP_CLEAR = [
+  { x: 15.5, z: 202, r: 3 }, // by the First Light notice board
+  { x: 142.4, z: 20.8, r: 3 }, // the tower stump's doorway
+  { x: 144, z: 18, r: 5 },
+  { x: -61, z: 156.5, r: 3 }, // Brannoc's tent
+  { x: -224.5, z: -169, r: 3 }, // the moor wreck
+  { x: -148, z: -26.5, r: 3 }, // the Mirelake Shore cairn
+  { x: -10, z: -178, r: 3 }, // among the graves
+  { x: 20.5, z: -190, r: 3 }, // the Gatehouse Shrine
 ];
 
 // Fires get a flickering light (campfires) or just a glow (braziers).

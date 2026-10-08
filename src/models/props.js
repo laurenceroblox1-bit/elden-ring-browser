@@ -208,17 +208,260 @@ export function buildBellDrop() {
   return { group: g, material: m };
 }
 
-// Geometries for instanced vegetation. Each is translated so y=0 is the base.
-export function treeGeometries() {
-  const trunk = new THREE.CylinderGeometry(0.16, 0.26, 1, 5);
-  trunk.translate(0, 0.5, 0);
-  const pine = new THREE.ConeGeometry(1, 1, 6);
-  pine.translate(0, 0.5, 0);
-  const crown = new THREE.IcosahedronGeometry(1, 0);
-  const rock = new THREE.IcosahedronGeometry(1, 0);
-  const tuft = new THREE.ConeGeometry(0.1, 0.6, 3);
-  tuft.translate(0, 0.3, 0);
-  const branch = new THREE.BoxGeometry(0.1, 1, 0.1);
-  branch.translate(0, 0.5, 0);
-  return { trunk, pine, crown, rock, tuft, branch };
+// ---------- batched scenery ----------
+// Templates for World's chunk batcher. Each returns parts in prop space (base at y = 0):
+// { geo, matrix, color, flex | sway, phaseK }. Geometry is shared; colours are per call so every
+// clump comes out a little different. See world/Batcher.js for how sway and phase are used.
+
+const _q = new THREE.Quaternion();
+const _e = new THREE.Euler();
+const _p = new THREE.Vector3();
+const _s = new THREE.Vector3();
+export function xform(x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) {
+  return new THREE.Matrix4().compose(_p.set(x, y, z), _q.setFromEuler(_e.set(rx, ry, rz)), _s.set(sx, sy, sz));
+}
+
+export function tone(hex, rng, dh = 0.02, dl = 0.07) {
+  return new THREE.Color(hex).offsetHSL((rng() - 0.5) * dh, 0, (rng() - 0.5) * dl);
+}
+
+let SG = null;
+// Shared low-poly shapes, each with its base at y = 0.
+export function sceneryGeometries() {
+  if (SG) return SG;
+  const up = (g, y) => g.translate(0, y, 0);
+  // Three-sided blade without a base: the cheapest thing that reads as grass from every side.
+  const blade = new THREE.BufferGeometry();
+  blade.setAttribute('position', new THREE.Float32BufferAttribute([0, 1, 0, 1, 0, 0, -0.5, 0, 0.866, -0.5, 0, -0.866], 3));
+  blade.setIndex([1, 3, 0, 3, 2, 0, 2, 1, 0]);
+  blade.computeVertexNormals();
+  SG = {
+    blade,
+    trunk: up(new THREE.CylinderGeometry(0.16, 0.26, 1, 5), 0.5),
+    pine: up(new THREE.ConeGeometry(1, 1, 6), 0.5),
+    crown: new THREE.IcosahedronGeometry(1, 0),
+    rock: new THREE.IcosahedronGeometry(1, 0),
+    lump: new THREE.DodecahedronGeometry(1, 0),
+    branch: up(new THREE.BoxGeometry(0.1, 1, 0.1), 0.5),
+    octa: new THREE.OctahedronGeometry(1, 0),
+    log: new THREE.CylinderGeometry(1, 1, 1, 7),
+    disc: up(new THREE.CylinderGeometry(1, 1, 1, 7), 0.5),
+    hex: up(new THREE.CylinderGeometry(1, 1.08, 1, 6), 0.5),
+    stem: up(new THREE.CylinderGeometry(0.8, 1, 1, 5), 0.5),
+    cap: up(new THREE.ConeGeometry(1, 1, 6), 0.5),
+    box: up(new THREE.BoxGeometry(1, 1, 1), 0.5),
+    cloth: new THREE.BoxGeometry(1, 1, 1, 1, 5, 1).translate(0, -0.5, 0),
+    bell: up(new THREE.CylinderGeometry(0.55, 1, 1.1, 9), 0),
+  };
+  return SG;
+}
+
+export const TREE_FLEX = 0.026;
+
+export function pineParts(rng) {
+  const G = sceneryGeometries();
+  return [
+    { geo: G.trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 1, 3, 1), color: tone(0x4a3a2a, rng), flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 1.6, 0, 0, 0, 0, 2.2, 4.2, 2.2), color: tone(0x34482e, rng), flex: TREE_FLEX },
+    { geo: G.pine, matrix: xform(0, 3.6, 0, 0, 0.5, 0, 1.5, 3.4, 1.5), color: tone(0x3c5232, rng), flex: TREE_FLEX },
+  ];
+}
+
+export const BROAD_HUES = [0xb5832e, 0xc29a3a, 0x8f7a2e, 0xa4612a];
+
+export function broadParts(rng) {
+  const G = sceneryGeometries();
+  const hue = BROAD_HUES[Math.floor(rng() * BROAD_HUES.length)];
+  const a = rng() * 6.28;
+  return [
+    { geo: G.trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 1.2, 3.4, 1.2), color: tone(0x55402c, rng), flex: TREE_FLEX },
+    { geo: G.crown, matrix: xform(0, 4.3, 0, 0, a, 0, 2.6, 2.1, 2.6), color: tone(hue, rng), flex: TREE_FLEX },
+    { geo: G.crown, matrix: xform(Math.sin(a) * 1.3, 5.3, Math.cos(a) * 1.3, 0.4, a, 0, 1.5, 1.25, 1.5), color: tone(hue, rng).offsetHSL(0, 0, 0.04), flex: TREE_FLEX },
+  ];
+}
+
+export function deadParts(rng) {
+  const G = sceneryGeometries();
+  const c = tone(0x4d4640, rng);
+  return [
+    { geo: G.trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 0.8, 4.5, 0.8), color: c, flex: TREE_FLEX * 0.6 },
+    { geo: G.branch, matrix: xform(0, 2.6, 0, 0, 0, 0.8, 1, 1.8, 1), color: c, flex: TREE_FLEX * 0.6 },
+    { geo: G.branch, matrix: xform(0, 3.2, 0, 0, 2.5, -0.7, 1, 1.4, 1), color: c, flex: TREE_FLEX * 0.6 },
+  ];
+}
+
+export function rockParts(rng, hex = 0x7a766d) {
+  return [{ geo: sceneryGeometries().rock, matrix: new THREE.Matrix4(), color: tone(hex, rng, 0.02, 0.1) }];
+}
+
+const GRASS = [0xb39a4e, 0x7c8740, 0x9a9446, 0x8a8a3e];
+export function tuftParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const hue = GRASS[Math.floor(rng() * GRASS.length)];
+  const n = 3 + (rng() < 0.4 ? 1 : 0);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.28 + rng();
+    const tilt = 0.15 + rng() * 0.3;
+    const h = 0.45 + rng() * 0.45;
+    parts.push({ geo: G.blade, matrix: xform(Math.sin(a) * 0.06, 0, Math.cos(a) * 0.06, Math.cos(a) * tilt, rng() * 6, -Math.sin(a) * tilt, 0.07, h, 0.07), color: tone(hue, rng, 0.03, 0.12), flex: 0.24 });
+  }
+  return parts;
+}
+
+const PETALS = [0xe8dcb0, 0x9a86b8, 0xc0563a, 0x8fa8c8, 0xd8b440, 0xe0a0a8];
+export function flowerParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const hue = PETALS[Math.floor(rng() * PETALS.length)];
+  const hue2 = rng() < 0.3 ? PETALS[Math.floor(rng() * PETALS.length)] : hue;
+  const n = 4 + Math.floor(rng() * 5);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.28, d = Math.sqrt(rng()) * 0.8;
+    const x = Math.sin(a) * d, z = Math.cos(a) * d, h = 0.25 + rng() * 0.3;
+    parts.push({ geo: G.blade, matrix: xform(x, 0, z, 0, rng() * 6, 0, 0.02, h, 0.02), color: tone(0x6d7a3a, rng), flex: 0.35 });
+    const s = 0.06 + rng() * 0.04;
+    parts.push({ geo: G.octa, matrix: xform(x, h, z, 0, rng(), 0, s, s * 0.6, s), color: tone(i % 3 ? hue : hue2, rng, 0.03, 0.1), flex: 0.35 });
+  }
+  return parts;
+}
+
+export function fernParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const n = 6 + Math.floor(rng() * 3);
+  const hue = rng() < 0.7 ? 0x4f6b34 : 0x7a7234;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.28 + rng() * 0.4;
+    const tilt = 0.9 + rng() * 0.35;
+    parts.push({ geo: G.blade, matrix: xform(0, 0, 0, Math.cos(a) * tilt, a, -Math.sin(a) * tilt, 0.13, 0.8 + rng() * 0.35, 0.05), color: tone(hue, rng), flex: 0.4 });
+  }
+  return parts;
+}
+
+const BUSH = [0x56652f, 0x4a5a2c, 0x76703a, 0x8a4f2a, 0x6a6a30];
+export function bushParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const hue = BUSH[Math.floor(rng() * BUSH.length)];
+  const n = 2 + Math.floor(rng() * 2);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.28, d = i ? 0.5 + rng() * 0.3 : 0;
+    const s = (i ? 0.55 : 0.8) + rng() * 0.3;
+    parts.push({ geo: G.lump, matrix: xform(Math.sin(a) * d, s * 0.55, Math.cos(a) * d, rng(), rng() * 6, rng(), s, s * 0.8, s), color: tone(hue, rng, 0.03, 0.1), flex: 0.07 });
+  }
+  return parts;
+}
+
+export function mushroomParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const red = rng() < 0.45;
+  const n = 2 + Math.floor(rng() * 3);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.28, d = i ? 0.12 + rng() * 0.2 : 0;
+    const x = Math.sin(a) * d, z = Math.cos(a) * d, h = 0.1 + rng() * 0.14, r = 0.07 + rng() * 0.07;
+    parts.push({ geo: G.stem, matrix: xform(x, 0, z, 0, 0, 0, 0.035, h, 0.035), color: tone(0xd8ccb0, rng) });
+    parts.push({ geo: G.cap, matrix: xform(x, h - 0.02, z, (rng() - 0.5) * 0.3, rng(), 0, r, r * 0.7, r), color: tone(red ? 0xa8452f : 0x8a6a4a, rng, 0.02, 0.1) });
+  }
+  return parts;
+}
+
+// Fallen log lying along local X. Collider: a box of half-size (len / 2, 0.4).
+export function logParts(rng, len) {
+  const G = sceneryGeometries();
+  return [
+    { geo: G.log, matrix: xform(0, 0.3, 0, 0, 0, Math.PI / 2, 0.36, len, 0.36), color: tone(0x4e3d2c, rng) },
+    { geo: G.box, matrix: xform(len * 0.1, 0.6, 0, 0, 0, 0, len * 0.5, 0.06, 0.4), color: tone(0x5d6b34, rng) },
+    { geo: G.branch, matrix: xform(-len * 0.2, 0.45, 0.2, 0.9, 0, 0.3, 1.2, 0.8, 1.2), color: tone(0x4e3d2c, rng) },
+    { geo: G.disc, matrix: xform(len / 2, 0.3, 0, 0, 0, Math.PI / 2, 0.3, 0.02, 0.3), color: tone(0x9c8058, rng) },
+  ];
+}
+
+export function reedParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  const n = 7 + Math.floor(rng() * 5);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.28, d = Math.sqrt(rng()) * 0.6;
+    const x = Math.sin(a) * d, z = Math.cos(a) * d, h = 1.0 + rng() * 0.9;
+    const tilt = (rng() - 0.5) * 0.25;
+    parts.push({ geo: G.blade, matrix: xform(x, 0, z, tilt, rng() * 6, tilt, 0.035, h, 0.035), color: tone(rng() < 0.5 ? 0x6f7a3a : 0x8f8a48, rng), flex: 0.16 });
+    if (i < 2) parts.push({ geo: G.stem, matrix: xform(x, h * 0.72, z, 0, 0, 0, 0.05, 0.24, 0.05), color: tone(0x5a4030, rng), flex: 0.16 });
+  }
+  return parts;
+}
+
+export function lilyParts(rng) {
+  const G = sceneryGeometries();
+  const s = 0.25 + rng() * 0.2;
+  const parts = [{ geo: G.disc, matrix: xform(0, 0, 0, 0, rng() * 6, 0, s, 0.03, s), color: tone(0x4f6a3a, rng) }];
+  if (rng() < 0.3) parts.push({ geo: G.octa, matrix: xform(s * 0.2, 0.06, 0, 0, rng(), 0, 0.09, 0.07, 0.09), color: tone(rng() < 0.5 ? 0xf0e8d8 : 0xe0a0b0, rng) });
+  return parts;
+}
+
+export function pathStoneParts(rng) {
+  const s = 0.18 + rng() * 0.2;
+  return [{ geo: sceneryGeometries().hex, matrix: xform(0, -0.07, 0, (rng() - 0.5) * 0.12, rng() * 6, (rng() - 0.5) * 0.12, s, 0.11, s * (0.7 + rng() * 0.5)), color: tone(rng() < 0.5 ? 0x958b76 : 0x80786a, rng, 0.02, 0.1) }];
+}
+
+export function standingStoneParts(rng, h) {
+  const G = sceneryGeometries();
+  const tilt = (rng() - 0.5) * 0.16;
+  return [
+    { geo: G.box, matrix: xform(0, -0.4, 0, tilt, 0, tilt, 0.9 + rng() * 0.3, h, 0.55 + rng() * 0.2), color: tone(0x77736a, rng) },
+    { geo: G.box, matrix: xform(0, h - 0.48, 0, tilt, 0, tilt, 0.95, 0.12, 0.6), color: tone(0x7f8460, rng) },
+  ];
+}
+
+export function cairnParts(rng) {
+  const G = sceneryGeometries();
+  const parts = [];
+  let y = 0;
+  for (let i = 0; i < 5; i++) {
+    const s = 0.6 - i * 0.1;
+    parts.push({ geo: G.rock, matrix: xform((rng() - 0.5) * 0.1, y + s * 0.35, (rng() - 0.5) * 0.1, 0, rng() * 6, 0, s, s * 0.55, s), color: tone(0x8a8478, rng, 0.02, 0.12) });
+    y += s * 0.62;
+  }
+  return parts;
+}
+
+// Road banner: pole, crossbar and a cloth that flutters from the bar down.
+export function bannerParts(rng, hex) {
+  const G = sceneryGeometries();
+  const top = 4.7;
+  const sway = (lx, ly, lz, wy) => Math.max(0, top - wy) * 0.14;
+  const cloth = tone(hex, rng);
+  return [
+    { geo: G.box, matrix: xform(0, -0.3, 0, 0, 0, 0, 0.16, 5.4, 0.16), color: tone(0x3a2b1f, rng) },
+    { geo: G.box, matrix: xform(0.45, top, 0, 0, 0, 0, 1.4, 0.1, 0.1), color: tone(0x3a2b1f, rng) },
+    { geo: G.cloth, matrix: xform(0.55, top, 0, 0, 0, 0, 1.0, 2.3, 0.04), color: cloth, sway, phaseK: -0.9 },
+    { geo: G.octa, matrix: xform(0.55, top - 1.0, 0.03, 0, 0, 0, 0.22, 0.32, 0.02), color: tone(0xd8c48a, rng), sway, phaseK: -0.9 },
+    { geo: G.cap, matrix: xform(0.55, top - 2.3, 0, Math.PI, 0, 0, 0.5, 0.35, 0.03), color: cloth, sway, phaseK: -0.9 },
+  ];
+}
+
+// Lantern post; the glowing core is drawn separately (World batches all cores into one mesh).
+export const LANTERN_CORE = new THREE.Vector3(0.62, 2.72, 0);
+export function lanternPostParts(rng) {
+  const G = sceneryGeometries();
+  const wood = tone(0x3a2b1f, rng);
+  const metal = tone(0x4a3c2a, rng);
+  return [
+    { geo: G.box, matrix: xform(0, -0.3, 0, 0, 0, 0, 0.18, 3.5, 0.18), color: wood },
+    { geo: G.box, matrix: xform(0.35, 3.05, 0, 0, 0, 0, 0.8, 0.1, 0.1), color: wood },
+    { geo: G.box, matrix: xform(0.62, 2.5, 0, 0, 0, 0, 0.32, 0.04, 0.32), color: metal },
+    { geo: G.cap, matrix: xform(0.62, 2.92, 0, 0, Math.PI / 4, 0, 0.26, 0.2, 0.26), color: metal },
+    { geo: G.box, matrix: xform(0.62, 2.95, 0, 0, 0, 0, 0.03, 0.12, 0.03), color: metal },
+  ];
+}
+
+// The chapel's fallen bell, cracked and tipped in the grass.
+export function fallenBellParts(rng) {
+  const G = sceneryGeometries();
+  return [
+    { geo: G.bell, matrix: xform(0, 0.9, 0, 0, 0, 1.25, 1.1, 1.1, 1.1), color: tone(0x7c6a40, rng) },
+    { geo: G.box, matrix: xform(-1.15, 1.6, 0, 0, 0, 1.25, 0.5, 0.3, 0.5), color: tone(0x6a5a36, rng) },
+    { geo: G.box, matrix: xform(0.1, 1.0, 1.02, 0.2, 0, 0.9, 0.06, 0.9, 0.03), color: tone(0x3a3226, rng) },
+  ];
 }

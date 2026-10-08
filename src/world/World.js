@@ -1,21 +1,30 @@
 // The Vale: heightmap terrain, roads, lake, vegetation, set pieces and 2D colliders.
 import * as THREE from '../lib/three.js';
 import { createNoise2D, fbm, smoothstep, clamp, lerp, mulberry32, distToSegment } from '../core/math.js';
-import { WORLD, ZONES, ROADS, LAKE, ARENA, SHRINES, NOTICE, FIRES } from '../data/world.js';
+import { WORLD, ZONES, ROADS, LAKE, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
 import { mat, mesh, box, glowSprite } from '../models/kit.js';
+import { Scenery } from './Scenery.js';
+import { Water } from './Water.js';
+import { Weather, WEATHER } from './Weather.js';
+import { Ambient } from './Ambient.js';
+import { WIND } from './Wind.js';
 
 const SIZE = WORLD.size;
 const SEG = WORLD.segments;
 const CELL = SIZE / SEG;
 const HALF = SIZE / 2;
 const GRID = 16; // collider hash cell, metres
+const TILES = 3; // terrain is split into TILES x TILES meshes so off-screen ground is culled
 
 const C = (hex) => new THREE.Color(hex);
+const tmpC = new THREE.Color();
 const COL = {
   gold: C(0xa38f48), olive: C(0x6f7838), deep: C(0x4f5a2c), dry: C(0x9c8058),
   dirt: C(0x7d6649), road: C(0x9a8460), rock: C(0x77736a), rockDark: C(0x55524b),
   snow: C(0xdcd9d2), ash: C(0x6e6962), mud: C(0x4d4234), moor: C(0x6b5f4a),
+  warm: C(0xb08a48), cool: C(0x5e6c3a), damp: C(0x4c5530), canopy: C(0x55602e),
+  rut: C(0x87714f), scree: C(0x8a8578), rockWarm: C(0x857a6a),
 };
 
 export class World {
@@ -31,6 +40,9 @@ export class World {
     this.fires = [];
     this.shrines = new Map();
     this.blocks = [];
+    this.glowSpots = []; // small flames (candles) for Scenery's batched glow
+    this.statics = []; // placed set pieces whose plain meshes Scenery bakes into its chunks
+    this.indexed = false;
 
     this.roadSegs = [];
     for (const road of ROADS) for (let i = 0; i < road.length - 1; i++) this.roadSegs.push([...road[i], ...road[i + 1]]);
@@ -45,6 +57,9 @@ export class World {
     this._buildVegetation();
     this._buildBlocks();
     this._indexColliders();
+
+    this.weather = new Weather(this.scene, game.sky);
+    this.ambient = new Ambient(this, this.scenery);
   }
 
   // ---------- height field ----------
@@ -136,51 +151,95 @@ export class World {
         const hu = this.heights[Math.max(0, iz - 1) * n + ix], hdn = this.heights[Math.min(SEG, iz + 1) * n + ix];
         const slope = Math.hypot(hr - hl, hdn - hu) / (2 * CELL);
 
+        const nz = this.noise(x * 0.04, z * 0.04);
         const t = fbm(this.noise2, x * 0.012, z * 0.012, 2) * 0.5 + 0.5;
         c.copy(COL.olive).lerp(COL.gold, smoothstep(0.35, 0.75, t));
+        // Broad warm and cool drifts across the whole Vale, so distant fields aren't one flat tone.
+        const macro = fbm(this.noise, x * 0.0045 + 11, z * 0.0045 - 7, 2);
+        c.lerp(COL.warm, smoothstep(0.15, 0.65, macro) * 0.3);
+        c.lerp(COL.cool, smoothstep(-0.15, -0.65, macro) * 0.35);
         c.lerp(COL.deep, smoothstep(0.55, 0.9, fbm(this.noise, x * 0.03 + 9, z * 0.03, 2) * 0.5 + 0.5) * 0.6);
+        // Darker ground under the forests (same field Scenery plants trees by).
+        c.lerp(COL.canopy, smoothstep(0.0, 0.35, fbm(this.noise, x * 0.007 + 3, z * 0.007 - 5, 2)) * 0.35);
         if (x < -150 && z < -60) c.lerp(COL.moor, smoothstep(-150, -230, x) * 0.7);
         c.lerp(COL.dry, smoothstep(0.6, 0.95, (this.noise(x * 0.05, z * 0.05) + 1) / 2) * 0.35);
-        c.lerp(COL.road, this.roadW[i] * 0.9);
-        c.lerp(COL.rock, smoothstep(0.45, 0.8, slope));
-        c.lerp(COL.rockDark, smoothstep(0.9, 1.3, slope) * 0.6);
+        // Roads: packed earth with darker, trodden shoulders.
+        const rw = this.roadW[i];
+        c.lerp(COL.road, rw * 0.9);
+        c.lerp(COL.rut, rw * (1 - rw) * 1.6 * (0.6 + nz * 0.4));
+        // Rock: warm and dark strata on the steep faces, scree below the snow line.
+        const strata = 0.5 + 0.5 * Math.sin(h * 0.42 + nz * 2.2);
+        c.lerp(tmpC.copy(COL.rock).lerp(COL.rockWarm, strata * 0.7), smoothstep(0.45, 0.8, slope));
+        c.lerp(COL.rockDark, smoothstep(0.9, 1.3, slope) * (0.4 + strata * 0.35));
         const ld = Math.hypot(x - LAKE.x, z - LAKE.z);
+        c.lerp(COL.damp, (1 - smoothstep(LAKE.r * 1.0, LAKE.r * 1.5 + nz * 8, ld)) * 0.55);
         c.lerp(COL.mud, 1 - smoothstep(LAKE.r * 0.85, LAKE.r * 1.05, ld));
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
-        c.lerp(COL.snow, smoothstep(78, 96, h + this.noise(x * 0.04, z * 0.04) * 6));
+        const snowLine = h + nz * 7;
+        const snow = smoothstep(76, 92, snowLine) * (1 - smoothstep(0.85, 1.4, slope) * 0.7);
+        c.lerp(COL.scree, smoothstep(58, 76, snowLine) * smoothstep(0.3, 0.7, slope) * 0.45 * (1 - snow));
+        c.lerp(COL.snow, snow);
         col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
       }
     }
-    const idx = new Uint32Array(SEG * SEG * 6);
+    // One shared vertex buffer, TILES x TILES index ranges: each tile is its own mesh with a tight
+    // bounding sphere, so the camera only draws the ground in front of it.
+    const pAttr = new THREE.BufferAttribute(pos, 3);
+    const cAttr = new THREE.BufferAttribute(col, 3);
+    const full = new THREE.BufferGeometry();
+    full.setAttribute('position', pAttr);
+    full.setIndex(new THREE.BufferAttribute(this._terrainIndex(0, 0, SEG), 1));
+    full.computeVertexNormals();
+    const nAttr = full.getAttribute('normal');
+    full.dispose();
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 });
+    this.terrain = new THREE.Group();
+    const span = SEG / TILES;
+    for (let tz = 0; tz < TILES; tz++) {
+      for (let tx = 0; tx < TILES; tx++) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', pAttr);
+        geo.setAttribute('normal', nAttr);
+        geo.setAttribute('color', cAttr);
+        geo.setIndex(new THREE.BufferAttribute(this._terrainIndex(tx * span, tz * span, span), 1));
+        let lo = Infinity, hi = -Infinity;
+        for (let iz = tz * span; iz <= (tz + 1) * span; iz++) {
+          for (let ix = tx * span; ix <= (tx + 1) * span; ix++) {
+            const hh = this.heights[iz * n + ix];
+            if (hh < lo) lo = hh;
+            if (hh > hi) hi = hh;
+          }
+        }
+        const cx = -HALF + (tx + 0.5) * span * CELL, cz = -HALF + (tz + 0.5) * span * CELL;
+        const half = (span * CELL) / 2;
+        geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(cx, (lo + hi) / 2, cz), Math.hypot(half, half, (hi - lo) / 2));
+        geo.boundingBox = new THREE.Box3(new THREE.Vector3(cx - half, lo, cz - half), new THREE.Vector3(cx + half, hi, cz + half));
+        const tile = new THREE.Mesh(geo, material);
+        tile.receiveShadow = true;
+        tile.matrixAutoUpdate = false;
+        this.terrain.add(tile);
+      }
+    }
+    this.scene.add(this.terrain);
+  }
+
+  _terrainIndex(x0, z0, span) {
+    const n = SEG + 1;
+    const idx = new Uint32Array(span * span * 6);
     let k = 0;
-    for (let iz = 0; iz < SEG; iz++) {
-      for (let ix = 0; ix < SEG; ix++) {
+    for (let iz = z0; iz < z0 + span; iz++) {
+      for (let ix = x0; ix < x0 + span; ix++) {
         const a = iz * n + ix, b = (iz + 1) * n + ix, d = iz * n + ix + 1, cc = (iz + 1) * n + ix + 1;
         idx[k++] = a; idx[k++] = b; idx[k++] = d;
         idx[k++] = b; idx[k++] = cc; idx[k++] = d;
       }
     }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    geo.setIndex(new THREE.BufferAttribute(idx, 1));
-    geo.computeVertexNormals();
-    const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 }));
-    terrain.receiveShadow = true;
-    this.scene.add(terrain);
-    this.terrain = terrain;
+    return idx;
   }
 
   _buildWater() {
-    const geo = new THREE.CircleGeometry(LAKE.r * 1.05, 48);
-    geo.rotateX(-Math.PI / 2);
-    const water = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      color: 0x41606b, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.86,
-    }));
-    water.position.set(LAKE.x, this.waterLevel, LAKE.z);
-    water.receiveShadow = true;
-    this.scene.add(water);
+    this.water = new Water(this.scene, LAKE, this.waterLevel, (x, z) => this.waterLevel - this.getHeight(x, z));
   }
 
   isWater(x, z) {
@@ -196,22 +255,34 @@ export class World {
     return obj;
   }
 
+  // place() for set pieces that never move: Scenery bakes their plain stone, wood and cloth meshes
+  // into its chunk batches, so a graveyard costs a draw call or two instead of one per mesh.
+  _static(obj, x, z, yaw = 0, sink = 0) {
+    this.place(obj, x, z, yaw, sink);
+    this.statics.push(obj);
+    return obj;
+  }
+
   // Stone blocks are batched into one InstancedMesh; `collide` adds an oriented box collider.
+  // o.rx / o.rz tilt the block (beams, fallen stones); the collider only follows ry.
   block(x, z, sx, sy, sz, ry = 0, o = {}) {
     const y = o.y ?? this.getHeight(x, z) - 0.3;
-    this.blocks.push({ x, y: y + sy / 2, z, sx, sy, sz, ry, color: o.color ?? 0x8a8478 });
+    this.blocks.push({ x, y: y + sy / 2, z, sx, sy, sz, ry, rx: o.rx ?? 0, rz: o.rz ?? 0, color: o.color ?? 0x8a8478 });
     if (o.collide !== false) this.addBox(x, z, sx / 2, sz / 2, ry);
   }
 
+  // Colliders added after the world is built (NPCs) go straight into the spatial hash.
   addCircle(x, z, r) {
     const c = { x, z, r };
     this.circles.push(c);
+    if (this.indexed) this._insert(c, x, z, r);
     return c;
   }
 
   addBox(x, z, hx, hz, rot = 0, dynamic = false) {
     const b = { x, z, hx, hz, c: Math.cos(rot), s: Math.sin(rot), enabled: true };
     (dynamic ? this.dynamic : this.boxes).push(b);
+    if (this.indexed && !dynamic) this._insert(b, x, z, Math.hypot(hx, hz));
     return b;
   }
 
@@ -230,7 +301,7 @@ export class World {
     }
 
     const notice = P.buildNoticeBoard();
-    this.place(notice, NOTICE.x, NOTICE.z, NOTICE.yaw);
+    this._static(notice, NOTICE.x, NOTICE.z, NOTICE.yaw);
     this.addBox(NOTICE.x, NOTICE.z, 0.85, 0.2, NOTICE.yaw);
 
     // First Light: a ring of broken pillars around the shrine.
@@ -238,16 +309,16 @@ export class World {
       const a = (i / 6) * Math.PI * 2 + 0.3;
       const x = ZONES.firstlight.x + Math.sin(a) * 11, z = ZONES.firstlight.z + Math.cos(a) * 11;
       if (Math.abs(x) < 6 && z < ZONES.firstlight.z) continue; // keep the road open
-      this.place(P.buildPillar(2.5 + (i % 3) * 1.4, i % 2 === 0), x, z, a);
+      this._static(P.buildPillar(2.5 + (i % 3) * 1.4, i % 2 === 0), x, z, a);
       this.addCircle(x, z, 0.6);
     }
 
     // Brannoc's camp.
     const camp = ZONES.camp;
-    this.place(P.buildTent(), camp.x - 6, camp.z + 2, 0.8);
+    this._static(P.buildTent(), camp.x - 6, camp.z + 2, 0.8);
     this.addCircle(camp.x - 6, camp.z + 2, 2.0);
     for (const [dx, dz, ry, len] of [[6, -5, 0.3, 8], [9, 1, 1.7, 6], [-2, -8, 0.1, 6]]) {
-      this.place(P.buildFence(len), camp.x + dx, camp.z + dz, ry);
+      this._static(P.buildFence(len), camp.x + dx, camp.z + dz, ry);
       this.addBox(camp.x + dx, camp.z + dz, len / 2, 0.15, ry);
     }
 
@@ -280,31 +351,36 @@ export class World {
 
     // Mirelake shore: Ilse's bedroll and a cairn.
     const lk = ZONES.lake;
-    this.scene.add(mesh(box(0.9, 0.12, 2), mat(0x6e5a44), { x: lk.x + 3, y: this.getHeight(lk.x + 3, lk.z + 1) + 0.06, z: lk.z + 1, ry: 0.4 }));
+    const bedroll = new THREE.Group();
+    bedroll.add(mesh(box(0.9, 0.12, 2), mat(0x6e5a44), { y: 0.06 }));
+    this._static(bedroll, lk.x + 3, lk.z + 1, 0.4);
     for (let i = 0; i < 4; i++) this.block(lk.x - 4, lk.z - 3, 0.8 - i * 0.15, 0.35, 0.8 - i * 0.15, i, { y: this.getHeight(lk.x - 4, lk.z - 3) + i * 0.3 - 0.1, collide: i === 0 });
 
     // Western Moor: the wrecked cart and its dead horse-less traces.
     const mo = ZONES.moor;
-    this.place(P.buildCart(), mo.x, mo.z, 0.7);
+    this._static(P.buildCart(), mo.x, mo.z, 0.7);
     this.addBox(mo.x, mo.z, 1.0, 1.5, 0.7);
 
     // Road dressing: pillars and graves on the way north.
     const rng = mulberry32(5);
     for (const [x, z] of [[-6, 120], [14, 60], [36, -20], [-2, -90], [26, -100], [-8, -160], [14, -165]]) {
-      this.place(P.buildPillar(2 + rng() * 4, rng() < 0.6), x, z, rng() * 3);
+      this._static(P.buildPillar(2 + rng() * 4, rng() < 0.6), x, z, rng() * 3);
       this.addCircle(x, z, 0.6);
     }
     for (let i = 0; i < 40; i++) {
       const x = -30 + rng() * 60, z = -170 - rng() * 40;
       if (Math.abs(x) < 7 || this.roadDistance(x, z) < 5) continue;
       if (Math.hypot(x - ZONES.gatehouse.x, z - ZONES.gatehouse.z) < 6) continue;
-      this.place(P.buildGrave(rng), x, z, rng() * 0.6 - 0.3, 0.05);
+      const grave = P.buildGrave(rng), ry = rng() * 0.6 - 0.3;
+      if (KEEP_CLEAR.some((k) => Math.hypot(x - k.x, z - k.z) < k.r)) continue; // the rng is spent either way
+      this._static(grave, x, z, ry, 0.05);
     }
     for (const x of [-12, 12]) {
-      this.place(P.buildStatue(), x, -212, x < 0 ? 0.3 : -0.3);
+      this._static(P.buildStatue(), x, -212, x < 0 ? 0.3 : -0.3);
       this.addCircle(x, -212, 1.0);
     }
 
+    this._buildChapel();
     this._buildArena();
     this._buildCastle();
 
@@ -312,6 +388,7 @@ export class World {
     const spire = P.buildSpire();
     spire.group.position.set(255, this.getHeight(255, -300) - 10, -300);
     this.scene.add(spire.group);
+    this.statics.push(spire.group);
 
     // Fires.
     for (const f of FIRES) {
@@ -326,6 +403,78 @@ export class World {
       }
       this.fires.push({ ...f, ...fire, lightObj: light, y: this.getHeight(f.x, f.z), seed: Math.random() * 10 });
     }
+  }
+
+  // Chapel of the Cracked Bell: a roofless nave on the rise above Mirelake. The door faces the road
+  // to the east, the bell tower looks west over the water. Built from blocks so it is one draw call
+  // with the ruins and the arena, and its walls collide.
+  _buildChapel() {
+    const ch = ZONES.chapel;
+    const yaw = Math.PI / 2;
+    const cs = Math.cos(yaw), sn = Math.sin(yaw);
+    const gy = this.getHeight(ch.x, ch.z);
+    const STONE = 0x8d877a, DARK = 0x6f6a60, WOOD = 0x4a3a2a;
+    // Local (lx along the facade, lz from the altar to the door) to world.
+    const at = (lx, lz) => [ch.x + lx * cs + lz * sn, ch.z - lx * sn + lz * cs];
+    const blk = (lx, lz, sx, sy, sz, o = {}) => {
+      const [x, z] = at(lx, lz);
+      this.block(x, z, sx, sy, sz, yaw + (o.ry ?? 0), { ...o, y: o.y ?? gy - 0.3 });
+    };
+    // Side walls in broken courses: the left one has mostly fallen.
+    const left = [4.2, 2.0, 4.6, 3.4, 1.4], right = [4.6, 4.4, 2.6, 4.8, 3.8];
+    for (let i = 0; i < 5; i++) {
+      const lz = -4.8 + i * 2.4;
+      blk(-3.6, lz, 0.8, left[i], 2.5, { color: i % 2 ? DARK : STONE });
+      blk(3.6, lz, 0.8, right[i], 2.5, { color: i % 2 ? STONE : DARK });
+    }
+    // Facade with an open doorway, and the back wall with an arch into the tower.
+    blk(-2.4, 6, 2.4, 5.4, 0.8, { color: STONE });
+    blk(2.4, 6, 2.4, 4.6, 0.8, { color: STONE });
+    // What stands of the gable: one raking coping climbing from the left, a stub on the right.
+    blk(-1.75, 6, 3.9, 0.55, 0.95, { y: gy + 5.85, rz: 0.52, color: DARK, collide: false });
+    blk(2.6, 6, 1.9, 0.55, 0.95, { y: gy + 4.75, rz: -0.52, color: DARK, collide: false });
+    blk(-1.6, 6, 1.5, 1.3, 0.8, { y: gy + 5.0, color: STONE, collide: false });
+    blk(0.6, 7.6, 2.8, 0.5, 0.7, { y: gy - 0.15, ry: 0.4, color: DARK, collide: false }); // fallen lintel
+    blk(-2.6, -6, 2.0, 5.0, 0.8, { color: STONE });
+    blk(2.6, -6, 2.0, 5.0, 0.8, { color: STONE });
+    blk(0, -6, 3.4, 0.7, 0.8, { y: gy + 3.9, color: DARK, collide: false });
+    // Bell tower: four corner piers, low broken walls, an open belfry and its snapped beam.
+    for (const [lx, lz, h] of [[-1.9, -6.6, 9.4], [1.9, -6.6, 9.8], [-1.9, -9.8, 9.6], [1.9, -9.8, 8.8]]) blk(lx, lz, 1.0, h, 1.0, { color: DARK });
+    blk(0, -9.8, 2.8, 2.6, 0.7, { color: STONE });
+    blk(-1.9, -8.2, 0.7, 4.2, 2.2, { color: STONE });
+    blk(1.9, -8.2, 0.7, 1.6, 2.2, { color: STONE });
+    blk(0, -6.6, 4.8, 0.6, 0.9, { y: gy + 8.6, color: STONE, collide: false });
+    blk(0, -9.8, 4.8, 0.6, 0.9, { y: gy + 8.2, color: STONE, collide: false });
+    blk(-1.9, -8.2, 0.9, 0.6, 4.2, { y: gy + 8.6, color: STONE, collide: false });
+    blk(-0.6, -8.2, 2.6, 0.3, 0.3, { y: gy + 7.4, rz: -0.35, color: WOOD, collide: false });
+    // What is left of the roof: three rafters, one fallen into the nave, and a stub of ridge beam.
+    blk(0, -2.6, 8.2, 0.3, 0.35, { y: gy + 4.0, rz: 0.05, color: WOOD, collide: false });
+    blk(0.5, 3.4, 6.8, 0.3, 0.35, { y: gy + 3.9, rz: -0.08, color: WOOD, collide: false });
+    blk(-1.5, 0.6, 6.0, 0.3, 0.35, { y: gy + 1.4, rz: 0.48, ry: 0.15, color: WOOD, collide: false });
+    blk(0, -3.2, 0.35, 0.35, 5.5, { y: gy + 5.0, color: WOOD, collide: false });
+    // Altar with candles, flagstones, rubble.
+    blk(0, -4.4, 2.0, 1.2, 0.9, { color: DARK });
+    blk(0, -4.4, 2.3, 0.15, 1.1, { y: gy + 0.9, color: STONE, collide: false });
+    for (const lx of [-0.7, -0.35, 0.55]) {
+      const [x, z] = at(lx, -4.4);
+      blk(lx, -4.4, 0.09, 0.22, 0.09, { y: gy + 1.05, color: 0xe8dcc0, collide: false });
+      this.glowSpots.push({ x, y: gy + 1.33, z, size: 0.45 });
+    }
+    const rng = mulberry32(1311);
+    for (let i = 0; i < 22; i++) {
+      const lx = (rng() - 0.5) * 6, lz = -5.2 + rng() * 10.6;
+      blk(lx, lz, 0.9 + rng() * 0.8, 0.2, 0.8 + rng() * 0.8, { y: gy - 0.18, ry: rng() * 0.5, color: rng() < 0.5 ? 0x8a8478 : 0x7d786f, collide: false });
+    }
+    for (let i = 0; i < 12; i++) {
+      const a = rng() * Math.PI * 2, d = 6 + rng() * 5;
+      const lx = Math.sin(a) * d * 0.8, lz = Math.cos(a) * d;
+      if (Math.abs(lx) < 2 && lz > 5) continue; // keep the doorway clear
+      blk(lx, lz, 0.5 + rng() * 0.6, 0.3 + rng() * 0.4, 0.5 + rng() * 0.6, { y: gy - 0.15, ry: rng() * 3, rx: (rng() - 0.5) * 0.4, color: rng() < 0.5 ? STONE : DARK, collide: false });
+    }
+    // The fallen bell itself is batched with the scenery; Scenery reads this.
+    const [bx, bz] = at(4.1, -9.4);
+    this.chapelBell = { x: bx, z: bz, ry: yaw + 0.5 };
+    this.addCircle(bx, bz, 1.25);
   }
 
   _buildArena() {
@@ -411,6 +560,7 @@ export class World {
     const castle = P.buildCastle();
     castle.position.set(c.x, this.getHeight(c.x, c.z) - 0.5, c.z - 8);
     this.scene.add(castle);
+    this.statics.push(castle);
     this.addBox(c.x, c.z - 8, 33, 3.5, 0);
     this.addCircle(c.x - 30, c.z - 8, 6);
     this.addCircle(c.x + 30, c.z - 8, 6);
@@ -419,116 +569,9 @@ export class World {
 
   // ---------- vegetation ----------
 
+  // Forests, rocks, grass, flowers, lake plants and road dressing: see world/Scenery.js.
   _buildVegetation() {
-    const G = P.treeGeometries();
-    const rng = mulberry32(99);
-    const ok = (x, z, pad) => {
-      if (Math.hypot(x, z) > 290) return false;
-      if (this.roadDistance(x, z) < 6 + pad) return false;
-      if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 3) return false;
-      for (const zn of Object.values(ZONES)) if (Math.hypot(x - zn.x, z - zn.z) < zn.flat + 4 + pad) return false;
-      if (Math.hypot(x - ARENA.x, z - ARENA.z) < ARENA.r + 14) return false;
-      return this.slopeAt(x, z) < 0.6;
-    };
-
-    const trees = [];
-    for (let i = 0; i < 9000 && trees.length < 950; i++) {
-      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * 290;
-      const x = Math.sin(a) * d, z = Math.cos(a) * d;
-      const forest = fbm(this.noise, x * 0.007 + 3, z * 0.007 - 5, 2);
-      if (forest < -0.05 && rng() > 0.12) continue;
-      if (!ok(x, z, 0)) continue;
-      const moorish = x < -140 && z < -40;
-      const roll = rng();
-      const type = moorish ? (roll < 0.5 ? 'dead' : 'pine') : roll < 0.52 ? 'pine' : roll < 0.9 ? 'broad' : 'dead';
-      trees.push({ x, z, type, s: 0.8 + rng() * 0.7, ry: rng() * 6.28, y: this.getHeight(x, z) });
-    }
-
-    const count = (t) => trees.filter((tr) => tr.type === t).length;
-    const barkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.9 });
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.8 });
-    const trunks = new THREE.InstancedMesh(G.trunk, barkMat, trees.length);
-    const pinesA = new THREE.InstancedMesh(G.pine, leafMat, count('pine'));
-    const pinesB = new THREE.InstancedMesh(G.pine, leafMat, count('pine'));
-    const crowns = new THREE.InstancedMesh(G.crown, leafMat, count('broad'));
-    const branches = new THREE.InstancedMesh(G.branch, barkMat, count('dead') * 2);
-    const dummy = new THREE.Object3D();
-    const color = new THREE.Color();
-    const counters = { trunk: 0, pine: 0, crown: 0, branch: 0 };
-    const set = (im, key, x, y, z, sx, sy, sz, ry, hex, rx = 0, rz = 0) => {
-      dummy.position.set(x, y, z);
-      dummy.rotation.set(rx, ry, rz);
-      dummy.scale.set(sx, sy, sz);
-      dummy.updateMatrix();
-      im.setMatrixAt(counters[key], dummy.matrix);
-      color.setHex(hex).offsetHSL((rng() - 0.5) * 0.03, 0, (rng() - 0.5) * 0.08);
-      im.setColorAt(counters[key], color);
-      counters[key]++;
-    };
-    for (const t of trees) {
-      const s = t.s;
-      if (t.type === 'pine') {
-        set(trunks, 'trunk', t.x, t.y - 0.2, t.z, s, 3 * s, s, t.ry, 0x4a3a2a);
-        set(pinesA, 'pine', t.x, t.y + 1.6 * s, t.z, 2.2 * s, 4.2 * s, 2.2 * s, t.ry, 0x34482e);
-        counters.pine--;
-        set(pinesB, 'pine', t.x, t.y + 3.6 * s, t.z, 1.5 * s, 3.4 * s, 1.5 * s, t.ry, 0x3c5232);
-      } else if (t.type === 'broad') {
-        set(trunks, 'trunk', t.x, t.y - 0.2, t.z, 1.2 * s, 3.4 * s, 1.2 * s, t.ry, 0x55402c);
-        const hue = [0xb5832e, 0xc29a3a, 0x8f7a2e, 0xa4612a][Math.floor(rng() * 4)];
-        set(crowns, 'crown', t.x, t.y + 4.3 * s, t.z, 2.6 * s, 2.1 * s, 2.6 * s, t.ry, hue);
-      } else {
-        set(trunks, 'trunk', t.x, t.y - 0.2, t.z, 0.8 * s, 4.5 * s, 0.8 * s, t.ry, 0x4d4640);
-        set(branches, 'branch', t.x, t.y + 2.6 * s, t.z, s, 1.8 * s, s, t.ry, 0x4d4640, 0, 0.8);
-        set(branches, 'branch', t.x, t.y + 3.2 * s, t.z, s, 1.4 * s, s, t.ry + 2.5, 0x4d4640, 0, -0.7);
-      }
-      this.addCircle(t.x, t.z, 0.35 * s);
-    }
-    for (const im of [trunks, pinesA, pinesB, crowns, branches]) {
-      im.castShadow = true;
-      im.receiveShadow = true;
-      im.instanceMatrix.needsUpdate = true;
-      if (im.instanceColor) im.instanceColor.needsUpdate = true;
-      this.scene.add(im);
-    }
-
-    // Rocks.
-    const rocks = [];
-    for (let i = 0; i < 1600 && rocks.length < 320; i++) {
-      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * 300;
-      const x = Math.sin(a) * d, z = Math.cos(a) * d;
-      if (!ok(x, z, -3)) continue;
-      rocks.push({ x, z, s: 0.4 + Math.pow(rng(), 2.5) * 2.6 });
-    }
-    const rockMesh = new THREE.InstancedMesh(G.rock, new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.95 }), rocks.length);
-    counters.rock = 0;
-    for (const r of rocks) {
-      const y = this.getHeight(r.x, r.z);
-      set(rockMesh, 'rock', r.x, y + r.s * 0.2, r.z, r.s * (1 + rng() * 0.6), r.s * (0.6 + rng() * 0.4), r.s * (1 + rng() * 0.5), rng() * 6, 0x7a766d, rng(), rng());
-      if (r.s > 0.9) this.addCircle(r.x, r.z, r.s * 0.95);
-    }
-    rockMesh.castShadow = rockMesh.receiveShadow = true;
-    rockMesh.instanceMatrix.needsUpdate = true;
-    rockMesh.instanceColor.needsUpdate = true;
-    this.scene.add(rockMesh);
-
-    // Grass tufts: decorative only.
-    const tufts = [];
-    for (let i = 0; i < 26000 && tufts.length < 9000; i++) {
-      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * 280;
-      const x = Math.sin(a) * d, z = Math.cos(a) * d;
-      if (this.roadDistance(x, z) < 3.5 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) continue;
-      if (this.inArena(x, z, 4) || this.slopeAt(x, z) > 0.5) continue;
-      tufts.push({ x, z });
-    }
-    const tuftMesh = new THREE.InstancedMesh(G.tuft, new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 1 }), tufts.length);
-    counters.tuft = 0;
-    for (const t of tufts) {
-      const s = 0.7 + rng() * 0.9;
-      set(tuftMesh, 'tuft', t.x, this.getHeight(t.x, t.z) - 0.05, t.z, s, s * (0.8 + rng() * 0.8), s, rng() * 6, rng() < 0.6 ? 0xb39a4e : 0x7c8740, (rng() - 0.5) * 0.5, (rng() - 0.5) * 0.5);
-    }
-    tuftMesh.instanceMatrix.needsUpdate = true;
-    tuftMesh.instanceColor.needsUpdate = true;
-    this.scene.add(tuftMesh);
+    this.scenery = new Scenery(this);
   }
 
   _buildBlocks() {
@@ -538,7 +581,7 @@ export class World {
     const rng = mulberry32(3);
     this.blocks.forEach((b, i) => {
       dummy.position.set(b.x, b.y, b.z);
-      dummy.rotation.set(0, b.ry, 0);
+      dummy.rotation.set(b.rx, b.ry, b.rz, 'YXZ');
       dummy.scale.set(b.sx, b.sy, b.sz);
       dummy.updateMatrix();
       im.setMatrixAt(i, dummy.matrix);
@@ -550,17 +593,20 @@ export class World {
 
   // ---------- collision ----------
 
+  _insert(c, x, z, r) {
+    for (let gx = Math.floor((x - r) / GRID); gx <= Math.floor((x + r) / GRID); gx++) {
+      for (let gz = Math.floor((z - r) / GRID); gz <= Math.floor((z + r) / GRID); gz++) {
+        const key = gx + ',' + gz;
+        if (!this.grid.has(key)) this.grid.set(key, []);
+        this.grid.get(key).push(c);
+      }
+    }
+  }
+
   _indexColliders() {
-    const put = (key, c) => {
-      if (!this.grid.has(key)) this.grid.set(key, []);
-      this.grid.get(key).push(c);
-    };
-    const insert = (c, x, z, r) => {
-      for (let gx = Math.floor((x - r) / GRID); gx <= Math.floor((x + r) / GRID); gx++)
-        for (let gz = Math.floor((z - r) / GRID); gz <= Math.floor((z + r) / GRID); gz++) put(gx + ',' + gz, c);
-    };
-    for (const c of this.circles) insert(c, c.x, c.z, c.r);
-    for (const b of this.boxes) insert(b, b.x, b.z, Math.hypot(b.hx, b.hz));
+    for (const c of this.circles) this._insert(c, c.x, c.z, c.r);
+    for (const b of this.boxes) this._insert(b, b.x, b.z, Math.hypot(b.hx, b.hz));
+    this.indexed = true;
   }
 
   _pushCircle(pos, radius, c) {
@@ -623,6 +669,7 @@ export class World {
   update(dt, time) {
     this.fogGate.uniforms.uTime.value = time;
     const ps = this.game.particles;
+    this._updateEnvironment(dt, time);
     for (const f of this.fires) {
       const flick = 0.85 + Math.sin(time * 13 + f.seed) * 0.08 + Math.sin(time * 7.3 + f.seed * 2) * 0.07;
       f.flame.scale.set(1, flick * 1.1, 1);
@@ -652,6 +699,36 @@ export class World {
       gd.left.rotation.y = -a;
       gd.right.rotation.y = a;
     }
+  }
+
+  // Wind, sky, weather, water, scenery culling and ambient life, all keyed off the camera.
+  _updateEnvironment(dt, time) {
+    const g = this.game;
+    const cam = g.camera.position;
+    const sky = g.sky;
+    const scale = g.particles.material.uniforms.uScale.value; // px per metre at 1 m, kept by Game.resize
+    WIND.uTime.value = time;
+    sky.tick(dt, cam);
+    this.weather.update(dt, time, cam);
+    this.weather.setViewportScale(scale);
+    this.water.update(time, sky, this.weather.rain);
+    this.scenery.update(cam, sky.night, scale);
+    this.ambient.update(dt, time, cam, { night: sky.night, dusk: sky.dusk, weather: this.weather.name, scale });
+  }
+
+  // ---------- environment API ----------
+
+  // 'clear' | 'ashfall' | 'rain' | 'mist'. Blends over a few seconds unless `instant`.
+  setWeather(name, instant = false) {
+    this.weather.set(name, instant);
+  }
+
+  getWeather() {
+    return this.weather.name;
+  }
+
+  get weatherNames() {
+    return Object.keys(WEATHER);
   }
 
   closeGate() {
