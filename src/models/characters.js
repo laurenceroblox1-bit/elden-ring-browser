@@ -252,6 +252,91 @@ export function buildWraith() {
   return r;
 }
 
+// Grimhorn, the troll of the Howling Field: a hunched giant with blue-grey hide crusted in ice, a
+// tusked underbite, two broken horns, a ragged fur loincloth and a club made from a thighbone. Built at
+// person size and scaled up (the entity sets the scale), so the shared pose system drives it.
+export function buildTroll() {
+  const hide = mat(0x7d8a96, { roughness: 0.95 });
+  const darkHide = mat(0x5a6672, { roughness: 0.95 });
+  const fur = mat(0x5a4a3a, { side: THREE.DoubleSide });
+  const ice = mat(0xd8f0ff, { emissive: 0x2a70b0, emissiveIntensity: 0.5, roughness: 0.2 });
+  const bone = mat(0xd8cfb8);
+  const r = buildHumanoid({ skin: hide, body: hide, arms: hide, legs: darkHide, boots: darkHide, hands: darkHide },
+    { chestW: 0.86, waistW: 0.66, chestD: 0.46, shoulderW: 0.52, armW: 0.24, upperArm: 0.46, foreArm: 0.46, legW: 0.27, thigh: 0.4, shin: 0.36, headW: 0.3, headH: 0.26 });
+  r.torso.add(mesh(box(0.7, 0.3, 0.4), hide, { y: 0.62, z: -0.06 })); // the hunch
+  r.head.add(mesh(box(0.26, 0.12, 0.2), darkHide, { y: 0.0, z: 0.1 })); // heavy jaw
+  for (const x of [-0.08, 0.08]) {
+    r.head.add(mesh(cone(0.035, 0.14, 4), bone, { x, y: 0.1, z: 0.2 })); // tusks
+    r.head.add(mesh(box(0.04, 0.03, 0.02), mat(0xffe6a0, { emissive: 0xffb040, emissiveIntensity: 1.6 }), { x: x * 0.9, y: 0.2, z: 0.165, shadow: false }));
+    r.head.add(mesh(cone(0.06, 0.24, 5), bone, { x: x * 1.8, y: 0.34, z: -0.02, rz: x < 0 ? 0.7 : -0.7 }));
+  }
+  for (const [arm, sx] of [[r.armR, -1], [r.armL, 1]]) {
+    arm.shoulder.add(mesh(box(0.34, 0.16, 0.34), ice, { y: 0.06, x: sx * 0.04, rz: sx * 0.2 })); // ice crust
+    arm.shoulder.add(mesh(cone(0.06, 0.2, 4), ice, { y: 0.18, x: sx * 0.06 }));
+  }
+  r.torso.add(mesh(cone(0.07, 0.26, 4), ice, { y: 0.82, z: -0.18, rx: -0.4 }));
+  r.hips.add(mesh(cyl(0.38, 0.46, 0.36, 8, true), fur, { y: -0.16 }));
+  // The club: a thighbone knotted with ice.
+  const club = group();
+  club.add(mesh(box(0.1, 0.1, 0.5), darkHide, { z: 0.0 }));
+  club.add(mesh(box(0.14, 0.14, 0.7), bone, { z: 0.55 }));
+  club.add(mesh(box(0.28, 0.26, 0.36), bone, { z: 1.0 }));
+  club.add(mesh(box(0.16, 0.12, 0.18), ice, { z: 0.95, y: 0.15 }));
+  r.armR.hand.add(club);
+  const markers = addWeaponMarkers(r.armR.hand, 1.2);
+  mergeHumanoid(r);
+  return { ...r, markers };
+}
+
+// Saelith, the Winter Lantern: the last keeper of the Rime-Watch, who took the Winter Lantern's flame
+// rather than let it go out. Tall, in pale blue-silver plate and a long white-blue robe, a crown of ice
+// on her helm and a pale mask with cold eyes. A glaive in her right hand; the Lantern at her hip
+// (its flame material is returned so the fight can make it flare).
+export function buildSaelith() {
+  const plate = mat(0xc8d6e2, { metalness: 0.7, roughness: 0.3 });
+  const darkPlate = mat(0x7c8fa2, { metalness: 0.6, roughness: 0.4 });
+  const robe = mat(0xdce8f0, { side: THREE.DoubleSide, roughness: 0.8 });
+  const robeDeep = mat(0x2d4a6a, { side: THREE.DoubleSide, roughness: 0.8 });
+  const ice = mat(0xd8f2ff, { emissive: 0x58b0ff, emissiveIntensity: 1.1, roughness: 0.15 });
+  const flame = mat(0xe8f8ff, { emissive: 0x8fd8ff, emissiveIntensity: 2.8, unique: true });
+  const r = buildHumanoid({ skin: darkPlate, body: plate, arms: plate, legs: robe, boots: darkPlate, hands: darkPlate },
+    { chestW: 0.5, waistW: 0.36, shoulderW: 0.33, upperArm: 0.34, foreArm: 0.32, thigh: 0.46, shin: 0.46, headW: 0.23, headH: 0.27 });
+  // Helm, mask and the crown of ice.
+  r.head.add(mesh(box(0.28, 0.3, 0.3), plate, { y: 0.16 }));
+  r.head.add(mesh(box(0.2, 0.22, 0.04), mat(0xf2f6fa), { y: 0.13, z: 0.15 }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.04, 0.02, 0.02), mat(0xe8fbff, { emissive: 0x7ad0ff, emissiveIntensity: 3 }), { x, y: 0.17, z: 0.172, shadow: false }));
+  for (let i = 0; i < 7; i++) {
+    const a = ((i - 3) / 3) * 1.1;
+    r.head.add(mesh(cone(0.03, 0.18 + (i === 3 ? 0.14 : 0) - Math.abs(i - 3) * 0.02, 4), ice, { x: Math.sin(a) * 0.13, y: 0.36, z: Math.cos(a) * 0.13 - 0.02, rx: Math.cos(a) * 0.25, rz: -Math.sin(a) * 0.25 }));
+  }
+  // Pauldrons, a long cape and the robe falling to the snow.
+  for (const [arm, sx] of [[r.armR, -1], [r.armL, 1]]) arm.shoulder.add(mesh(box(0.22, 0.12, 0.26), plate, { y: 0.03, x: sx * 0.03 }));
+  const cape = group({ y: 0.56, z: -0.16 });
+  const capeGeo = new THREE.PlaneGeometry(0.62, 1.5, 1, 4);
+  capeGeo.translate(0, -0.75, 0);
+  cape.add(mesh(capeGeo, robeDeep));
+  r.torso.add(cape);
+  r.hips.add(mesh(cyl(0.22, 0.42, 0.95, 10, true), robe, { y: -0.48 }));
+  r.hips.add(mesh(box(0.3, 0.9, 0.02), robeDeep, { y: -0.45, z: 0.2 }));
+  // The glaive.
+  const glaive = group();
+  glaive.add(mesh(cyl(0.026, 0.03, 2.3, 6), mat(0x2f3338, { metalness: 0.6, roughness: 0.4 }), { rx: Math.PI / 2, z: 0.45 }));
+  glaive.add(mesh(box(0.035, 0.2, 0.46), ice, { z: 1.82, y: 0.06 }));
+  glaive.add(mesh(box(0.03, 0.15, 0.28), ice, { z: 2.1, y: 0.15, rx: -0.5 }));
+  r.armR.hand.add(glaive);
+  const markers = addWeaponMarkers(r.armR.hand, 2.2);
+  // The Winter Lantern at her hip.
+  const lantern = group({ x: 0.26, y: -0.12, z: 0.06 });
+  lantern.add(mesh(box(0.18, 0.04, 0.18), darkPlate, { y: 0.14 }));
+  lantern.add(mesh(box(0.18, 0.04, 0.18), darkPlate, { y: -0.14 }));
+  lantern.add(mesh(box(0.12, 0.22, 0.12), flame, { shadow: false }));
+  const glow = glowSprite(0x9fdcff, 1.6, 0.7);
+  lantern.add(glow);
+  r.hips.add(lantern);
+  mergeHumanoid(r, [cape, lantern]);
+  return { ...r, markers, cape, flame, glow };
+}
+
 // Ormund the Ice-Cutter: a big man in a grey fur coat and a fur hat, beard white with frost, an ice
 // pick over his shoulder.
 export function buildOrmund() {

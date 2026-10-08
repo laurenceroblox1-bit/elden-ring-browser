@@ -8,17 +8,21 @@ import { Matriarch } from './Matriarch.js';
 import { Wolf } from './Wolf.js';
 import { Bowman } from './Bowman.js';
 import { Wraith } from './Wraith.js';
+import { Troll } from './Troll.js';
+import { Saelith } from './Saelith.js';
 
 const KINDS = {
   sentry: Sentry,
   captain: Sentry,
   hound: Hound, // packs share a `pack` id: they wake together and take turns to lunge
   acolyte: Acolyte,
-  matriarch: Matriarch, // Vharra, the fen's boss: runs her own fight (Game.startMotherFight)
+  matriarch: Matriarch, // Vharra, the fen's boss: runs her own fight (Game.startFoeFight)
   knight: Sentry, // Dunmarrow Knights: the sentry's state machine in plate, with a shield bash
   bowman: Bowman,
   wolf: Wolf,
   wraith: Wraith,
+  troll: Troll, // Grimhorn, the Howling Field's field boss
+  saelith: Saelith, // the Rimewold's boss, in the Hall of the Winter Lantern
 };
 
 export function createEnemy(game, spawn) {

@@ -216,6 +216,12 @@ export class AudioFx {
         this._noise({ dur: 1.6, freq: 260, to: 140, q: 2, gain: 0.5, attack: 0.15 });
         this._tone({ freq: 82, to: 55, type: 'sawtooth', dur: 1.5, gain: 0.2, attack: 0.2 });
         break;
+      case 'lanternFlare':
+        // A cold flame taking hold: a glassy swell and a high chime.
+        this._noise({ dur: 1.2, freq: 1800, to: 5200, q: 1.2, gain: 0.16, attack: 0.5 });
+        this._bell(784, 0.1, 3);
+        this._tone({ freq: 392, to: 523, type: 'triangle', dur: 1.4, gain: 0.08, attack: 0.4 });
+        break;
       case 'alertHuman':
         // A hoarse, hollow grunt: it has seen you.
         this._noise({ dur: 0.38, freq: 340, to: 190, q: 3, gain: 0.32, attack: 0.03 });

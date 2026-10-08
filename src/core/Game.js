@@ -68,7 +68,7 @@ export class Game {
     this.mode = 'title';
     this.modal = null;
     this.bossFight = false;
-    this.motherFight = null; // Vharra while her fight runs (entities/Matriarch.js)
+    this.fieldBoss = null; // a roaming boss while its fight runs (Vharra, Saelith, the troll)
     this.lockTarget = null;
     this.zone = null;
     this.zoneT = 0;
@@ -259,7 +259,8 @@ export class Game {
       if (this.world.gateDoors.open > 0) this.world.closeGate();
     }
     this.bossFight = false;
-    this.motherFight = null; // she went back to sleep with the reset above
+    if (this.fieldBoss) this.fieldBoss.onFightEnd?.();
+    this.fieldBoss = null; // it went back to its post with the reset above
     this.hud.setBoss(null);
     this.audio.setMusic(false);
     if (this.horse.ridden) this.horse.dismount(true);
@@ -511,67 +512,76 @@ export class Game {
     });
   }
 
-  // The boss whose bar is showing: Vharra while she hunts, otherwise the Warden while his fight runs.
+  // The boss whose bar is showing: a roaming boss while it fights (Vharra, Saelith, the troll),
+  // otherwise the Warden while his fight runs.
   get activeBoss() {
-    return this.motherFight ?? (this.bossFight ? this.boss : null);
+    return this.fieldBoss ?? (this.bossFight ? this.boss : null);
   }
 
-  // Vharra wakes (called by her when the player steps into the hollow).
-  startMotherFight(m, { cutscene = true } = {}) {
-    if (this.motherFight || !m.alive) return;
-    this.motherFight = m;
+  // Bosses outside the arena wake and end their own fights; each one describes itself:
+  //   bossId (the quest event), flag (state.flags when beaten), intro (BossIntro options or null),
+  //   music ('bell' | 'winter'), summonPack (its summons scatter when the fight ends),
+  //   reward { gear, banner: [title, sub] }, enter() { x, z, yaw } for the test menu.
+  startFoeFight(b, { cutscene = true } = {}) {
+    if (this.fieldBoss || !b.alive) return;
+    this.fieldBoss = b;
     this.lockTarget = null;
-    this.audio.setMusic(true);
+    this.audio.setMusic(true, b.music ?? 'bell');
     if (this.horse.ridden) this.horse.dismount(true);
-    if (!cutscene) {
-      m.awaken();
-      this.hud.setBoss(m.name);
+    if (!cutscene || !b.intro) {
+      b.awaken();
+      this.hud.setBoss(b.name);
       return;
     }
-    m.awaken(BOSS_INTRO_LENGTH);
+    b.awaken(BOSS_INTRO_LENGTH);
     this.cutscene = new BossIntro(this, () => {
       this.cutscene = null;
-      m.introLen = Math.min(m.introLen, m.t + 0.6);
-      this.hud.setBoss(m.name);
-    }, { boss: m, name: m.name, title: 'Whelp-Mother of the Ashen Fen', open: 'snarl', roar: 'howl', scale: 1.45, lift: 1.0, roarAt: [2.6, 4.4] });
+      b.introLen = Math.min(b.introLen, b.t + 0.6);
+      this.hud.setBoss(b.name);
+    }, { boss: b, name: b.name, ...b.intro });
   }
 
-  // Ends her fight without a winner: she lies back down, healed, and her summoned litter scatters.
-  endMotherFight() {
-    const m = this.motherFight;
-    if (!m) return;
-    this.motherFight = null;
+  // Ends a roaming boss's fight without a winner: it goes back to its post healed, its summons scatter.
+  endFoeFight() {
+    const b = this.fieldBoss;
+    if (!b) return;
+    this.fieldBoss = null;
     this.hud.setBoss(null);
     this.audio.setMusic(false);
-    if (this.lockTarget === m) this.lockTarget = null;
-    this.despawnExtras((e) => e.pack === 'vharra-litter');
-    if (m.alive) m.reset();
+    if (this.lockTarget === b) this.lockTarget = null;
+    if (b.summonPack) this.despawnExtras((e) => e.pack === b.summonPack);
+    b.onFightEnd?.();
+    if (b.alive) b.reset();
   }
 
-  onMotherDefeated(m) {
-    this.motherFight = null;
+  onFoeBossDefeated(b) {
+    if (this.fieldBoss === b) this.fieldBoss = null;
     this.lockTarget = null;
     this.audio.setMusic(false);
+    this.hud.setBoss(null);
+    b.onFightEnd?.();
     this.after(2.6, () => {
-      this.hud.banner('The Mother Sleeps', m.name, 'victory', 6000);
+      const [title, sub] = b.reward?.banner ?? ['Enemy Felled', b.name];
+      this.hud.banner(title, sub, 'victory', 6000);
       this.audio.play('victory');
-      this.state.flags.motherDead = true;
-      this.hud.setBoss(null);
-      this.events.emit('bossDefeated', 'mother');
-      this.after(2.5, () => this.giveGear('mothers_fang'));
+      this.state.flags[b.flag] = true;
+      this.events.emit('bossDefeated', b.bossId);
+      if (b.reward?.gear) this.after(2.5, () => this.giveGear(b.reward.gear));
+      b.onDefeated?.();
       this.save();
     });
   }
 
-  // Test menu: puts the player at the hollow's mouth and wakes Vharra (reviving her if she was beaten).
-  enterMotherFight({ cutscene = true } = {}) {
-    const m = this.enemies.find((e) => e.tag === 'matriarch');
-    if (!m || !this.player.alive) return false;
-    this.endMotherFight();
-    this.state.flags.motherDead = false;
-    m.reset();
-    this.teleport(HOLLOW.x - 7, HOLLOW.z + 15, Math.PI + 0.4, { banner: false });
-    this.startMotherFight(m, { cutscene });
+  // Test menu: puts the player where the boss's fight starts and wakes it (reviving it if beaten).
+  enterFoeFight(tag, { cutscene = true } = {}) {
+    const b = this.enemies.find((e) => e.tag === tag);
+    if (!b || !this.player.alive) return false;
+    this.endFoeFight();
+    this.state.flags[b.flag] = false;
+    b.reset();
+    const at = b.enter();
+    this.teleport(at.x, at.z, at.yaw, { banner: false });
+    this.startFoeFight(b, { cutscene });
     return true;
   }
 
@@ -978,16 +988,19 @@ export class Game {
 
   // Snow falls north of the ridge: crossing it swaps the Vale's weather for the Rimewold's and back
   // (a boss that brings its own weather sets weatherLock while it lasts).
-  _regionWeather(p) {
+  _regionWeather(p, instant = false) {
     const north = p.z < RIME.snowZ - 4;
     this.audio.setRegion(north ? 'rime' : Math.hypot(p.x - FEN.x, p.z - FEN.z) < FEN.r ? 'fen' : 'vale');
     if (north === this.inRime || this.weatherLock) return;
     this.inRime = north;
+    const now = this.world.getWeather();
+    const wintry = now === 'snow' || now === 'blizzard';
     if (north) {
-      this.valeWeather = this.world.getWeather();
-      this.world.setWeather('snow');
-    } else if (this.world.getWeather() === 'snow' || this.world.getWeather() === 'blizzard') {
-      this.world.setWeather(this.valeWeather && this.valeWeather !== 'snow' ? this.valeWeather : 'clear');
+      if (!wintry) this.valeWeather = now;
+      // Once the Winter Lantern is out the snow stops falling (the thaw has begun).
+      this.world.setWeather(this.state.flags.saelithDead ? 'clear' : 'snow', instant);
+    } else if (wintry) {
+      this.world.setWeather(this.valeWeather ?? 'clear', instant);
     }
   }
 
@@ -1016,7 +1029,7 @@ export class Game {
     this.horse.hideNow();
     this.lockTarget = null;
     if (this.bossFight && !keepFight) this.endBossFight();
-    if (this.motherFight && !keepFight) this.endMotherFight();
+    if (this.fieldBoss && !keepFight) this.endFoeFight();
     if (p.state === 'fog') this.world.fogGate.collider.enabled = true; // the walk's onDone won't run now
     p.pos.set(x, 0, z);
     this.world.resolve(p.pos, p.radius);
@@ -1033,6 +1046,7 @@ export class Game {
     const zone = this.zoneAt(p.pos.x, p.pos.z);
     this.zone = zone;
     this._discover(zone);
+    this._regionWeather(p.pos, true);
     if (banner && zone) this.hud.banner(ZONES[zone].name, '', 'area');
     return true;
   }
@@ -1097,7 +1111,7 @@ export class Game {
     const s = this.world.shrines.get(id);
     if (!s || !s.lit) return 'That lantern has not been kindled.';
     if (this.bossFight) return 'The mist holds you here until the fight is done.';
-    if (this.motherFight) return 'Not while the Mother hunts you.';
+    if (this.fieldBoss) return 'Not in the middle of a fight like this.';
     if (!this.player.alive) return 'You cannot travel while fallen.';
     if (this.player.state === 'fog') return 'Not while passing through the mist.';
     this.teleport(s.x, s.z + 2.5, Math.PI, { banner: false });

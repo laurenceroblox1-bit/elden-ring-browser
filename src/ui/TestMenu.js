@@ -10,6 +10,8 @@ import { Save, mergeSave } from '../systems/Save.js';
 import { enemyKinds } from '../entities/spawn.js';
 
 const SCALES = [0.25, 0.5, 1, 2];
+// Bosses outside the arena that run their own fights (Game.startFoeFight), by enemy tag.
+const FOE_BOSSES = [['matriarch', 'Vharra, Mother of the Mire'], ['troll', 'Grimhorn, the Howling Field\'s troll'], ['saelith', 'Saelith, the Winter Lantern']];
 const BOSS_HP = [0.75, 0.5, 0.25, 0.1];
 const NEARBY = 30; // metres, for "kill all nearby"
 
@@ -314,32 +316,37 @@ export class TestMenu {
         break;
       }
 
-      // Vharra (the fen boss)
-      case 'mother': {
+      // Roaming bosses (Vharra, Saelith, the troll): arg is 'tag' or 'tag:extra'
+      case 'foe': {
+        const [tag, how] = arg.split(':');
         if (!p.alive) { note = 'You have fallen. Wait to rise at the lantern.'; break; }
         Object.assign(p, { hp: p.maxHp, stamina: p.maxStamina, focus: p.maxFocus, flasks: p.flasksMax, winded: false });
-        close = g.enterMotherFight({ cutscene: arg !== 'skip' });
+        close = g.enterFoeFight(tag, { cutscene: how !== 'skip' });
         break;
       }
-      case 'motherHp': {
-        const m = g.motherFight;
-        if (!m) { note = 'Wake her first.'; break; }
-        m.hp = m.maxHp * Number(arg);
-        note = `Vharra set to ${Math.round(Number(arg) * 100)}% health.`;
+      case 'foeHp': {
+        const [tag, v] = arg.split(':');
+        const b = g.fieldBoss;
+        if (!b || b.tag !== tag) { note = 'Start that fight first.'; break; }
+        b.hp = b.maxHp * Number(v);
+        note = `${b.name} set to ${Math.round(Number(v) * 100)}% health.`;
         break;
       }
-      case 'motherKill': {
-        const m = g.motherFight;
-        if (!m) { note = 'Wake her first.'; break; }
-        g.combat.strike(p, m, { dmg: 1e6, poise: 0 });
+      case 'foeKill': {
+        const b = g.fieldBoss;
+        if (!b || b.tag !== arg) { note = 'Start that fight first.'; break; }
+        b.invuln = false;
+        g.combat.strike(p, b, { dmg: 1e6, poise: 0 });
         break;
       }
-      case 'motherReset': {
-        const m = g.enemies.find((e) => e.tag === 'matriarch');
-        g.endMotherFight();
-        st.flags.motherDead = false;
-        m?.reset();
-        note = 'Vharra is asleep in her hollow again.';
+      case 'foeReset': {
+        const b = g.enemies.find((e) => e.tag === arg);
+        if (g.fieldBoss === b) g.endFoeFight();
+        if (b) {
+          st.flags[b.flag] = false;
+          b.reset();
+          note = `${b.name} is back at its post.`;
+        }
         break;
       }
 
@@ -431,8 +438,6 @@ export class TestMenu {
     const owned = (id) => g.hasGear(id);
     const gearBtn = (id, def) => btn('gear', esc(def.name), { arg: id, disabled: owned(id), cls: owned(id) ? 'owned' : '' });
     const bossState = dead ? 'silenced' : fighting ? `fighting, phase ${b.phase}, ${Math.ceil(b.hp)} / ${b.maxHp} HP` : 'kneeling, asleep';
-    const mf = g.motherFight;
-    const motherState = st.flags.motherDead ? 'at rest for good' : mf ? `fighting, phase ${mf.phase}, ${Math.ceil(mf.hp)} / ${mf.maxHp} HP` : 'asleep in her hollow';
     const q = g.quests, mq = this._mainQuest();
     const tod = g.sky.getTimeOfDay();
 
@@ -475,7 +480,7 @@ export class TestMenu {
         + toggle('freeze', 'Freeze enemy AI', g.cheats.freeze)
         + btn('pack', 'Spawn a hound pack')
       ) + sub('Spawn 5 m ahead, facing you:') + row(
-        enemyKinds().filter((k) => k !== 'matriarch').map((k) => btn('spawn', `Spawn ${esc(title(k))}`, { arg: k })).join('')
+        enemyKinds().filter((k) => !FOE_BOSSES.some(([t]) => t === k)).map((k) => btn('spawn', `Spawn ${esc(title(k))}`, { arg: k })).join('')
       )),
 
       group('Gear and items', row(
@@ -498,14 +503,20 @@ export class TestMenu {
           btn('rehearse', 'Rehearse (with cutscene)', { cls: 'warn' }) + btn('rehearse', 'Rehearse (skip cutscene)', { arg: 'skip', cls: 'warn' })
         )),
 
-      group('Second boss', sub(`Vharra, Mother of the Mire: ${esc(motherState)}.`) + row(
-        btn('mother', 'Fight her (with cutscene)', { cls: 'warn' })
-        + btn('mother', 'Fight her (skip cutscene)', { arg: 'skip', cls: 'warn' })
-        + btn('motherHp', 'Health 50% (phase 2)', { arg: 0.5, disabled: !mf })
-        + btn('motherHp', 'Health 10%', { arg: 0.1, disabled: !mf })
-        + btn('motherKill', 'Kill', { disabled: !mf, cls: 'warn' })
-        + btn('motherReset', 'Reset (put her to sleep)')
-      )),
+      group('Other bosses', FOE_BOSSES.map(([tag, label]) => {
+        const b = g.enemies.find((e) => e.tag === tag);
+        if (!b) return '';
+        const on = g.fieldBoss === b;
+        const state = st.flags[b.flag] ? 'beaten' : on ? `fighting, phase ${b.phase ?? 1}, ${Math.ceil(b.hp)} / ${b.maxHp} HP` : 'waiting at its post';
+        return sub(`${esc(label)}: ${esc(state)}.`) + row(
+          btn('foe', b.intro ? 'Fight (with cutscene)' : 'Fight', { arg: tag, cls: 'warn' })
+          + (b.intro ? btn('foe', 'Fight (skip cutscene)', { arg: `${tag}:skip`, cls: 'warn' }) : '')
+          + btn('foeHp', 'Health 50%', { arg: `${tag}:0.5`, disabled: !on })
+          + btn('foeHp', '10%', { arg: `${tag}:0.1`, disabled: !on })
+          + btn('foeKill', 'Kill', { arg: tag, disabled: !on, cls: 'warn' })
+          + btn('foeReset', 'Reset', { arg: tag })
+        );
+      }).join(''), 'wide'),
 
       group('Debug views', row(
         toggle('hitboxes', 'Hitboxes and attack reach', g.debugViews.hitboxes)

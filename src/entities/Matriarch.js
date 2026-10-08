@@ -31,6 +31,12 @@ export class Matriarch extends Hound {
     this.tag = 'matriarch';
     this.name = 'Vharra, Mother of the Mire';
     this.isBoss = true;
+    this.bossId = 'mother';
+    this.flag = 'motherDead';
+    this.music = 'bell';
+    this.summonPack = 'vharra-litter';
+    this.intro = { title: 'Whelp-Mother of the Ashen Fen', open: 'snarl', roar: 'howl', scale: 1.45, lift: 1.0, roarAt: [2.6, 4.4] };
+    this.reward = { gear: 'mothers_fang', banner: ['The Mother Sleeps', 'Vharra, Mother of the Mire'] };
     this.model = buildHound({ mother: true });
     this.model.root.scale.setScalar(SIZE);
     this.size = SIZE;
@@ -79,6 +85,8 @@ export class Matriarch extends Hound {
     this.lockable = true;
   }
 
+  enter() { return { x: HOLLOW.x - 7, z: HOLLOW.z + 15, yaw: Math.PI + 0.4 }; }
+
   busy() { return !!this.move || this.state === 'phase' || this.state === 'wake'; }
 
   _glow(k) {
@@ -117,7 +125,7 @@ export class Matriarch extends Hound {
     this.move = null;
     const r = super._die(hit);
     this.lockable = false;
-    this.game.onMotherDefeated?.(this);
+    this.game.onFoeBossDefeated(this);
     return r;
   }
 
@@ -141,7 +149,7 @@ export class Matriarch extends Hound {
       // Asleep. Breath of ash from her nostrils now and then.
       if (Math.random() < dt * 0.8) this._puff(0x8a8478, 3);
       const pd = Math.hypot(p.pos.x - HOLLOW.x, p.pos.z - HOLLOW.z);
-      if (p.alive && pd < HOLLOW.trigger && !g.cutscene) g.startMotherFight?.(this);
+      if (p.alive && pd < HOLLOW.trigger && !g.cutscene) g.startFoeFight(this);
       return false;
     }
     if (this.state === 'wake') {
@@ -151,7 +159,7 @@ export class Matriarch extends Hound {
     // Out of the hollow (or fallen): the hunt is over and she goes back to sleep.
     const pd = Math.hypot(p.pos.x - HOLLOW.x, p.pos.z - HOLLOW.z);
     if (!p.alive || pd > HOLLOW.leash) {
-      g.endMotherFight?.();
+      g.endFoeFight();
       return false;
     }
     if (this.phase === 1 && this.state !== 'phase' && this.hp <= this.maxHp * 0.5 && !this.move) {

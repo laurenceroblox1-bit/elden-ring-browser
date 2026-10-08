@@ -381,6 +381,7 @@ export class Scenery {
       if (w.roadDistance(x, z) < 5 + pad) return false;
       if (Math.hypot(x - TARN.x, z - TARN.z) < TARN.r + 3 + pad) return false;
       if (Math.hypot(x - HALL.x, z - HALL.z) < HALL.r + 5 + pad) return false;
+      if (Math.hypot(x - ZONES.field.x, z - ZONES.field.z) < ZONES.field.r + pad) return false; // the troll's open field
       for (const zn of Object.values(ZONES)) if (zn.flat != null && Math.hypot(x - zn.x, z - zn.z) < zn.flat + 3 + pad) return false;
       return this.clearOfGear(x, z, 2);
     };
