@@ -3,7 +3,7 @@ import * as THREE from '../lib/three.js';
 import { createNoise2D, fbm, smoothstep, clamp, lerp, mulberry32, distToSegment } from '../core/math.js';
 import { WORLD, ZONES, ROADS, LAKE, ARENA, SHRINES, NOTICE, FIRES, KEEP_CLEAR } from '../data/world.js';
 import * as P from '../models/props.js';
-import { mat, mesh, box, glowSprite } from '../models/kit.js';
+import { mat, mesh, box, plainBox, glowSprite } from '../models/kit.js';
 import { Scenery } from './Scenery.js';
 import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
@@ -193,7 +193,7 @@ export class World {
     full.computeVertexNormals();
     const nAttr = full.getAttribute('normal');
     full.dispose();
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95 });
+    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }); // smooth hills
     this.terrain = new THREE.Group();
     const span = SEG / TILES;
     for (let tz = 0; tz < TILES; tz++) {
@@ -575,7 +575,7 @@ export class World {
   }
 
   _buildBlocks() {
-    const im = new THREE.InstancedMesh(box(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.92 }), this.blocks.length);
+    const im = new THREE.InstancedMesh(plainBox(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.92 }), this.blocks.length);
     const dummy = new THREE.Object3D();
     const color = new THREE.Color();
     const rng = mulberry32(3);

@@ -1,7 +1,7 @@
 // Character models built from the shared humanoid rig. All original designs.
 import * as THREE from '../lib/three.js';
 import { buildHumanoid, mergeHumanoid } from './humanoid.js';
-import { mat, mesh, box, cyl, cone, group, glowSprite } from './kit.js';
+import { mat, mesh, box, cyl, cone, sphere, group, glowSprite } from './kit.js';
 import { equipModel } from './weapons.js';
 
 function addWeaponMarkers(handGroup, length) {
@@ -21,13 +21,16 @@ export function buildPlayer() {
   const r = buildHumanoid({ skin: darkSteel, body: steel, arms: darkSteel, legs: leather, boots: darkSteel, hands: leather });
 
   // Helmet with a visor slit and crest.
-  r.head.add(mesh(box(0.3, 0.32, 0.32), steel, { y: 0.16 }));
+  r.head.add(mesh(cyl(0.155, 0.165, 0.24, 14), steel, { y: 0.12 }));
+  r.head.add(mesh(sphere(0.155), steel, { y: 0.24, sy: 0.7 }));
   r.head.add(mesh(box(0.22, 0.03, 0.02), mat(0x111111), { y: 0.18, z: 0.165, shadow: false }));
   r.head.add(mesh(box(0.04, 0.1, 0.3), trim, { y: 0.36 }));
   // Pauldrons, belt and tabard.
-  r.armR.shoulder.add(mesh(box(0.22, 0.12, 0.26), steel, { y: 0.02, x: -0.03 }));
-  r.armL.shoulder.add(mesh(box(0.22, 0.12, 0.26), steel, { y: 0.02, x: 0.03 }));
-  r.torso.add(mesh(box(0.47, 0.06, 0.28), trim, { y: 0.02 }));
+  // Domed pauldrons.
+  r.armR.shoulder.add(mesh(sphere(0.13), steel, { y: 0.02, x: -0.03, sy: 0.62, sz: 1.1 }));
+  r.armL.shoulder.add(mesh(sphere(0.13), steel, { y: 0.02, x: 0.03, sy: 0.62, sz: 1.1 }));
+  r.torso.add(mesh(cyl(0.235, 0.235, 0.06), trim, { y: 0.02, sz: 0.62 }));
+  r.torso.add(mesh(sphere(0.24), steel, { y: 0.44, z: 0.04, sy: 0.75, sz: 0.62 }));
   r.hips.add(mesh(box(0.3, 0.42, 0.02), cloth, { y: -0.22, z: 0.15 }));
 
   // Cloak hangs from the shoulders; its pivot sways with speed.
@@ -57,14 +60,14 @@ export function buildSentry(captain = false) {
   const skin = mat(0x8a8f7c);
   const r = buildHumanoid({ skin, body: cloth, arms: skin, legs: mat(0x3e372c), boots: rust, hands: skin }, { chestW: 0.5 });
 
-  r.torso.add(mesh(box(0.5, 0.3, 0.32), rust, { y: 0.43 }));
+  r.torso.add(mesh(sphere(0.25), rust, { y: 0.44, sy: 0.72, sz: 0.66 }));
   r.head.add(mesh(cyl(0.3, 0.3, 0.04, 8), rust, { y: 0.24 }));
   r.head.add(mesh(cyl(0.12, 0.17, 0.14, 8), rust, { y: 0.3 }));
   r.head.add(mesh(box(0.14, 0.03, 0.02), mat(0xe0b060, { emissive: 0xa06a20, emissiveIntensity: 1.2 }), { y: 0.15, z: 0.135, shadow: false }));
   if (captain) {
     r.head.add(mesh(box(0.05, 0.28, 0.24), mat(0x9b2d22), { y: 0.48 }));
-    r.armR.shoulder.add(mesh(box(0.22, 0.12, 0.26), rust, { y: 0.02 }));
-    r.armL.shoulder.add(mesh(box(0.22, 0.12, 0.26), rust, { y: 0.02 }));
+    r.armR.shoulder.add(mesh(sphere(0.13), rust, { y: 0.02, sy: 0.62, sz: 1.1 }));
+    r.armL.shoulder.add(mesh(sphere(0.13), rust, { y: 0.02, sy: 0.62, sz: 1.1 }));
   }
   r.hips.add(mesh(box(0.4, 0.36, 0.02), cloth, { y: -0.2, z: 0.15 }));
 

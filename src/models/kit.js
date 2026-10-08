@@ -3,13 +3,14 @@ import * as THREE from '../lib/three.js';
 
 const matCache = new Map();
 
-// Flat-shaded standard material. Cached by look unless `unique` (needed when a material animates).
+// Smooth-shaded standard material (soft, rounded look; pass flat: true for a faceted one).
+// Cached by look unless `unique` (needed when a material animates).
 export function mat(color, o = {}) {
-  const key = [color, o.metalness ?? 0, o.roughness ?? 0.85, o.emissive ?? 0, o.emissiveIntensity ?? 1, o.opacity ?? 1, o.side ?? 0].join('|');
+  const key = [color, o.metalness ?? 0, o.roughness ?? 0.85, o.emissive ?? 0, o.emissiveIntensity ?? 1, o.opacity ?? 1, o.side ?? 0, o.flat ? 1 : 0].join('|');
   if (!o.unique && matCache.has(key)) return matCache.get(key);
   const m = new THREE.MeshStandardMaterial({
     color,
-    flatShading: true,
+    flatShading: !!o.flat,
     roughness: o.roughness ?? 0.85,
     metalness: o.metalness ?? 0,
     emissive: o.emissive ?? 0x000000,
@@ -27,18 +28,67 @@ const cached = (key, make) => {
   if (!geoCache.has(key)) geoCache.set(key, make());
   return geoCache.get(key);
 };
-export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
-export const cyl = (rt, rb, h, seg = 8, open = false) =>
-  cached(`c${rt},${rb},${h},${seg},${open}`, () => new THREE.CylinderGeometry(rt, rb, h, seg, 1, open));
-export const cone = (r, h, seg = 6) => cached(`k${r},${h},${seg}`, () => new THREE.ConeGeometry(r, h, seg));
+// Boxes get rounded edges (radius ~32% of the thinnest side) with smooth normals, so armour, robes
+// and props read as soft carved shapes instead of sharp blocks. plainBox() keeps hard edges for
+// geometry that is scaled non-uniformly (instanced walls), where a rounded corner would stretch.
+export const box = (w, h, d) => cached(`b${w},${h},${d}`, () => roundedBox(w, h, d, Math.min(w, h, d) * 0.32));
+export const plainBox = (w, h, d) => cached(`pb${w},${h},${d}`, () => new THREE.BoxGeometry(w, h, d));
+// Curved shapes get enough segments to read as round under smooth shading.
+export const cyl = (rt, rb, h, seg = 12, open = false) => {
+  const n = Math.max(seg, 12);
+  return cached(`c${rt},${rb},${h},${n},${open}`, () => new THREE.CylinderGeometry(rt, rb, h, n, 1, open));
+};
+export const cone = (r, h, seg = 10) => {
+  const n = Math.max(seg, 10);
+  return cached(`k${r},${h},${n}`, () => new THREE.ConeGeometry(r, h, n));
+};
 export const ico = (r, d = 0) => cached(`i${r},${d}`, () => new THREE.IcosahedronGeometry(r, d));
-export const sphere = (r, w = 8, h = 6) => cached(`s${r},${w},${h}`, () => new THREE.SphereGeometry(r, w, h));
+export const sphere = (r, w = 14, h = 10) => cached(`s${r},${w},${h}`, () => new THREE.SphereGeometry(r, w, h));
+// A capsule `len` long overall (caps included), centred on its origin, along Y.
+export const capsule = (r, len, seg = 10) =>
+  cached(`p${r},${len},${seg}`, () => new THREE.CapsuleGeometry(r, Math.max(0.001, len - 2 * r), 4, seg));
+
+// A box whose edges and corners are rounded by `r`. Built from a subdivided box: the outer band of
+// each axis is squeezed into the last `r`, then every vertex is pushed onto a sphere of radius r around
+// the nearest point of the inner box. Normals point straight out of that sphere, so shading is smooth.
+function roundedBox(w, h, d, r, seg = 4) {
+  const geo = new THREE.BoxGeometry(w, h, d, seg, seg, seg);
+  const half = [w / 2, h / 2, d / 2];
+  const pos = geo.attributes.position, nor = geo.attributes.normal;
+  const p = new THREE.Vector3(), inner = new THREE.Vector3(), n = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    p.fromBufferAttribute(pos, i);
+    const c = p.toArray();
+    for (let a = 0; a < 3; a++) {
+      const hw = half[a], t = Math.abs(c[a]) / hw, rr = Math.min(r / hw, 0.5);
+      // Inner half of the axis spans [0, 1 - rr]; the outer half spans the rounded band [1 - rr, 1].
+      const t2 = t <= 0.5 ? (t / 0.5) * (1 - rr) : 1 - rr + ((t - 0.5) / 0.5) * rr;
+      c[a] = Math.sign(c[a]) * t2 * hw;
+    }
+    p.fromArray(c);
+    inner.set(
+      THREE.MathUtils.clamp(p.x, -half[0] + r, half[0] - r),
+      THREE.MathUtils.clamp(p.y, -half[1] + r, half[1] - r),
+      THREE.MathUtils.clamp(p.z, -half[2] + r, half[2] - r),
+    );
+    n.subVectors(p, inner);
+    if (n.lengthSq() > 1e-12) {
+      n.normalize();
+      p.copy(inner).addScaledVector(n, r);
+    } else n.fromBufferAttribute(nor, i);
+    pos.setXYZ(i, p.x, p.y, p.z);
+    nor.setXYZ(i, n.x, n.y, n.z);
+  }
+  geo.computeBoundingSphere();
+  return geo;
+}
 
 export function mesh(geo, material, t = {}) {
   const m = new THREE.Mesh(geo, material);
   m.position.set(t.x ?? 0, t.y ?? 0, t.z ?? 0);
   m.rotation.set(t.rx ?? 0, t.ry ?? 0, t.rz ?? 0);
   if (t.s) m.scale.setScalar(t.s);
+  if (t.sx || t.sy || t.sz) m.scale.set(t.sx ?? 1, t.sy ?? 1, t.sz ?? 1);
   m.castShadow = t.shadow ?? true;
   m.receiveShadow = t.receive ?? false;
   return m;
