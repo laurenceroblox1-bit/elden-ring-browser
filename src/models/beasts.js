@@ -6,12 +6,13 @@ import { mat, mesh, box, cone, group, mergeRig } from './kit.js';
 // Mire Hound: a starved ash-grey hound from the lake fogs. Ribs like a cage, a ridge of bone spurs
 // down the spine, ember eyes and a smouldering maw. Faces +Z with its feet at the root.
 // `mother` builds Vharra instead: soot-dark hide, a crown of bone, four eyes and a smouldering mane.
-export function buildHound({ mother = false } = {}) {
-  const hide = mat(mother ? 0x4a4644 : 0x6b6e6f, { roughness: 0.95 });
-  const dark = mat(mother ? 0x2a2626 : 0x3e4043, { roughness: 0.95 });
-  const bone = mat(0xd8cfb8);
-  const ember = mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
-  const maw = mat(0x6a2414, { emissive: 0xff4a10, emissiveIntensity: 0.7 });
+// `frost` builds a Rime Wolf: white and pale-grey coat, ice-blue eyes and maw, a ruff of frost.
+export function buildHound({ mother = false, frost = false } = {}) {
+  const hide = mat(mother ? 0x4a4644 : frost ? 0xd9dee2 : 0x6b6e6f, { roughness: 0.95 });
+  const dark = mat(mother ? 0x2a2626 : frost ? 0x8e9aa6 : 0x3e4043, { roughness: 0.95 });
+  const bone = mat(frost ? 0xbfd8e6 : 0xd8cfb8);
+  const ember = frost ? mat(0xcff0ff, { emissive: 0x58b8ff, emissiveIntensity: 2.4 }) : mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
+  const maw = frost ? mat(0x2a4a6a, { emissive: 0x3a8ad8, emissiveIntensity: 0.8 }) : mat(0x6a2414, { emissive: 0xff4a10, emissiveIntensity: 0.7 });
 
   const root = new THREE.Group();
   const body = group({ y: 0.7 });
@@ -45,6 +46,11 @@ export function buildHound({ mother = false } = {}) {
   jaw.add(mesh(box(0.08, 0.02, 0.22), maw, { z: 0.14, y: 0.03, shadow: false }));
   for (const x of [0.04, -0.04]) jaw.add(mesh(cone(0.016, 0.06, 3), bone, { x, y: 0.05, z: 0.27 }));
 
+  if (frost) {
+    // A ruff of frost along the neck and shoulders.
+    for (let i = 0; i < 4; i++) neck.add(mesh(cone(0.05, 0.16, 4), mat(0xf2f8fc), { x: (i % 2 ? 1 : -1) * 0.08, y: 0.1, z: 0.28 - i * 0.08, rx: -0.6, rz: (i % 2 ? -1 : 1) * 0.4 }));
+    body.add(mesh(box(0.44, 0.1, 0.4), mat(0xf2f8fc), { y: 0.22, z: 0.28 }));
+  }
   if (mother) {
     // Ember mane down the neck and shoulders, a second pair of eyes, a crown of hooked horns, and a
     // glowing seam along the belly where the litter-fire burns.

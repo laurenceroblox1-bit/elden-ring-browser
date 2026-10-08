@@ -3,7 +3,8 @@
 // i-frames (a roll dodges it) and shield guards all work the same as for melee.
 //
 // spawn(owner, o) options:
-//   kind      'bolt' (a ball of lantern fire) or 'crescent' (a flat burning arc); sets the look
+//   kind      'bolt' (a ball of lantern fire), 'crescent' (a flat burning arc), 'arrow' (a bowman's
+//             shaft, nose along its flight), 'shard' (a spike of ice) or 'boulder' (a lump of ice); the look
 //   x, y, z   start point;  dirX, dirY, dirZ  direction (normalised here);  speed (m/s)
 //   radius    hit sphere radius (m);  life (s) before it fizzles
 //   hit       the hit object passed to Combat (dmg, poise, heavy, ...)
@@ -35,6 +36,9 @@ function looks() {
   LOOKS = {
     bolt: { geo: ico(0.15, 1), mat: additive(0xfff0c8), glow: glow(0xffa040, 0.95), glowSize: 1.5, color: 0xffb050, color2: 0xfff0c0 },
     crescent: { geo: crescent, mat: additive(0xff9a40, 0.9), glow: glow(0xff6a20, 0.7), glowSize: 2.2, color: 0xff7a2a, color2: 0xffd080 },
+    arrow: { geo: new THREE.BoxGeometry(0.035, 0.035, 0.85), mat: new THREE.MeshStandardMaterial({ color: 0x6b5236, roughness: 0.8 }), glow: glow(0xffffff, 0.0), glowSize: 0.1, color: 0x8a7a66, color2: 0xd8ccb8, aligned: true, trail: 0 },
+    shard: { geo: new THREE.OctahedronGeometry(0.16, 0).scale(0.7, 0.7, 2.6), mat: new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x4aa8ff, emissiveIntensity: 1.4, roughness: 0.2, flatShading: true }), glow: glow(0x8fd0ff, 0.6), glowSize: 1.0, color: 0xbfe8ff, color2: 0xffffff, aligned: true, trail: 1 },
+    boulder: { geo: new THREE.IcosahedronGeometry(0.7, 0), mat: new THREE.MeshStandardMaterial({ color: 0xb8d0dc, roughness: 0.5, flatShading: true }), glow: glow(0xbfe8ff, 0.0), glowSize: 0.1, color: 0xd8eef8, color2: 0xffffff, trail: 1 },
   };
   return LOOKS;
 }
@@ -123,11 +127,14 @@ export class Projectiles {
       const u = p.age / p.life;
       p.mesh.scale.setScalar((o.scale ?? 1) * (1 + u * 0.35));
       p.mesh.material.opacity = 0.9; // shared: keep it steady, fade is done by the burst
-    } else {
+    } else if (o.kind === 'boulder') {
+      p.mesh.rotation.x += dt * 4;
+      p.mesh.rotation.y += dt * 3;
+    } else if (!looks()[o.kind ?? 'bolt'].aligned) {
       p.mesh.rotation.z += dt * 9;
     }
-    // Trail of embers.
-    const n = o.kind === 'crescent' ? 3 : 2;
+    // Trail of embers (sparkles for ice, nothing for an arrow).
+    const n = looks()[o.kind ?? 'bolt'].trail ?? (o.kind === 'crescent' ? 3 : 2);
     for (let k = 0; k < n; k++) {
       const side = o.kind === 'crescent' ? (Math.random() - 0.5) * 1.6 * (o.scale ?? 1) : 0;
       const vx = p.vel.x, vz = p.vel.z, l = Math.hypot(vx, vz) || 1;
@@ -140,9 +147,14 @@ export class Projectiles {
   }
 
   _face(p) {
-    if (p.o.kind !== 'crescent') return;
-    tmp.copy(p.pos).add(p.vel);
-    p.mesh.lookAt(tmp.x, p.pos.y, tmp.z);
+    const k = p.o.kind ?? 'bolt';
+    if (k === 'crescent') {
+      tmp.copy(p.pos).add(p.vel);
+      p.mesh.lookAt(tmp.x, p.pos.y, tmp.z);
+    } else if (looks()[k].aligned) {
+      tmp.copy(p.pos).add(p.vel);
+      p.mesh.lookAt(tmp); // nose along the flight, arcing with gravity
+    }
   }
 
   // Impact (or fizzle, at a smaller `power`): sparks, a flash and a sound. Always returns false.

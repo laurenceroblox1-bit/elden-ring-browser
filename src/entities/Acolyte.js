@@ -77,7 +77,10 @@ export class Acolyte extends Foe {
     switch (this.state) {
       case 'idle': {
         const seen = dist < 22 && Math.abs(angleDiff(this.yaw, toP)) < 1.9;
-        if (p.alive && (seen || dist < 9)) this._setState('alert');
+        if (p.alive && (seen || dist < 9)) {
+          this._setState('alert');
+          this.game.audio.playAt('chant', this.pos);
+        }
         break;
       }
       case 'alert':

@@ -6,6 +6,70 @@ export class AudioFx {
     this.muted = false;
     this.musicOn = false;
     this.tollTimer = null;
+    this.listener = null; // the camera: playAt() pans and fades by where a sound is relative to it
+    this.region = 'vale';
+    this.croakTimer = null;
+  }
+
+  // A cue at a place in the world: quieter with distance (silent past `range`), panned left or right.
+  playAt(name, pos, range = 45) {
+    if (!this.ctx || this.muted || !this.listener) return;
+    const cam = this.listener;
+    const dx = pos.x - cam.position.x, dz = pos.z - cam.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d > range) return;
+    const g = this.ctx.createGain();
+    g.gain.value = Math.pow(1 - d / range, 1.4) * 1.1 + 0.05;
+    let out = g;
+    if (this.ctx.createStereoPanner) {
+      const e = cam.matrixWorld.elements; // camera's right vector is the first column
+      const pan = this.ctx.createStereoPanner();
+      pan.pan.value = Math.max(-1, Math.min(1, ((dx * e[0] + dz * e[2]) / (d || 1)) * 0.8));
+      g.connect(pan);
+      out = pan;
+    }
+    out.connect(this.sfx);
+    const prev = this.sfx;
+    this.sfx = g;
+    try { this.play(name); } finally { this.sfx = prev; }
+    setTimeout(() => { g.disconnect(); out.disconnect(); }, 4000);
+  }
+
+  // Region ambience: wind howling through the Rimewold, frogs croaking in the Ashen Fen.
+  setRegion(r) {
+    if (r === this.region) return;
+    this.region = r;
+    if (!this.ctx) return;
+    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : 0, this.ctx.currentTime, 1.5);
+    clearInterval(this.croakTimer);
+    if (r === 'fen') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.4) return;
+        const f = 90 + Math.random() * 60;
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) this._tone({ freq: f, to: f * 0.8, type: 'square', dur: 0.09, gain: 0.025, delay: i * 0.14, dest: this.amb });
+      }, 1300);
+    }
+  }
+
+  _startHowl() {
+    const c = this.ctx;
+    const src = c.createBufferSource();
+    src.buffer = this.noiseBuf;
+    src.loop = true;
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 650;
+    f.Q.value = 7;
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 0.11;
+    const lfoGain = c.createGain();
+    lfoGain.gain.value = 260;
+    lfo.connect(lfoGain).connect(f.frequency);
+    this.howl = c.createGain();
+    this.howl.gain.value = 0;
+    src.connect(f).connect(this.howl).connect(this.amb);
+    src.start();
+    lfo.start();
   }
 
   // Must be called from a user gesture (browsers block audio before one).
@@ -35,7 +99,11 @@ export class AudioFx {
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
 
     this._startAmbient();
+    this._startHowl();
     this._startDrone();
+    const r = this.region;
+    this.region = null;
+    this.setRegion(r);
   }
 
   setMuted(m) {
@@ -147,6 +215,54 @@ export class AudioFx {
       case 'roar':
         this._noise({ dur: 1.6, freq: 260, to: 140, q: 2, gain: 0.5, attack: 0.15 });
         this._tone({ freq: 82, to: 55, type: 'sawtooth', dur: 1.5, gain: 0.2, attack: 0.2 });
+        break;
+      case 'alertHuman':
+        // A hoarse, hollow grunt: it has seen you.
+        this._noise({ dur: 0.38, freq: 340, to: 190, q: 3, gain: 0.32, attack: 0.03 });
+        this._tone({ freq: 118, to: 86, type: 'sawtooth', dur: 0.34, gain: 0.08, attack: 0.03 });
+        break;
+      case 'chant':
+        this._tone({ freq: 220, to: 233, type: 'triangle', dur: 0.8, gain: 0.07, attack: 0.15 });
+        this._tone({ freq: 330, to: 349, type: 'triangle', dur: 0.8, gain: 0.05, attack: 0.15 });
+        break;
+      case 'wraithAlert':
+        this._tone({ freq: 520, to: 880, type: 'triangle', dur: 0.7, gain: 0.08, attack: 0.2 });
+        this._tone({ freq: 880, to: 470, type: 'sine', dur: 0.9, gain: 0.07, delay: 0.6 });
+        this._noise({ dur: 1.2, freq: 2600, to: 1600, q: 2, gain: 0.08, attack: 0.3 });
+        break;
+      case 'spawn':
+        // Something steps out of nowhere: a rising rush and a low thud.
+        this._noise({ dur: 0.7, freq: 200, to: 2400, q: 0.8, gain: 0.22, attack: 0.3 });
+        this._tone({ freq: 70, to: 45, type: 'sine', dur: 0.5, gain: 0.3, delay: 0.55 });
+        break;
+      case 'return':
+        // Resting: the dead of the Vale get up again (a long, low swell).
+        this._tone({ freq: 55, to: 82, type: 'sawtooth', dur: 2.2, gain: 0.06, attack: 0.8 });
+        this._noise({ dur: 2.4, type: 'lowpass', freq: 200, to: 600, gain: 0.18, attack: 1 });
+        break;
+      case 'roarBig':
+        this._noise({ dur: 2.0, freq: 180, to: 90, q: 2.4, gain: 0.6, attack: 0.12 });
+        this._tone({ freq: 62, to: 40, type: 'sawtooth', dur: 1.8, gain: 0.26, attack: 0.2 });
+        break;
+      case 'frostbite':
+        // A crack of ice and a glassy ring.
+        this._noise({ dur: 0.35, freq: 3200, to: 900, q: 2, gain: 0.35 });
+        this._tone({ freq: 1760, to: 1320, type: 'triangle', dur: 0.7, gain: 0.12 });
+        this._tone({ freq: 2640, type: 'sine', dur: 0.9, gain: 0.07, delay: 0.05 });
+        break;
+      case 'shard':
+        this._noise({ dur: 0.22, freq: 2600, to: 4200, q: 1.5, gain: 0.16 });
+        this._tone({ freq: 1200, to: 1800, type: 'triangle', dur: 0.2, gain: 0.06 });
+        break;
+      case 'bowDraw':
+        this._noise({ dur: 0.6, type: 'bandpass', freq: 500, to: 900, q: 4, gain: 0.08, attack: 0.3 });
+        break;
+      case 'arrow':
+        this._noise({ dur: 0.16, freq: 1400, to: 3000, q: 1, gain: 0.18 });
+        break;
+      case 'blink':
+        this._noise({ dur: 0.4, freq: 600, to: 3000, q: 0.7, gain: 0.14, attack: 0.05 });
+        this._tone({ freq: 880, to: 220, type: 'sine', dur: 0.4, gain: 0.08 });
         break;
       case 'howl':
         // A long rising-falling wail over a growl.
@@ -276,11 +392,16 @@ export class AudioFx {
     lfo.start();
   }
 
-  setMusic(on) {
-    if (!this.ctx || this.musicOn === on) return;
+  // The boss drone, with a toll every few seconds: low bronze for the Warden and Vharra, a high glassy
+  // chime for the Rimewold's bosses (`style` 'winter').
+  setMusic(on, style = 'bell') {
+    if (!this.ctx || (this.musicOn === on && this.musicStyle === style)) return;
     this.musicOn = on;
+    this.musicStyle = style;
     this.music.gain.setTargetAtTime(on ? 0.5 : 0, this.ctx.currentTime, on ? 1.2 : 0.8);
     clearInterval(this.tollTimer);
-    if (on) this.tollTimer = setInterval(() => !this.muted && this._bell(98, 0.12, 5, this.music), 7000);
+    if (!on) return;
+    const toll = style === 'winter' ? () => { this._bell(392, 0.07, 6, this.music); this._bell(587, 0.04, 5, this.music); } : () => this._bell(98, 0.12, 5, this.music);
+    this.tollTimer = setInterval(() => !this.muted && toll(), style === 'winter' ? 5200 : 7000);
   }
 }

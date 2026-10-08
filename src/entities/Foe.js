@@ -51,6 +51,7 @@ export class Foe extends Actor {
     this.cooldown = 0;
     this.openT = 0;
     this.flinch = 0;
+    this.frost = this.frostbite = 0;
     this.strafe = Math.random() < 0.5 ? -1 : 1;
     this.shown = true;
     this._onReset?.();
@@ -144,6 +145,7 @@ export class Foe extends Actor {
     };
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
     if (this.openT > 0) this.openT -= dt;
+    this.tickFrost(dt);
     if (this.flinch > 0) this.flinch -= dt;
     this.want.x = this.want.z = 0;
     let steer = true;
@@ -195,8 +197,8 @@ export class Foe extends Actor {
     }
 
     if (steer) {
-      this.vel.x = damp(this.vel.x, this.want.x * this.speedMul, this.accel ?? 8, dt);
-      this.vel.z = damp(this.vel.z, this.want.z * this.speedMul, this.accel ?? 8, dt);
+      this.vel.x = damp(this.vel.x, this.want.x * this.speedMul * this.frostSlow, this.accel ?? 8, dt);
+      this.vel.z = damp(this.vel.z, this.want.z * this.speedMul * this.frostSlow, this.accel ?? 8, dt);
     }
     if (this.state !== 'dead' || this.t < 3.6) this.integrate(dt);
     this._animate(dt, c);

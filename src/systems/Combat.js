@@ -98,6 +98,8 @@ export class Combat {
     if (attacker === this.game.player && this.game.cheats?.oneHit) h.dmg = 99999; // test menu
     const result = target.takeHit(h);
     if (!result) return result;
+    // Frost: a blow that lands builds frostbite; a guarded one lets a little of the cold through.
+    if (h.frost && result !== 'parry' && target.alive) target.addFrost(result === 'block' ? h.frost * 0.35 : h.frost);
     this.feedback(attacker, target, h, result);
     return result;
   }

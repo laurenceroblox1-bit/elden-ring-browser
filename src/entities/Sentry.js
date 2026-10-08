@@ -3,19 +3,30 @@
 // Shield play: guard (raised when the player swings at their front), broken (guard smashed),
 // parried (their swing was parried), riposted (held for the player's riposte) and knockdown.
 import { Actor } from './Actor.js';
-import { buildSentry } from '../models/characters.js';
+import { buildSentry, buildKnight } from '../models/characters.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
 
 const MOVES = {
   slash: { windup: 0.62, active: 0.16, recover: 0.62, dmg: 16, poise: 18, reach: 2.3, arc: 0.9, lunge: 2.5, track: 5, pose: 'slash' },
   thrust: { windup: 0.78, active: 0.14, recover: 0.75, dmg: 20, poise: 22, reach: 3.0, arc: 0.4, lunge: 6, track: 3.5, pose: 'thrust' },
+  // Knights only: a shove with the shield that breaks a guard (it can't be parried: no blade).
+  bash: { windup: 0.5, active: 0.14, recover: 0.6, dmg: 10, poise: 45, reach: 1.9, arc: 0.8, lunge: 5, track: 5, pose: 'bash', heavy: true, parryable: false },
+};
+
+// Sentry-type foes: the Vale's hollow sentries, their captain, and Castle Dunmarrow's knights.
+const VARIANTS = {
+  sentry: { tag: 'sentry', name: 'Hollow Sentry', hp: 62, poise: 22, ash: 70, radius: 0.45, height: 1.8, lock: 1.3, speed: 1, dmg: 1, guard: 0.35, guardMax: 55, reach: 1, pace: 1, build: () => buildSentry(false) },
+  captain: { tag: 'sentry', name: 'Hollow Captain', hp: 170, poise: 45, ash: 260, radius: 0.55, height: 2.1, lock: 1.5, speed: 0.92, dmg: 1.4, guard: 0.5, guardMax: 90, reach: 1.12, pace: 0.85, build: () => buildSentry(true) },
+  knight: { tag: 'knight', name: 'Dunmarrow Knight', hp: 160, poise: 50, ash: 240, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.55, guard: 0.6, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildKnight },
 };
 
 const POSES = {
   rest: pose({ sRx: -0.2, eR: -0.5, hRx: 1.2, sLx: -0.6, eL: -0.9, torsoX: 0.12, headX: -0.1 }),
   slash: [pose({ sRx: -2.6, eR: -0.6, hRx: 0.9, torsoY: -0.35, sLx: -0.6, eL: -0.9, torsoX: -0.1 }),
     pose({ sRx: -0.5, eR: 0, hRx: 1.1, torsoY: 0.3, torsoX: 0.3, sLx: -0.4, eL: -0.9 })],
+  bash: [pose({ sLx: -0.5, sLy: -0.7, eL: -1.5, torsoY: 0.45, sRx: -0.3, eR: -0.8, hRx: 1.4, lLx: 0.3 }),
+    pose({ sLx: -1.5, sLy: -0.95, eL: -0.25, torsoY: -0.35, torsoX: 0.25, sRx: -0.2, eR: -0.6, hRx: 1.2, lRx: -0.5, kR: 0.4, lLx: 0.3, hipsH: -0.06 })],
   thrust: [pose({ sRx: -0.5, eR: -1.6, hRx: 2.0, torsoY: -0.45, sLx: -0.8, eL: -1.0 }),
     pose({ sRx: -1.55, eR: 0, hRx: 1.55, torsoY: 0.3, torsoX: 0.25, hipsH: -0.1, lRx: -0.6, kR: 0.4, lLx: 0.4 })],
   hurt: pose({ torsoX: -0.4, headX: -0.3, sRz: -0.5, sLz: 0.5, hRx: 1.1, hipsH: -0.06 }),
@@ -37,21 +48,22 @@ export class Sentry extends Actor {
   constructor(game, spawn) {
     super(game);
     this.spawn = spawn;
+    const V = (this.variant = VARIANTS[spawn.kind] ?? VARIANTS.sentry);
     this.captain = spawn.kind === 'captain';
-    this.tag = 'sentry';
-    this.name = this.captain ? 'Hollow Captain' : 'Hollow Sentry';
-    this.model = buildSentry(this.captain);
+    this.tag = V.tag;
+    this.name = V.name;
+    this.model = V.build();
     game.scene.add(this.model.root);
-    this.maxHp = this.captain ? 170 : 62;
-    this.maxPoise = this.captain ? 45 : 22;
-    this.ash = this.captain ? 260 : 70;
-    this.radius = this.captain ? 0.55 : 0.45;
-    this.height = this.captain ? 2.1 : 1.8;
-    this.lockHeight = this.captain ? 1.5 : 1.3;
-    this.speedMul = this.captain ? 0.92 : 1;
-    this.dmgMul = this.captain ? 1.4 : 1;
-    this.guardChance = this.captain ? 0.5 : 0.35; // chance to raise the shield against a swing at its front
-    this.guardMax = this.captain ? 90 : 55; // shield stamina: light hits drain it, heavies break it outright
+    this.maxHp = V.hp;
+    this.maxPoise = V.poise;
+    this.ash = V.ash;
+    this.radius = V.radius;
+    this.height = V.height;
+    this.lockHeight = V.lock;
+    this.speedMul = V.speed;
+    this.dmgMul = V.dmg;
+    this.guardChance = V.guard; // chance to raise the shield against a swing at its front
+    this.guardMax = V.guardMax; // shield stamina: light hits drain it, heavies break it outright
     this.poseBuf = pose();
     this.gait = 0;
     game.combat.register(this);
@@ -73,6 +85,7 @@ export class Sentry extends Actor {
     this.openT = 0;
     this.guardHp = this.guardMax;
     this.guardHold = 0;
+    this.frost = this.frostbite = 0;
     this.shieldHit = 0;
     this.seenAtk = this.game.player?.atkSeq ?? 0;
     this.model.root.visible = true;
@@ -178,6 +191,7 @@ export class Sentry extends Actor {
     const fromHome = Math.hypot(this.pos.x - this.spawn.x, this.pos.z - this.spawn.z);
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
     if (this.openT > 0) this.openT -= dt;
+    this.tickFrost(dt);
     if (this.shieldHit > 0) this.shieldHit -= dt;
     if (this.state !== 'guard') this.guardHp = Math.min(this.guardMax, this.guardHp + 15 * dt);
     let want = { x: 0, z: 0 };
@@ -185,7 +199,11 @@ export class Sentry extends Actor {
     switch (this.state) {
       case 'idle': {
         const seen = dist < 15 && Math.abs(angleDiff(this.yaw, toP)) < 1.9;
-        if (p.alive && (seen || dist < 5)) { this.state = 'alert'; this.t = 0; }
+        if (p.alive && (seen || dist < 5)) {
+          this.state = 'alert';
+          this.t = 0;
+          this.game.audio.playAt('alertHuman', this.pos);
+        }
         break;
       }
       case 'alert':
@@ -198,7 +216,8 @@ export class Sentry extends Actor {
         this.turnTo(toP, 5, dt);
         if (dist > 2.1) want = { x: Math.sin(toP) * 3.7, z: Math.cos(toP) * 3.7 };
         if ((this.cooldown -= dt) <= 0 && dist < 3.1) {
-          this._startMove(dist > 2.4 || Math.random() < 0.3 ? 'thrust' : 'slash');
+          const bash = this.variant.bash && dist < 2.2 && Math.random() < 0.3;
+          this._startMove(bash ? 'bash' : dist > 2.4 || Math.random() < 0.3 ? 'thrust' : 'slash');
         }
         break;
       }
@@ -256,8 +275,8 @@ export class Sentry extends Actor {
     }
 
     if (!NO_STEER.has(this.state)) {
-      this.vel.x = damp(this.vel.x, want.x * this.speedMul, 8, dt);
-      this.vel.z = damp(this.vel.z, want.z * this.speedMul, 8, dt);
+      this.vel.x = damp(this.vel.x, want.x * this.speedMul * this.frostSlow, 8, dt);
+      this.vel.z = damp(this.vel.z, want.z * this.speedMul * this.frostSlow, 8, dt);
     }
     if (this.state !== 'dead' || this.t < 3.6) this.integrate(dt);
     this._animate(dt);
@@ -278,9 +297,9 @@ export class Sentry extends Actor {
 
   _startMove(name) {
     const m = MOVES[name];
-    const sp = this.captain ? 0.85 : 1;
+    const sp = this.variant.pace;
     this.move = { ...m, windup: m.windup * sp, recover: m.recover * sp };
-    this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * (this.captain ? 1.12 : 1), arc: m.arc };
+    this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * this.variant.reach, arc: m.arc, heavy: m.heavy, parryable: m.parryable, frost: this.variant.frost };
     this.hitSet = new Set();
     this.state = 'attack';
     this.t = 0;

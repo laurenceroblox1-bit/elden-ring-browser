@@ -74,6 +74,7 @@ export class Hound extends Foe {
         const seen = dist < 18 && Math.abs(angleDiff(this.yaw, toP)) < 2.0;
         if (p.alive && (seen || dist < 8)) {
           this._setState('alert');
+          this.game.audio.playAt('snarl', this.pos);
           this._alertPack();
         }
         break;
@@ -158,7 +159,7 @@ export class Hound extends Foe {
       }
       this.turnTo(c.toP, 1.5, dt);
       if (t > L.windup + 0.05) {
-        const hit = { dmg: L.dmg, poise: L.poise, reach: L.reach, arc: L.arc, height: L.height, knock: 2.5 };
+        const hit = { dmg: L.dmg * (this.dmgMul ?? 1), poise: L.poise, reach: L.reach * (this.size ?? 1), arc: L.arc, height: L.height, knock: 2.5, frost: this.biteFrost };
         this.game.combat.melee(this, hit, this.hitSet);
       }
     } else {

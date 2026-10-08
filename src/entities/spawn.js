@@ -5,6 +5,9 @@ import { Sentry } from './Sentry.js';
 import { Hound } from './Hound.js';
 import { Acolyte } from './Acolyte.js';
 import { Matriarch } from './Matriarch.js';
+import { Wolf } from './Wolf.js';
+import { Bowman } from './Bowman.js';
+import { Wraith } from './Wraith.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -12,6 +15,10 @@ const KINDS = {
   hound: Hound, // packs share a `pack` id: they wake together and take turns to lunge
   acolyte: Acolyte,
   matriarch: Matriarch, // Vharra, the fen's boss: runs her own fight (Game.startMotherFight)
+  knight: Sentry, // Dunmarrow Knights: the sentry's state machine in plate, with a shield bash
+  bowman: Bowman,
+  wolf: Wolf,
+  wraith: Wraith,
 };
 
 export function createEnemy(game, spawn) {

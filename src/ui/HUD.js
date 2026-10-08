@@ -60,6 +60,7 @@ const TEMPLATE = `
   <div class="bar hp"><div class="lag"></div><div class="fill"></div></div>
   <div class="bar fo"><div class="fill"></div></div>
   <div class="bar st"><div class="fill"></div></div>
+  <div class="bar fr" hidden title="Frostbite"><div class="fill"></div></div>
   <div class="perf" hidden aria-hidden="true"></div>
 </div>
 <div class="gear" aria-label="Equipped gear">
@@ -185,7 +186,7 @@ export class HUD {
     this.$ = $;
     this.el = {
       hpBar: $('.bar.hp'), hpFill: $('.bar.hp .fill'), hpLag: $('.bar.hp .lag'),
-      stBar: $('.bar.st'), stFill: $('.bar.st .fill'), foBar: $('.bar.fo'), foFill: $('.bar.fo .fill'),
+      stBar: $('.bar.st'), stFill: $('.bar.st .fill'), frBar: $('.bar.fr'), frFill: $('.bar.fr .fill'), foBar: $('.bar.fo'), foFill: $('.bar.fo .fill'),
       flaskN: $('.flask-n'), flask: $('.flask'), ashN: $('.ash-n'),
       tracker: $('.tracker'), compass: $('.compass-track'), toasts: $('.toasts'), prompt: $('.prompt'),
       lock: $('.lock'), riposte: $('.riposte-hint'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
@@ -537,6 +538,13 @@ export class HUD {
     e.hpFill.style.transform = `scaleX(${hpF})`;
     e.hpLag.style.transform = `scaleX(${this.hpLag})`;
     e.stFill.style.transform = `scaleX(${Math.max(0, p.stamina / p.maxStamina)})`;
+    // Frostbite: the buildup while it fills, then the time left frostbitten (glowing).
+    const fr = p.frostbite > 0 ? p.frostbite / 6 : p.frost / 100;
+    if (e.frBar.hidden !== !(fr > 0.005)) e.frBar.hidden = !(fr > 0.005);
+    if (fr > 0.005) {
+      e.frFill.style.transform = `scaleX(${Math.min(1, fr)})`;
+      e.frBar.classList.toggle('bitten', p.frostbite > 0);
+    }
     e.stBar.classList.toggle('winded', !!p.winded);
     e.stBar.classList.toggle('guarding', p.state === 'guard');
     e.flaskN.textContent = p.flasks;

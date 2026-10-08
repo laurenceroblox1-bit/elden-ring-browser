@@ -30,7 +30,7 @@ import { navigate, focusFirst } from './Gamepad.js';
 import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
-import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL } from '../data/world.js';
+import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL, FEN } from '../data/world.js';
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -81,6 +81,7 @@ export class Game {
     this.events = new Events();
     this.input = new Input(this.canvas);
     this.audio = new AudioFx();
+    this.audio.listener = this.camera;
     this.audio.muted = !!Save.pref('muted');
     this.state = newGameState();
     this.hud = new HUD(app.querySelector('#hud'), this);
@@ -462,6 +463,7 @@ export class Game {
   rest(s) {
     this.state.shrine = s.id;
     this.resetWorld();
+    this.audio.play('return');
     const p = this.player;
     p.hp = p.maxHp;
     p.stamina = p.maxStamina;
@@ -978,6 +980,7 @@ export class Game {
   // (a boss that brings its own weather sets weatherLock while it lasts).
   _regionWeather(p) {
     const north = p.z < RIME.snowZ - 4;
+    this.audio.setRegion(north ? 'rime' : Math.hypot(p.x - FEN.x, p.z - FEN.z) < FEN.r ? 'fen' : 'vale');
     if (north === this.inRime || this.weatherLock) return;
     this.inRime = north;
     if (north) {
@@ -1116,6 +1119,8 @@ export class Game {
     const e = createEnemy(this, { kind, x: tmp.x, z: tmp.z, yaw, ...extra });
     this.enemies.push(e);
     this.extras.add(e);
+    this.audio.playAt('spawn', e.pos);
+    this.particles.emit({ x: e.pos.x, y: e.pos.y + 0.8, z: e.pos.z, count: 22, speed: 2, up: 2, color: 0x6a6660, color2: 0xb0a898, life: [0.5, 1.1], size: [0.15, 0.32], jitter: 0.8 });
     return e;
   }
 

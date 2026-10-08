@@ -22,9 +22,9 @@ export class EnemyBars {
       const el = document.createElement('div');
       el.className = 'ebar';
       el.hidden = true;
-      el.innerHTML = '<div class="ebar-name"></div><div class="ebar-track"><div class="ebar-lag"></div><div class="ebar-fill"></div></div>';
+      el.innerHTML = '<div class="ebar-name"></div><div class="ebar-track"><div class="ebar-lag"></div><div class="ebar-fill"></div></div><div class="ebar-frost" hidden><i></i></div>';
       this.layer.appendChild(el);
-      b = { el, fill: el.querySelector('.ebar-fill'), lag: el.querySelector('.ebar-lag'), name: el.querySelector('.ebar-name'), lagV: 1, lastHp: e.hp, hold: 0, shown: false };
+      b = { el, frost: el.querySelector('.ebar-frost'), frostFill: el.querySelector('.ebar-frost i'), fill: el.querySelector('.ebar-fill'), lag: el.querySelector('.ebar-lag'), name: el.querySelector('.ebar-name'), lagV: 1, lastHp: e.hp, hold: 0, shown: false };
       this.bars.set(e, b);
     }
     return b;
@@ -78,6 +78,12 @@ export class EnemyBars {
       b.lag.style.transform = `scaleX(${Math.max(f, b.lagV)})`;
       b.name.textContent = locked ? e.name ?? '' : '';
       b.el.classList.toggle('open', !!e.isOpen?.());
+      const fr = e.frostbite > 0 ? e.frostbite / 6 : (e.frost ?? 0) / 100;
+      if (b.frost.hidden !== !(fr > 0.01)) b.frost.hidden = !(fr > 0.01);
+      if (fr > 0.01) {
+        b.frostFill.style.transform = `scaleX(${Math.min(1, fr)})`;
+        b.frost.classList.toggle('bitten', e.frostbite > 0);
+      }
       const scale = Math.max(0.6, Math.min(1, 14 / Math.max(dist, 1)));
       b.el.style.transform = `translate(${((tmp.x + 1) / 2) * w}px, ${((1 - tmp.y) / 2) * h}px) scale(${scale})`;
     }

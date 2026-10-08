@@ -58,6 +58,7 @@ export class Warden extends Actor {
     this.radius = 1.15;
     this.height = 4.0;
     this.lockHeight = 2.7;
+    this.isBoss = true;
     this.maxHp = 1050;
     this.maxPoise = 150;
     this.ash = 3200;
@@ -68,6 +69,7 @@ export class Warden extends Actor {
   }
 
   reset() {
+    this.frost = this.frostbite = 0;
     this.pos.set(ARENA.x, this.game.world.getHeight(ARENA.x, ARENA.z - 6), ARENA.z - 6);
     this.vel.set(0, 0, 0);
     this.yaw = 0;
@@ -199,6 +201,7 @@ export class Warden extends Actor {
   }
 
   update(dt) {
+    this.tickFrost(dt);
     if (this.state === 'gone') return;
     this.t += dt;
     this.clock += dt;

@@ -158,6 +158,100 @@ export function buildIlse() {
   return mergeHumanoid(r);
 }
 
+// Dunmarrow Knights: the castle's old guard, hollowed but still in their plate. Blue-grey steel, a
+// tabard in Dunmarrow's midnight blue, a great helm with a cold light in the visor and a white plume,
+// a longsword and a heater shield.
+export function buildKnight() {
+  const plate = mat(0x7b8590, { metalness: 0.6, roughness: 0.42 });
+  const darkPlate = mat(0x4c535c, { metalness: 0.55, roughness: 0.5 });
+  const tabard = mat(0x1f2c4a, { side: THREE.DoubleSide });
+  const silver = mat(0xc9ced6, { metalness: 0.7, roughness: 0.3 });
+  const r = buildHumanoid({ skin: darkPlate, body: plate, arms: plate, legs: darkPlate, boots: darkPlate, hands: darkPlate }, { chestW: 0.58, shoulderW: 0.37 });
+  // Great helm: a tall box with a visor slit that glows cold blue, and a plume.
+  r.head.add(mesh(box(0.32, 0.38, 0.34), plate, { y: 0.18 }));
+  r.head.add(mesh(box(0.24, 0.035, 0.02), mat(0xbfe8ff, { emissive: 0x6fc0ff, emissiveIntensity: 1.8 }), { y: 0.2, z: 0.175, shadow: false }));
+  r.head.add(mesh(box(0.05, 0.22, 0.34), mat(0xe8e8e4), { y: 0.45, z: -0.04 }));
+  // Pauldrons, a gorget, the tabard with a silver bar.
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.26, 0.16, 0.3), plate, { y: 0.03, x: s * 0.03 }));
+  r.torso.add(mesh(box(0.36, 0.08, 0.3), darkPlate, { y: 0.58 }));
+  r.torso.add(mesh(box(0.42, 0.5, 0.02), tabard, { y: 0.3, z: 0.165 }));
+  r.torso.add(mesh(box(0.08, 0.36, 0.025), silver, { y: 0.32, z: 0.17 }));
+  r.hips.add(mesh(box(0.42, 0.5, 0.02), tabard, { y: -0.24, z: 0.15 }));
+  r.hips.add(mesh(box(0.42, 0.5, 0.02), tabard, { y: -0.24, z: -0.15 }));
+  // Longsword.
+  const sword = group();
+  sword.add(mesh(box(0.045, 0.045, 0.26), mat(0x2b241d)));
+  sword.add(mesh(box(0.28, 0.04, 0.05), silver, { z: 0.14 }));
+  sword.add(mesh(box(0.075, 0.018, 1.15), mat(0xbfc6ce, { metalness: 0.75, roughness: 0.3 }), { z: 0.73 }));
+  r.armR.hand.add(sword);
+  const markers = addWeaponMarkers(r.armR.hand, 1.3);
+  // Heater shield: midnight blue with a silver rim and a white tower.
+  const shield = group({ x: 0.07, y: -0.2 });
+  shield.add(mesh(box(0.06, 0.62, 0.5), tabard));
+  shield.add(mesh(box(0.065, 0.66, 0.06), silver, { z: 0.25 }));
+  shield.add(mesh(box(0.065, 0.66, 0.06), silver, { z: -0.25 }));
+  shield.add(mesh(box(0.065, 0.06, 0.54), silver, { y: 0.31 }));
+  shield.add(mesh(box(0.07, 0.26, 0.1), mat(0xe8e8e4), { y: 0.02 }));
+  r.armL.elbow.add(shield);
+  r.root.scale.setScalar(1.08);
+  mergeHumanoid(r);
+  return { ...r, markers };
+}
+
+// Dunmarrow Bowmen: hollowed archers of the castle watch in a leather hood and a short cloak, quiver
+// on the back, a recurve bow in the left hand. The bow's limbs run along the hand's grip axis (+/-Z).
+export function buildBowman() {
+  const leather = mat(0x5a4632);
+  const hood = mat(0x2f3a48, { side: THREE.DoubleSide });
+  const skin = mat(0x8a8f7c);
+  const wood = mat(0x6b4a2c);
+  const r = buildHumanoid({ skin, body: leather, arms: leather, legs: mat(0x3e372c), boots: mat(0x2a221b), hands: mat(0x3b2f25) }, { chestW: 0.48 });
+  r.head.add(mesh(cone(0.24, 0.46, 6), hood, { y: 0.22, z: -0.04 }));
+  r.head.add(mesh(box(0.14, 0.03, 0.02), mat(0xbfe8ff, { emissive: 0x6fc0ff, emissiveIntensity: 1.4 }), { y: 0.13, z: 0.135, shadow: false }));
+  r.torso.add(mesh(box(0.5, 0.42, 0.04), hood, { y: 0.34, z: -0.17 })); // short cloak
+  // Quiver across the back, fletchings showing.
+  const quiver = group({ y: 0.36, z: -0.2, rz: 0.4 });
+  quiver.add(mesh(cyl(0.07, 0.08, 0.5, 6), mat(0x3b2f25)));
+  for (let i = 0; i < 4; i++) quiver.add(mesh(box(0.05, 0.12, 0.02), mat(0xd8d2c4), { x: (i - 1.5) * 0.03, y: 0.3 }));
+  r.torso.add(quiver);
+  // Recurve bow: grip, two limbs bending back at the tips, and the string.
+  const bow = group();
+  bow.add(mesh(box(0.05, 0.06, 0.18), wood));
+  bow.add(mesh(box(0.035, 0.04, 0.45), wood, { z: 0.3, y: -0.03, rx: 0.16 }));
+  bow.add(mesh(box(0.035, 0.04, 0.45), wood, { z: -0.3, y: -0.03, rx: -0.16 }));
+  bow.add(mesh(box(0.03, 0.035, 0.14), wood, { z: 0.56, y: -0.0, rx: -0.5 }));
+  bow.add(mesh(box(0.03, 0.035, 0.14), wood, { z: -0.56, y: -0.0, rx: 0.5 }));
+  bow.add(mesh(box(0.008, 0.008, 1.12), mat(0xd8d2c4), { y: -0.12 }));
+  r.armL.hand.add(bow);
+  mergeHumanoid(r);
+  return r;
+}
+
+// Rime Wraiths: the frozen dead of the Rimewold, risen in tatters of rimed cloth. No legs to speak of:
+// a long ragged robe trails over the snow, a deep hood with two cold eyes, hands like icicles.
+export function buildWraith() {
+  const robe = mat(0x9fb2c2, { roughness: 0.9, emissive: 0x2a4a68, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+  const shroud = mat(0x6f8396, { roughness: 0.9, emissive: 0x1a3048, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+  const ice = mat(0xd8f2ff, { emissive: 0x58b0ff, emissiveIntensity: 0.9, roughness: 0.2 });
+  const eye = mat(0xe8fbff, { emissive: 0x7ad0ff, emissiveIntensity: 3 });
+  const r = buildHumanoid({ skin: shroud, body: robe, arms: robe, legs: robe, boots: robe, hands: ice }, { chestW: 0.46, waistW: 0.36 });
+  // The legs are only bones for the pose system: the robe hides where they would be.
+  for (const leg of [r.legR, r.legL]) for (const g of [leg.hip, leg.knee]) for (const c of [...g.children]) if (c.isMesh) g.remove(c);
+  r.head.add(mesh(cone(0.25, 0.5, 6), shroud, { y: 0.2, z: -0.05 }));
+  r.head.add(mesh(box(0.2, 0.18, 0.06), mat(0x0a0e14), { y: 0.06, z: 0.12 }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.035, 0.025, 0.02), eye, { x, y: 0.08, z: 0.155, shadow: false }));
+  // The trailing robe: a flared skirt and ragged strips hanging to the snow.
+  r.hips.add(mesh(cyl(0.22, 0.42, 1.0, 8, true), robe, { y: -0.5 }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    r.hips.add(mesh(box(0.14, 0.5, 0.02), shroud, { x: Math.sin(a) * 0.36, y: -1.0, z: Math.cos(a) * 0.36, ry: a, rx: 0.12 }));
+  }
+  // Icicle claws.
+  for (const arm of [r.armR, r.armL]) for (let i = 0; i < 3; i++) arm.hand.add(mesh(cone(0.02, 0.2, 4), ice, { x: (i - 1) * 0.035, y: -0.12, rx: Math.PI }));
+  mergeHumanoid(r);
+  return r;
+}
+
 // Ormund the Ice-Cutter: a big man in a grey fur coat and a fur hat, beard white with frost, an ice
 // pick over his shoulder.
 export function buildOrmund() {

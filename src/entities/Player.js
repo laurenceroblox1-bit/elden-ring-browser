@@ -164,6 +164,7 @@ export class Player extends Actor {
 
   respawn(x, z, yaw) {
     this.alive = true;
+    this.frost = this.frostbite = 0;
     this.hp = this.maxHp;
     this.stamina = this.maxStamina;
     this.flasks = this.flasksMax;
@@ -519,6 +520,7 @@ export class Player extends Actor {
       this._animate(dt, 0);
       return;
     }
+    this.tickFrost(dt);
     this._readBuffer(dt);
     this._guardTimers(dt);
     this._focusAndBuffs(dt);
@@ -620,6 +622,7 @@ export class Player extends Actor {
     if (this.winded && this.stamina > 25) this.winded = false;
     let speed = this.sprinting ? 7.4 : lock ? 3.8 : 4.6;
     if (this.game.world.isWater(this.pos.x, this.pos.z)) speed *= 0.55;
+    speed *= this.frostSlow;
     this.vel.x = damp(this.vel.x, mi.x * speed, 12, dt);
     this.vel.z = damp(this.vel.z, mi.z * speed, 12, dt);
     if (lock && !this.sprinting) this.yaw = dampAngle(this.yaw, yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z), 14, dt);
