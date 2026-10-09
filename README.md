@@ -7,8 +7,10 @@ project can grow into its own game.
 Walk north up the old road through the Vale and kindle lantern shrines. Help the people you meet,
 call your spectral mare Wisp, and pass through the mist at the Shattered Gate to face **Odran, the
 Bell-Warden**. Out east, past the Watch Ruins, the road sinks into the Ashen Fen, where **Vharra,
-Mother of the Mire** sleeps in a ring of standing stones. Play alone, or with friends in a shared
-Vale (see *Multiplayer*).
+Mother of the Mire** sleeps in a ring of standing stones. Beat the Warden and the gates of Castle
+Dunmarrow open onto the **Rimewold**, a frozen highland where a troll owns the Howling Field and
+**Saelith, the Winter Lantern** keeps the flame that holds the land in winter. Play alone, or with
+friends in a shared Vale (see *Multiplayer*).
 
 ## Run it
 
@@ -46,6 +48,7 @@ Google Fonts fall back to system serif faces when offline.
 | M | Map, with fast travel between lit lanterns (also in the pause menu) |
 | N | Multiplayer: join a shared Vale, see who's there, read the chat |
 | Enter | Chat (when connected): Enter sends, Esc cancels |
+| Z / X / B / T | Emotes: wave, bow, sit (until you move), cheer. Other players see them |
 | Esc / P | Pause (graphics quality and sound toggles are here) |
 | ` (backquote) | Test menu (also in the pause menu) |
 
@@ -85,22 +88,42 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
 ## What's in the foundation
 
 - **Open vale** (about 900 m across inside the mountains): procedural heightmap terrain, roads, a
-  lake, forests, ruins, a roofless chapel, a graveyard approach, the walled arena and Castle
-  Dunmarrow's facade. East of the Watch Ruins, the fen road leads down into the **Ashen Fen**: a
-  basin of grey ash ground, black pools, reed beds and dead trees, with the Fenwatch Shrine at its
-  edge and the Mother's Hollow at its heart. The Hollow Bell spire stands on the far peaks.
+  lake, forests, ruins, a roofless chapel, a graveyard approach and the walled arena. East of the
+  Watch Ruins, the fen road leads down into the **Ashen Fen**: a basin of grey ash ground, black
+  pools, reed beds and dead trees, with the Fenwatch Shrine at its edge and the Mother's Hollow at
+  its heart. The Hollow Bell spire stands on the far peaks.
+- **Castle Dunmarrow and the Rimewold**: north of the arena a ridge of peaks closes the Vale, and
+  Castle Dunmarrow holds the only pass. Its gatehouse opens with the arena's north gate when the
+  Warden falls: a courtyard with the keep, knights and bowmen, and a rear gate onto the
+  **Rimewold**, a snowy highland. Snow falls as you cross the ridge and the wind howls. There are
+  dark stands of snow-laden pines, frosted snags, glowing ice crystals, the cracked ice of the
+  **Frozen Tarn**, Ormund the Ice-Cutter's hut, a ruined frost chapel, rimed statues along the
+  road, the **Howling Field**, and at the far end the ring of ice-stone pillars of the **Hall of
+  the Winter Lantern**. There are two new shrines: the Rimegate and the Lantern Steps.
 - **Look**: chunky, faceted blocks (slightly bevelled, flat-shaded), golden-hour light, and on
   *High* graphics a bloom-and-grade pass (`core/PostFX.js`) that makes fires, lanterns, spells and
   Wisp glow. Distant enemies and scenery aren't drawn (and far-off idle enemies don't think), and
   the resolution drops a little when the frame rate sags.
 - **Enemies**: hollow sentries and their captain, packs of Mire Hounds that circle and take turns
-  to lunge, and lantern-bearing Acolytes that throw fire. Floating health bars appear over whatever
-  you're fighting, with damage numbers.
+  to lunge, and lantern-bearing Acolytes that throw fire. North of the ridge:
+  - **Dunmarrow Knights**: plate, a heater shield and a guard-breaking shield bash.
+  - **Dunmarrow Bowmen**: keep their distance and loose arcing arrows that lead a runner. The
+    string's creak is the tell.
+  - **Rime Wolves**: their bite builds frostbite.
+  - **Rime Wraiths**: hover, throw fans of ice shards, burst in a ring of frost when rushed, or
+    blink away in a swirl of snow.
+
+  Floating health bars appear over whatever you're fighting, with damage numbers and a frost meter.
+  Every enemy gives an alert cry when it spots you, louder when close and panned left or right.
+  Summoned enemies arrive with a rush of sound.
+- **Frostbite**: frost hits (wolves, wraiths, the north's bosses, frost weapons) fill a meter.
+  When it fills, the cold bites: a burst of damage and six seconds of slowness. It works on you
+  (a pale bar under your stamina) and on enemies.
 - **Combat**: stamina-gated light combo, heavy attack, roll with i-frames, backstep, rolling
   attack, poise and stagger, lock-on with strafing, hit-stop, camera shake and sparks.
 - **Guard, parry, riposte**: see *Guarding* below.
-- **Gear**: five weapons with their own movesets and weapon arts, two shields, and three rites cast
-  with focus. See *Weapons, shields and rites* below.
+- **Gear**: fourteen weapons with their own movesets and weapon arts, three shields, and four
+  rites cast with focus. See *Weapons, shields and rites* below.
 - **The Warden**: a two-phase boss with six attacks. Phase 1 has the sweep, backsweep, a delayed
   overhead slam with a shockwave, and a leaping strike. Phase 2 starts at half health and adds a
   bell toll ring (roll through it) and spectral bells falling from the sky. He staggers when his
@@ -113,6 +136,19 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
   she rears and screams (the wave goes through guards) and adds a fan of ember spit and a howl that
   calls her litter. Leave the hollow and she goes back to sleep, healed. Beating her gives the
   **Mother's Fang**.
+- **Grimhorn, the Howling Field** (field boss): a 4 m troll that roars when it sees you or you hit
+  it. It has an overhead slam that cracks the ground in a shockwave, a wide club sweep (parryable),
+  a stomp when you hide at its feet, and lumps of ice hurled in an arc that burst where they land.
+  At 45% health it enrages: faster, and the slam comes twice. Leave the field and it goes back to
+  its patch. Drops the **Trollbone Club**.
+- **Saelith, the Winter Lantern**: the Rimewold's boss. She kneels before the hall's great lantern.
+  Walk into the hall and her cutscene shows her rising and taking its flame (the hall goes dark).
+  - Phase one: glaive sweeps (and back), a lunging thrust (both parryable), fans of ice shards, and
+    ice spikes that erupt under you after a telegraph.
+  - Phase two (half health): the lantern flares, a blizzard fills the hall and a frost ring bursts
+    out that goes through guards. Then she blinks behind you for quick thrusts and adds frost novas.
+  - Beat her and the Winter Lantern goes out: the snow stops falling on the Rimewold. She rewards
+    the **Rime Glaive**.
 - **Wisp, the horse**: summoned and dismissed with H. She has camera-relative steering, a walk and
   gallop gait, and a jump, and you can attack from the saddle. She won't enter the arena or join a
   boss fight. She's built like a horse now: deep chest, crested neck with a glowing mane, jointed
@@ -127,6 +163,9 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
   - *Snuff the Lanterns* (Brannoc: the acolytes; pays the Cinder Saber)
   - *A Letter for Mirelake* (Brannoc's letter to Ilse)
   - *The Cracked Bell* (Ilse: visit the chapel bell)
+  - *The Winter Lantern* (main quest, after the Warden: through the castle to the Hall)
+  - *A Lantern on the Steps* (Ormund: find his brother's lantern; pays the Icicle Estoc)
+  - *The Thing in the Howling Field* (Ormund: the troll)
 - **Soulslike loop**: lantern shrines are your checkpoints. Resting refills your flask and respawns
   enemies, and you level up there with ash (Vigor, Endurance, Strength, Mind). Resting also refills
   focus. If you die, you drop your
@@ -192,11 +231,16 @@ focus costs. Each one dims while it cools down and its cost turns red when you'r
 | Mirewatch Halberd | Two | 3 thrusts | Long reach, sweeping heavy | **Lunging Pierce** (10) | On the moor road among the hound packs |
 | Captain's Cleaver | One | 2 heavy chops | Slow for a one-hander, hits like a greatsword | **Toll of Silence** (22) | Against the cracked bell in the chapel |
 | Mother's Fang | Two | 3 swings | A greatsword of bone: big poise damage | **Mother's Pounce** (16): leap onto your foe and land in a ring of ash, untouchable at the top | Reward for beating Vharra |
+| Dunmarrow Longsword | One | 3 hits | Longer and a touch slower than the Wayfarer's Blade | **Lunging Pierce** (10) | By the keep's door in the castle courtyard |
+| Icicle Estoc | One | 3 thrusts | Needle-quick; every hit builds frostbite | **Winter's Edge** (12): three thrusts in a heartbeat, each leaving frost | Reward for *A Lantern on the Steps* |
+| Rime Glaive | Two | 3 sweeps and thrusts | Long reach; every hit builds frostbite | **Glacial Lance** (16): hurl a lance of ice that pierces through a line of foes | Reward for beating Saelith |
+| Trollbone Club | Two | 2 swings | The slowest and heaviest in the game | **Quake** (18) | Reward for felling Grimhorn |
 
 | Guard | Absorbs | Stamina per damage | Parry window | Notes |
 | --- | --- | --- | --- | --- |
 | Pilgrim's Buckler (near the First Light notice board) | 80% | 0.95 | 0.24 s | Quick to raise |
 | Gatewarden Greatshield (by the Gatehouse Shrine) | 100% | 0.6 | 0.12 s | Wider arc; you walk at 1.6 m/s behind it |
+| Rimeguard Greatshield (in the troll's den on the Howling Field) | 100% | 0.68 | 0.14 s | Lighter than the Gatewarden: 1.8 m/s behind it |
 | No shield | 40% to 72% by weapon | 1.25 to 1.7 | 0.1 s to 0.26 s | See each weapon's `guard` |
 
 **Focus** is the blue bar between health and stamina. It starts at 60, and each point of **Mind**
@@ -209,6 +253,7 @@ C or V without enough focus just blinks the bar.
 | Lantern Bolt | 14 | 0.9 s | A fire bolt that flies at your lock target, or at the foe in front of you | Bounty reward (*Ash in the Watchtower*) |
 | Ward of Ash | 25 | 14 s | 8 s of 40% less damage taken (a ring of ash at your feet; it flickers before it fails) | Among the graves on the road north |
 | Mending Light | 30 | 12 s | Heals 80 over 6 s | Beside the cairn at Mirelake Shore |
+| Frost Nova | 28 | 7 s | A ring of frost bursts from you: 26 damage and heavy frostbite to everything it passes | In the ruined frost chapel on the Rimewold's east rise |
 
 Gear on the ground shows as the item itself turning over a pale glow. Press E to take it and you'll
 see *Acquired: ...*. Pickups you've taken never come back, because owned gear doesn't respawn.
@@ -286,6 +331,7 @@ src/ui/NetPanel.js         the multiplayer screen (N) and the chat bar
 src/ui/EnemyBars.js        floating enemy health bars and damage numbers
 src/ui/DebugViews.js       hitbox, collider and free-camera views for the test menu
 src/net/                   Net (multiplayer client) and Ghost (another player's knight)
+src/entities/BigFoe.js     base for humanoid bosses that run their own fights (Troll, Saelith)
 src/core/Cutscene.js       boss opening cutscenes (letterbox, camera shots, name card)
 src/core/PostFX.js         bloom, colour grade and vignette on High graphics
 server.js                  static server + multiplayer relay (Node, no dependencies)
@@ -303,6 +349,9 @@ Everything moves procedurally; there are no animation files. Look here:
 - `src/entities/Warden.js`: Odran's moves and his cutscene intro (kneel, rise, roar).
 - `src/entities/Hound.js` (`_pose`) and `src/entities/Matriarch.js`: the hounds and Vharra (sleep,
   rise, howl, bite, pounce, tail sweep).
+- `src/entities/Troll.js` and `src/entities/Saelith.js`: the north's bosses (their `POSES` and
+  move tables); `Bowman.js` and `Wraith.js` for the bowmen and wraiths.
+- Emotes: `EMOTES` at the top of `src/entities/Player.js`.
 - `src/entities/Horse.js`: Wisp's walk and gallop gaits.
 - `src/data/abilities.js`: weapon arts and rites as pose tracks (`keys`) plus timed events.
 
@@ -319,8 +368,11 @@ swinging, drinking, riding Wisp), with their name over their head and their own 
 with Enter. What isn't shared yet: each player still runs their own enemies, loot and bosses, so
 you fight side by side but against your own copies. Up to 16 players per server.
 
-The published artifact link can't connect to a server (the sandbox blocks outside connections), so
-multiplayer needs the game served by `server.js`.
+**On the claude.ai link** there's no server to run. The page joins its live room by itself, so
+everyone who has it open at the same time plays in the same Vale (shown under N). Share the page
+with friends from its Share menu; they need to be signed in to claude.ai. To play with only some
+of them, everyone types the same **party code** under N. *Show me to others* hides you. Chat needs
+edit or contribute access to the page; everyone can see each other move.
 
 ### Adding things
 
@@ -363,7 +415,7 @@ position; the test menu toggles it any time), plus these keys:
 | G | God mode |
 | U | Unlock Wisp |
 | L | Gain 5000 ash |
-| K | Kill the boss (during the fight) |
+| K | Kill the boss you're fighting |
 | Y | Give every weapon, shield and rite |
 
 `window.game` is exposed in the console.
@@ -379,7 +431,7 @@ position; the test menu toggles it any time), plus these keys:
   (about 150 to 250 draw calls in open areas). Vegetation has no level of detail (LOD).
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
 - **Map**: fixed scale with no zoom or pan, and no custom waypoints.
-- **World**: Castle Dunmarrow is a facade with barred doors and is the hook for region three.
+- **World**: the castle keep's interior and the Hollow Bell spire are hooks for later regions.
 - **Multiplayer**: positions, poses and chat are shared, but enemies and bosses are simulated by
   each player separately. Shared enemies need one player (or the server) to own each enemy and
   send its state, and hits to be relayed to that owner.
