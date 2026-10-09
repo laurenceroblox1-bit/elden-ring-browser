@@ -387,6 +387,12 @@ room). To play with only some of them, everyone types the same **party code** un
 to others* hides you, and *Reconnect* rejoins after a hiccup. Everything (chat included) travels in
 each player's room presence, which every viewer can send, so view-only access is enough.
 
+**On your own website** (GitHub Pages, Netlify, any static host) there's no server either: players
+connect straight to each other over WebRTC, finding each other through the free PeerJS service
+(`vendor/peerjs.min.js`). Everyone opening the site joins the public lobby automatically; a party
+code under N makes a private group. The first player in a group relays for the rest, and if they
+leave someone else takes over.
+
 How it works: `src/net/Net.js` (presence, events, host election) and `src/net/Coop.js` (shared
 enemies, hits, effects).
 

@@ -77,7 +77,7 @@ export class NetPanel {
 
   openChat() {
     if (!this.game.net.online) {
-      this.game.hud.toast(this.game.net.roomMode ? 'Connecting to the shared Vale…' : 'Not connected. Press N to join a shared Vale.');
+      this.game.hud.toast(this.game.net.partyMode ? 'Connecting to the shared Vale…' : 'Not connected. Press N to join a shared Vale.');
       return;
     }
     this.game.input.down.clear(); // nothing stays held while you type
@@ -116,7 +116,7 @@ export class NetPanel {
 
   render() {
     const net = this.game.net;
-    const room = net.roomMode;
+    const room = net.partyMode;
     this.$('.net-ws').hidden = room;
     this.$('.net-room').hidden = !room;
     if (room) {

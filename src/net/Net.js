@@ -82,6 +82,7 @@ export class Net {
 
   get online() { return this.status === 'online'; }
   get roomMode() { return this.mode === 'room'; }
+  get partyMode() { return this.mode === 'room' || this.mode === 'p2p'; } // party codes, no server address
   get hostName() {
     if (!this.hostKey) return '';
     if (this.hostKey === this.selfKey) return this.name;
@@ -196,6 +197,9 @@ export class Net {
     const use = globalThis.claude?.use;
     if (typeof use !== 'function') {
       this.roomTried = true;
+      // A plain website (GitHub Pages, Netlify...): no server, so players connect straight to each
+      // other. Everyone lands in the public lobby unless they pick a party code.
+      if (P2P.auto()) this.joinP2P('lobby');
       return;
     }
     let room = null;
@@ -265,6 +269,11 @@ export class Net {
 
   // A party: a private named room (share the code with friends). '' goes back to the lobby.
   async joinParty(code) {
+    if (this.mode === 'p2p') {
+      code = String(code || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+      this.joinP2P(code || 'lobby');
+      return;
+    }
     if (!this.roomApi) return;
     code = String(code || '').toLowerCase().replace(/[^a-z0-9_.-]/g, '').slice(0, 40);
     this.error = '';
@@ -288,7 +297,8 @@ export class Net {
 
   // Rejoin after a hiccup (the panel's Reconnect button).
   reconnect() {
-    if (this.roomMode) this.joinParty(this.party);
+    if (this.mode === 'p2p') this.joinP2P(this.party || 'lobby');
+    else if (this.roomMode) this.joinParty(this.party);
     else if (this.url) this.connect(this.url, this.name);
   }
 
@@ -307,10 +317,27 @@ export class Net {
     this._changed();
   }
 
+  // ---------- peer to peer (static websites) ----------
+
+  // Joins party `code` directly with other players (WebRTC). The first one in becomes the party's hub
+  // and relays everyone's presence, like server.js would; if the hub leaves, someone else takes over.
+  joinP2P(code) {
+    this.p2p?.close();
+    this._clear();
+    this.mode = 'p2p';
+    this.party = code === 'lobby' ? '' : code;
+    this.error = '';
+    this.status = 'connecting';
+    this._changed();
+    this.p2p = new P2P(this, code);
+  }
+
   // ---------- server.js (WebSocket) ----------
 
   connect(url = this.url, name = this.name) {
     if (this.roomMode) return;
+    this.p2p?.close();
+    this.p2p = null;
     this.disconnect();
     this.url = url.trim();
     this.setName(name);
@@ -440,7 +467,8 @@ export class Net {
   }
 
   _push(pr) {
-    if (this.roomMode) this.target?.presence(pr).catch(() => {});
+    if (this.mode === 'p2p') this.p2p?.send(pr);
+    else if (this.roomMode) this.target?.presence(pr).catch(() => {});
     else if (this.ws?.readyState === 1 && this.ws.bufferedAmount < 64 * 1024) this.ws.send(JSON.stringify({ t: 'pr', pr }));
   }
 
@@ -453,5 +481,128 @@ export class Net {
     this._elect();
     if (!this.visible) return;
     this._push(this._build());
+  }
+}
+
+// ---------- WebRTC transport (PeerJS) ----------
+
+const PEERJS_URL = new URL('../../vendor/peerjs.min.js', import.meta.url).href;
+let peerLib = null;
+function loadPeer() {
+  if (globalThis.Peer) return Promise.resolve(globalThis.Peer);
+  peerLib ??= new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = PEERJS_URL;
+    sc.onload = () => resolve(globalThis.Peer);
+    sc.onerror = () => { peerLib = null; reject(new Error('peerjs')); };
+    document.head.appendChild(sc);
+  });
+  return peerLib;
+}
+
+class P2P {
+  // Join the public lobby automatically on a real website (not on localhost, where server.js runs).
+  static auto() {
+    return location.protocol === 'https:' && !/^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+  }
+
+  constructor(net, code) {
+    this.net = net;
+    this.hubId = `ashenvale-v2-${code}-hub`;
+    this.conns = new Map(); // hub: peer id -> connection
+    this.conn = null; // client: the connection to the hub
+    this.closed = false;
+    this.opts = globalThis.ASHEN_PEER_OPTS ?? { debug: 0 };
+    loadPeer().then(() => this._claim()).catch(() => this._fail('Could not load the multiplayer library.'));
+  }
+
+  // Try to become the hub; if the hub name is taken, join it as a client.
+  _claim() {
+    if (this.closed) return;
+    const peer = new globalThis.Peer(this.hubId, this.opts);
+    this.peer = peer;
+    peer.on('open', (id) => this._online(id, true));
+    peer.on('connection', (c) => this._accept(c));
+    peer.on('error', (e) => {
+      if (this.closed) return;
+      if (e.type === 'unavailable-id') {
+        peer.destroy();
+        this._join();
+      } else if (e.type !== 'peer-unavailable') this._fail(`Connection problem (${e.type}).`);
+    });
+  }
+
+  _join() {
+    if (this.closed) return;
+    const peer = new globalThis.Peer(this.opts);
+    this.peer = peer;
+    peer.on('open', (id) => {
+      const c = peer.connect(this.hubId, { serialization: 'json', reliable: true });
+      this.conn = c;
+      c.on('open', () => this._online(id, false));
+      c.on('data', (m) => this.net._message(m));
+      c.on('close', () => this._hubGone());
+      c.on('error', () => this._hubGone());
+    });
+    peer.on('error', (e) => {
+      if (this.closed) return;
+      if (e.type === 'peer-unavailable') this._hubGone();
+      else this._fail(`Connection problem (${e.type}).`);
+    });
+  }
+
+  _online(id, hub) {
+    const net = this.net;
+    this.hub = hub;
+    net.selfKey = id;
+    net.status = 'online';
+    net.error = '';
+    net.game.hud.toast(hub ? 'Online: waiting for others to join your Vale.' : 'Joined the shared Vale.', 'item');
+    net._changed();
+  }
+
+  // Hub: a player joins. Their presence is relayed to everyone else, and ours to them.
+  _accept(c) {
+    c.on('open', () => this.conns.set(c.peer, c));
+    c.on('data', (m) => {
+      if (!m || m.t !== 'pr' || typeof m.pr !== 'object') return;
+      const msg = { t: 'pr', id: c.peer, pr: m.pr };
+      for (const [id, o] of this.conns) if (id !== c.peer && o.open) o.send(msg);
+      this.net._presence(c.peer, m.pr);
+    });
+    c.on('close', () => {
+      this.conns.delete(c.peer);
+      for (const o of this.conns.values()) if (o.open) o.send({ t: 'leave', id: c.peer });
+      this.net._drop(c.peer);
+    });
+  }
+
+  // The hub left: everyone tries to take over (one wins, the rest join it).
+  _hubGone() {
+    if (this.closed) return;
+    this.net._clear();
+    this.net.status = 'connecting';
+    this.net._changed();
+    this.peer?.destroy();
+    this.conn = null;
+    setTimeout(() => this._claim(), 500 + Math.random() * 1500);
+  }
+
+  _fail(msg) {
+    this.net.status = 'offline';
+    this.net.error = msg;
+    this.net._changed();
+  }
+
+  send(pr) {
+    if (this.hub) {
+      const msg = { t: 'pr', id: this.net.selfKey, pr };
+      for (const c of this.conns.values()) if (c.open) c.send(msg);
+    } else if (this.conn?.open) this.conn.send({ t: 'pr', pr });
+  }
+
+  close() {
+    this.closed = true;
+    this.peer?.destroy();
   }
 }
