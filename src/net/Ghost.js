@@ -173,6 +173,17 @@ export class Ghost {
     this._joints(this.joints, m.b, 0, dt);
     if (m.h) this._horse(m.h, 0, dt);
     else if (this.horse) this.horse.root.visible = false;
+    // What the host's enemies fight (net/Coop.js): where they are, and what they're doing.
+    const a = this.actor;
+    if (a) {
+      if (dt > 0) a.vel.set((m.p[0] - a.pos.x) / Math.max(dt, 1 / 60), 0, (m.p[2] - a.pos.z) / Math.max(dt, 1 / 60)).clampLength(0, 12);
+      a.pos.set(m.p[0], m.p[1], m.p[2]);
+      a.yaw = m.r[1];
+      a.alive = !!m.v && m.a !== 0 && this.seen < 3;
+      a.state = typeof m.st === 'string' ? m.st : 'move';
+      a.atkSeq = Number.isFinite(m.as) ? m.as : 0;
+      a.invuln = !!m.iv;
+    }
   }
 
   dispose() {

@@ -28,6 +28,7 @@ export class NetPanel {
             <button class="btn primary net-party-go">Join party</button>
             <button class="btn net-lobby">Back to everyone</button>
             <button class="btn net-show"></button>
+            <button class="btn net-re">Reconnect</button>
           </div>
         </div>
         <p class="test-sub net-help"></p>
@@ -48,6 +49,7 @@ export class NetPanel {
     this.$('.net-party-go').addEventListener('click', () => { game.audio.play('ui'); net.joinParty(this.$('.net-party').value); });
     this.$('.net-lobby').addEventListener('click', () => { game.audio.play('ui'); this.$('.net-party').value = ''; net.joinParty(''); });
     this.$('.net-show').addEventListener('click', () => { game.audio.play('ui'); net.setVisible(!net.visible); });
+    this.$('.net-re').addEventListener('click', () => { game.audio.play('ui'); net.reconnect(); });
     net.onChange = () => { if (!this.root.hidden) this.render(); };
 
     // The chat bar lives in the HUD whether or not this panel is open.
@@ -120,12 +122,13 @@ export class NetPanel {
     if (room) {
       this.$('.net-name').disabled = false;
       const n = net.ghosts.size;
+      const waiting = Math.max(0, net.present.size - n);
       this.$('.net-status').textContent = net.error || (net.online
-        ? `${net.party ? `In party "${net.party}"` : 'In the shared Vale'} as ${net.name}. ${n ? `${n} other${n > 1 ? 's' : ''} here with you.` : 'Nobody else is here yet.'}${net.visible ? '' : ' (Hidden: others cannot see you.)'}`
+        ? `${net.party ? `In party "${net.party}"` : 'In the shared Vale'} as ${net.name}. ${n ? `${n} other${n > 1 ? 's' : ''} playing with you.` : 'Nobody else is playing yet.'}${waiting ? ` ${waiting} more on the title screen.` : ''}${net.visible ? '' : ' (Hidden: others cannot see you.)'}${this._host(net)}`
         : net.status === 'connecting' ? 'Connecting to the shared Vale…' : 'Playing alone.');
       this.$('.net-show').textContent = `Show me to others: ${net.visible ? 'on' : 'off'}`;
       this.$('.net-lobby').disabled = !net.party;
-      this.$('.net-help').textContent = 'Everyone who has this page open on claude.ai plays in the same Vale: you see each other move, fight and ride, and can chat with Enter. Share the page with friends (Share menu) so they can open it. Enemies, loot and bosses stay your own.';
+      this.$('.net-help').textContent = 'Everyone who has this page open on claude.ai plays in the same Vale: you see each other move, fight and ride, fight the same enemies and bosses, and can chat with Enter. Share the page with friends from its Share menu (they need to be signed in to claude.ai). Loot and quests stay your own; kills count for everyone nearby.';
       this._lists(net);
       return;
     }
@@ -139,8 +142,14 @@ export class NetPanel {
       ? (net.defaultUrl()
         ? 'This page came from a game server, so its address is filled in already. Share the page address with friends and they can join too.'
         : 'To play together, one of you runs "node server.js" in the game folder (see README), then everyone opens the address it prints. Enemies and bosses stay your own; you see each other, ride and fight side by side, and chat.')
-      : 'Enemies, loot and bosses are still your own: each of you fights your own copy of them.';
+      : `Enemies and roaming bosses are shared: one game hosts them, everyone's blows land.${this._host(net)}`;
+    if (net.online) this.$('.net-status').textContent += this._host(net);
     this._lists(net);
+  }
+
+  _host(net) {
+    if (!net.hostKey) return '';
+    return net.coop.host ? ' Your game is hosting the shared enemies.' : ` ${net.hostName || 'Another player'}'s game is hosting the shared enemies.`;
   }
 
   _lists(net) {

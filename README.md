@@ -363,16 +363,32 @@ internet, put the folder on any Node host (Render, Railway, Fly.io, a small VPS)
 address. Then press **N** in game and choose *Join the shared Vale*. The server address is filled in
 automatically when the page came from the game server.
 
-What's shared: everyone sees everyone else's knight, posed joint for joint (walking, rolling,
-swinging, drinking, riding Wisp), with their name over their head and their own cloak colour. Chat
-with Enter. What isn't shared yet: each player still runs their own enemies, loot and bosses, so
-you fight side by side but against your own copies. Up to 16 players per server.
+What's shared:
+- **Players**: everyone sees everyone else's knight, posed joint for joint (walking, rolling,
+  swinging, drinking, riding Wisp, emoting), with their name over their head, their own cloak
+  colour and the weapon they hold.
+- **Enemies and roaming bosses** (Vharra, Grimhorn, Saelith): one player's game hosts them (shown
+  under N; if the host leaves, the next player takes over where things stood). They hunt whoever is
+  nearest. Everyone's weapons, arts and rites hurt the same enemies. Their blows are resolved on the
+  victim's own screen, so your guard, parries and ripostes work as in single player. Kills give ash
+  and quest credit to everyone nearby, and a boss's reward to everyone in the fight.
+- **Effects**: arrows, bolts, crescents, ice shards, shockwaves, ice spikes and falling bells show
+  for everyone.
+- **Chat** with Enter.
+
+Not shared: loot pickups and quests are each player's own (everyone can collect every weapon), and
+the Warden is each player's own fight behind his mist. When the host rests or dies, enemies near
+other players carry on; the rest respawn. Up to 16 players per server.
 
 **On the claude.ai link** there's no server to run. The page joins its live room by itself, so
-everyone who has it open at the same time plays in the same Vale (shown under N). Share the page
-with friends from its Share menu; they need to be signed in to claude.ai. To play with only some
-of them, everyone types the same **party code** under N. *Show me to others* hides you. Chat needs
-edit or contribute access to the page; everyone can see each other move.
+everyone who has it open at the same time plays in the same Vale. Share the page with friends from
+its Share menu; they need to be signed in to claude.ai (people opening a public link can't join the
+room). To play with only some of them, everyone types the same **party code** under N. *Show me
+to others* hides you, and *Reconnect* rejoins after a hiccup. Everything (chat included) travels in
+each player's room presence, which every viewer can send, so view-only access is enough.
+
+How it works: `src/net/Net.js` (presence, events, host election) and `src/net/Coop.js` (shared
+enemies, hits, effects).
 
 ### Adding things
 
@@ -432,8 +448,8 @@ position; the test menu toggles it any time), plus these keys:
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
 - **Map**: fixed scale with no zoom or pan, and no custom waypoints.
 - **World**: the castle keep's interior and the Hollow Bell spire are hooks for later regions.
-- **Multiplayer**: positions, poses and chat are shared, but enemies and bosses are simulated by
-  each player separately. Shared enemies need one player (or the server) to own each enemy and
-  send its state, and hits to be relayed to that owner.
+- **Multiplayer**: enemies are host-run, so other players see them with a little delay (about a
+  tenth of a second), and blows that land at the edge of reach can be judged differently. Loot
+  and the Warden aren't shared yet. Player-versus-player is not in.
 - **Audio**: everything is synthesized. Recorded sounds and a real boss score would lift it a lot.
 - **Saves**: a single autosave slot in localStorage.

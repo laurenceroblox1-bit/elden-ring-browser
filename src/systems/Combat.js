@@ -96,6 +96,13 @@ export class Combat {
       dirX: len > 1e-3 ? dx / len : -target.forwardX, dirZ: len > 1e-3 ? dz / len : -target.forwardZ,
     };
     if (attacker === this.game.player && this.game.cheats?.oneHit) h.dmg = 99999; // test menu
+    // Multiplayer: an enemy another player's game is running. The blow goes to that game (net/Coop.js).
+    if (target.netPuppet) {
+      if (attacker !== this.game.player) return false;
+      this.game.net.coop.sendHit(target, h);
+      this.feedback(attacker, target, h, true);
+      return true;
+    }
     const result = target.takeHit(h);
     if (!result) return result;
     // Frost: a blow that lands builds frostbite; a guarded one lets a little of the cold through.

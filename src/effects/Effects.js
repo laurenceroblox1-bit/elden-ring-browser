@@ -40,8 +40,11 @@ export class Effects {
   }
 
   // Expanding ground ring. Anyone on the ring's edge takes the hit; rolling through it dodges.
+  // (Effects from the local player, and from shared enemies on the multiplayer host, are sent to the
+  // other players, who draw them with `ghostFx`: the look without the damage. See net/Coop.js.)
   shockwave(owner, x, z, o = {}) {
     const game = this.game;
+    game.net?.coop.fx('wave', owner, o, { x, z });
     const m = new THREE.Mesh(ringGeo, fxMaterial(o.color ?? 0xffd9a0, 0.9));
     const y = game.world.getHeight(x, z) + 0.15;
     m.position.set(x, y, z);
@@ -56,7 +59,7 @@ export class Effects {
         r += speed * dt;
         m.scale.set(r, 1, r);
         m.material.opacity = 0.9 * (1 - r / maxR);
-        game.combat.ring(owner, x, z, r, thick, o.hit, hitSet);
+        if (o.hit && !o.ghostFx) game.combat.ring(owner, x, z, r, thick, o.hit, hitSet);
         if (Math.random() < 0.8) {
           const a = Math.random() * Math.PI * 2;
           game.particles.emit({ x: x + Math.sin(a) * r, y: y + 0.2, z: z + Math.cos(a) * r, count: 2, speed: 1, up: 2, color: o.color ?? 0xffd9a0, life: [0.3, 0.6], size: [0.1, 0.2] });
@@ -74,6 +77,7 @@ export class Effects {
   // pale circle filling in. Anyone standing in it when it erupts is struck (roll out or through).
   iceSpike(owner, x, z, delay, o = {}) {
     const game = this.game;
+    game.net?.coop.fx('spike', owner, o, { x, z, delay });
     const R = o.radius ?? 2.2;
     const y = game.world.getHeight(x, z);
     const ring = new THREE.Mesh(ringGeo, fxMaterial(0xbfe8ff, 0));
@@ -112,7 +116,7 @@ export class Effects {
           if (t >= delay) {
             burst = true;
             spikes.visible = true;
-            game.combat.sphere(owner, new THREE.Vector3(x, y + 0.8, z), R, o.hit, hitSet);
+            if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 0.8, z), R, o.hit, hitSet);
             game.audio.playAt('frostbite', { x, z });
             game.particles.emit({ x, y: y + 0.5, z, count: 30, speed: 6, up: 4, color: 0xdff4ff, color2: 0x7cc8ff, life: [0.4, 0.9], size: [0.1, 0.22], drag: 2.5, gravity: 4 });
           }
@@ -135,6 +139,7 @@ export class Effects {
   // A spectral bell falls from the sky after `delay` seconds onto a telegraphed circle.
   bellDrop(owner, x, z, delay, o = {}) {
     const game = this.game;
+    game.net?.coop.fx('bell', owner, o, { x, z, delay });
     const R = o.radius ?? 2.6;
     const y = game.world.getHeight(x, z);
     const ring = new THREE.Mesh(ringGeo, fxMaterial(0x9fd0ff, 0.0));
@@ -167,7 +172,7 @@ export class Effects {
         if (t >= delay && !landed) {
           landed = true;
           bell.group.position.y = y;
-          game.combat.sphere(owner, new THREE.Vector3(x, y + 1, z), R, o.hit, hitSet);
+          if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 1, z), R, o.hit, hitSet);
           game.audio.play('bellSmall');
           game.particles.emit({ x, y: y + 0.4, z, count: 40, speed: 7, up: 3, color: 0x9fd0ff, color2: 0xffffff, life: [0.4, 0.9], size: [0.1, 0.24], drag: 2.5 });
           game.cameraShake(0.25, game.player.pos.distanceTo(bell.group.position) < 12 ? 1 : 0.4);

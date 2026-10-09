@@ -109,6 +109,7 @@ export class Acolyte extends Foe {
 
   _startMove(name) {
     this.move = MOVES[name];
+    this.moveName = name; // (multiplayer: other players replay the move by name)
     this._setState('attack');
     this.fired = false;
     this.hitSet = new Set();

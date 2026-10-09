@@ -115,6 +115,7 @@ export class Wraith extends Foe {
 
   _startMove(name) {
     this.move = MOVES[name];
+    this.moveName = name; // (multiplayer: other players replay the move by name)
     this._setState('attack');
     this.fired = false;
     this.game.audio.play(name === 'nova' ? 'cast' : 'cast');

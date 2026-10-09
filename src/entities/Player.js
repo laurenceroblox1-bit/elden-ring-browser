@@ -312,7 +312,7 @@ export class Player extends Actor {
   }
 
   startRiposte(foe) {
-    if (!foe.onRiposte(this)) return false;
+    if (!(foe.netPuppet ? this.game.net.coop.riposte(foe) : foe.onRiposte(this))) return false;
     this.state = 'riposte';
     this.t = 0;
     this.atk = null;
@@ -442,7 +442,8 @@ export class Player extends Actor {
     this.parryT = 0;
     this.guardRecoil = 0.16;
     this.stats.parries++;
-    hit.attacker?.onParried(this, hit);
+    if (hit.attacker?.netPuppet) this.game.net.coop.parried(hit.attacker);
+    else hit.attacker?.onParried(this, hit);
     this.game.events.emit('parry', hit.attacker);
     return 'parry';
   }

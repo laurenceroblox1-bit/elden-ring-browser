@@ -13,7 +13,8 @@
 //
 // Messages (JSON):
 //   client -> server  { t: 'hello', name }            first message; server answers 'welcome'
-//                     { t: 'state', ... }             ~15 per second; relayed to everyone else with `id`
+//                     { t: 'pr', pr }                 ~15 per second: the player's presence (see src/net/Net.js);
+//                                                     relayed to everyone else with `id`
 //                     { t: 'chat', text }             relayed to everyone (including the sender) with `id`, `name`
 //   server -> client  { t: 'welcome', id, peers: [{ id, name }] }
 //                     { t: 'join', id, name }  { t: 'leave', id }
@@ -146,7 +147,10 @@ function onMessage(c, m) {
     return;
   }
   if (!c.name) return;
-  if (m.t === 'state') {
+  if (m.t === 'pr' && m.pr && typeof m.pr === 'object') {
+    // A player's presence (knight, events, and for the host the shared enemies): relayed as is.
+    broadcast({ t: 'pr', id: c.id, pr: m.pr }, c);
+  } else if (m.t === 'state') {
     m.id = c.id;
     broadcast(m, c);
   } else if (m.t === 'chat') {

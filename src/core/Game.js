@@ -97,7 +97,7 @@ export class Game {
     this.interactions = new Interactions(this);
     this.player = new Player(this);
     this.horse = new Horse(this);
-    this.enemies = ENEMY_SPAWNS.map((s) => createEnemy(this, s));
+    this.enemies = ENEMY_SPAWNS.map((s, i) => Object.assign(createEnemy(this, s), { netId: i })); // netId: shared in multiplayer
     this.boss = new Warden(this);
     this.npcs = NPCS.map((d) => new NPC(this, d));
     this.cam = new CameraRig(this);
@@ -247,8 +247,10 @@ export class Game {
       this.cutscene = null;
       this.hud.setLetterbox(false);
     }
-    this.despawnExtras();
-    for (const e of this.enemies) e.reset();
+    // Multiplayer host: enemies another player is fighting right now carry on (they aren't yours to reset).
+    const busy = (e) => this.net.coop.host && this.net.coop.othersNear(e, 60);
+    this.despawnExtras((e) => !busy(e));
+    for (const e of this.enemies) if (!busy(e)) e.reset();
     this.effects.clear();
     this.projectiles.clear();
     this.lockTarget = null;
@@ -259,8 +261,10 @@ export class Game {
       if (this.world.gateDoors.open > 0) this.world.closeGate();
     }
     this.bossFight = false;
-    if (this.fieldBoss) this.fieldBoss.onFightEnd?.();
-    this.fieldBoss = null; // it went back to its post with the reset above
+    if (this.fieldBoss && !busy(this.fieldBoss)) {
+      this.fieldBoss.onFightEnd?.();
+      this.fieldBoss = null; // it went back to its post with the reset above
+    }
     this.hud.setBoss(null);
     this.audio.setMusic(false);
     if (this.horse.ridden) this.horse.dismount(true);
@@ -512,6 +516,17 @@ export class Game {
     });
   }
 
+  // Is the roaming boss fight yours (you're near it), rather than one another player is having?
+  _nearFieldBoss() {
+    const b = this.fieldBoss, p = this.player.pos;
+    return !!b && Math.hypot(b.pos.x - p.x, b.pos.z - p.z) < 90;
+  }
+
+  // The player an enemy goes after: you, or in multiplayer whoever is nearest (net/Coop.js).
+  targetFor(e) {
+    return this.net ? this.net.coop.targetFor(e) : this.player;
+  }
+
   // The boss whose bar is showing: a roaming boss while it fights (Vharra, Saelith, the troll),
   // otherwise the Warden while his fight runs.
   get activeBoss() {
@@ -524,6 +539,14 @@ export class Game {
   //   reward { gear, banner: [title, sub] }, enter() { x, z, yaw } for the test menu.
   startFoeFight(b, { cutscene = true } = {}) {
     if (this.fieldBoss || !b.alive) return;
+    // Woken by another player far away (multiplayer): no cutscene here, and no bar unless you're near.
+    const near = Math.hypot(b.pos.x - this.player.pos.x, b.pos.z - this.player.pos.z);
+    if (near > 45) cutscene = false;
+    if (near > 90) {
+      b.awaken();
+      this.fieldBoss = b;
+      return;
+    }
     this.fieldBoss = b;
     this.lockTarget = null;
     this.audio.setMusic(true, b.music ?? 'bell');
@@ -792,10 +815,11 @@ export class Game {
   // the draw distance from the camera isn't drawn at all (frustum culling already skips what's
   // behind the camera). Foes (hounds, acolytes) manage their own draw distance.
   _updateEnemies(dt) {
-    const c = this.camera.position, p = this.player.pos;
+    const c = this.camera.position;
+    const coop = this.net.coop;
     for (const e of this.enemies) {
-      const d = Math.hypot(e.pos.x - p.x, e.pos.z - p.z);
-      if (!(d > THINK_DIST && e.state === 'idle')) e.update(dt);
+      if (e.netPuppet) coop.updatePuppet(e, dt); // another player's game runs it
+      else if (!(coop.nearestDist(e) > THINK_DIST && e.state === 'idle')) e.update(dt);
       if (e.shown !== undefined) continue;
       const far = Math.hypot(e.pos.x - c.x, e.pos.z - c.z) > DRAW_DIST;
       const root = e.model.root;
@@ -1029,7 +1053,7 @@ export class Game {
     this.horse.hideNow();
     this.lockTarget = null;
     if (this.bossFight && !keepFight) this.endBossFight();
-    if (this.fieldBoss && !keepFight) this.endFoeFight();
+    if (this.fieldBoss && !keepFight && this._nearFieldBoss()) this.endFoeFight();
     if (p.state === 'fog') this.world.fogGate.collider.enabled = true; // the walk's onDone won't run now
     p.pos.set(x, 0, z);
     this.world.resolve(p.pos, p.radius);
@@ -1111,7 +1135,7 @@ export class Game {
     const s = this.world.shrines.get(id);
     if (!s || !s.lit) return 'That lantern has not been kindled.';
     if (this.bossFight) return 'The mist holds you here until the fight is done.';
-    if (this.fieldBoss) return 'Not in the middle of a fight like this.';
+    if (this.fieldBoss && this._nearFieldBoss()) return 'Not in the middle of a fight like this.';
     if (!this.player.alive) return 'You cannot travel while fallen.';
     if (this.player.state === 'fog') return 'Not while passing through the mist.';
     this.teleport(s.x, s.z + 2.5, Math.PI, { banner: false });

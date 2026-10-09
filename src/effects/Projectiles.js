@@ -50,6 +50,7 @@ export class Projectiles {
   }
 
   spawn(owner, o) {
+    this.game.net?.coop.fx('p', owner, o); // other players see it too (net/Coop.js)
     const L = looks()[o.kind ?? 'bolt'];
     const mesh = new THREE.Mesh(L.geo, L.mat);
     const glow = new THREE.Sprite(L.glow);
@@ -113,7 +114,7 @@ export class Projectiles {
     if (w.resolve(probe, Math.min(p.radius, 0.3) * 0.5)) return this._burst(p, 1);
 
     const before = p.hitSet.size;
-    g.combat.sphere(p.owner, p.pos, p.radius, o.hit, p.hitSet);
+    if (o.hit && !o.ghostFx) g.combat.sphere(p.owner, p.pos, p.radius, o.hit, p.hitSet);
     if (p.hitSet.size > before) {
       p.hits += p.hitSet.size - before;
       if (!o.pierce) return this._burst(p, 1);

@@ -184,7 +184,7 @@ export class Sentry extends Actor {
 
   update(dt) {
     this.t += dt;
-    const p = this.game.player;
+    const p = this.game.targetFor(this);
     const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z;
     const dist = Math.hypot(dx, dz);
     const toP = Math.atan2(dx, dz);
@@ -297,6 +297,7 @@ export class Sentry extends Actor {
 
   _startMove(name) {
     const m = MOVES[name];
+    this.moveName = name; // (multiplayer: other players replay the move by name)
     const sp = this.variant.pace;
     this.move = { ...m, windup: m.windup * sp, recover: m.recover * sp };
     this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * this.variant.reach, arc: m.arc, heavy: m.heavy, parryable: m.parryable, frost: this.variant.frost };

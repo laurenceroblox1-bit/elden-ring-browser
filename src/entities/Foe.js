@@ -137,7 +137,7 @@ export class Foe extends Actor {
 
   update(dt) {
     this.t += dt;
-    const p = this.game.player;
+    const p = this.game.targetFor(this); // the nearest player (multiplayer: maybe another player's knight)
     const dx = p.pos.x - this.pos.x, dz = p.pos.z - this.pos.z;
     const c = {
       p, dx, dz, dist: Math.hypot(dx, dz), toP: Math.atan2(dx, dz),
