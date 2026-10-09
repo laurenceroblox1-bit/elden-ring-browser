@@ -181,6 +181,6 @@ export const FIRES = [
   { x: -6, z: -219, light: false },
   { x: 6, z: -219, light: false },
   { x: -98, z: -432, light: true }, // Ormund's fire
-  { x: -8, z: -364, light: false }, // the castle's rear gate
-  { x: 8, z: -364, light: false },
+  { x: -7.5, z: -360.5, light: false }, // inside the castle's rear gate
+  { x: 7.5, z: -360.5, light: false },
 ];

@@ -31,6 +31,22 @@ export const ATTACKS = {
 // The sword alone is a poor shield: much of the blow still gets through and it costs a lot of stamina.
 export const SWORD_GUARD = WEAPONS[STARTING_WEAPON].guard;
 
+// Emotes (Z wave, X bow, B sit, T cheer): pose tracks played on the spot. Other players see them too,
+// since multiplayer mirrors every joint. `hold` keeps the last pose until you move (sitting).
+const EP = (o) => pose(o);
+const WAVE_UP = EP({ sRx: -2.7, sRz: -0.35, eR: -0.5, hRx: 0.2, torsoY: 0.15, headY: 0.1 });
+const WAVE_OUT = EP({ sRx: -2.6, sRz: -0.85, eR: -0.7, hRx: 0.2, torsoY: 0.15, headY: 0.1 });
+const BOW = EP({ torsoX: 0.85, headX: 0.45, sRx: 0.25, eR: -0.2, sLx: -0.7, sLy: 0.6, eL: -1.5, hipsH: -0.04 });
+const SIT = EP({ hipsH: -0.62, lRx: -1.45, kR: 1.6, lLx: -1.35, kL: 1.7, lRz: 0.25, lLz: -0.25, torsoX: 0.18, headX: 0.12, sRx: -0.5, eR: -0.8, sLx: -0.5, eL: -0.8 });
+const CHEER_A = EP({ sRx: -3.0, eR: -0.25, sLx: -3.0, eL: -0.25, sRz: -0.2, sLz: 0.2, torsoX: -0.2, headX: -0.3 });
+const CHEER_B = EP({ sRx: -2.5, eR: -0.9, sLx: -2.5, eL: -0.9, sRz: -0.3, sLz: 0.3, torsoX: -0.1, headX: -0.2, hipsH: 0.05 });
+const EMOTES = {
+  emoteWave: { time: 2.0, keys: [[0, null], [0.3, WAVE_UP], [0.55, WAVE_OUT], [0.8, WAVE_UP], [1.05, WAVE_OUT], [1.3, WAVE_UP], [1.6, WAVE_UP], [2.0, null]] },
+  emoteBow: { time: 2.0, keys: [[0, null], [0.45, BOW], [1.4, BOW], [2.0, null]] },
+  emoteSit: { time: 1.0, hold: true, keys: [[0, null], [0.9, SIT], [1.0, SIT]] },
+  emoteCheer: { time: 1.8, keys: [[0, null], [0.25, CHEER_A], [0.5, CHEER_B], [0.75, CHEER_A], [1.0, CHEER_B], [1.25, CHEER_A], [1.8, null]] },
+};
+
 const POSES = {
   rest: STANCES.blade.rest,
   riding: pose({ lRx: -1.35, lRz: -0.5, kR: 1.5, lLx: -1.35, lLz: 0.5, kL: 1.5, sRx: -0.5, eR: -0.9, hRx: 1.4, sLx: -0.5, eL: -0.9, torsoX: 0.15 }),
@@ -552,6 +568,15 @@ export class Player extends Actor {
         break;
       case 'riposte': this._riposte(dt); break;
       case 'art': this._art(dt, mi, lock); break;
+      case 'emote':
+        // Moving, rolling, attacking or guarding ends it; otherwise it plays out (a sit holds).
+        this.vel.multiplyScalar(Math.exp(-10 * dt));
+        if (this._startEmote()) break; // another emote replaces it
+        if (mi.mag > 0 || this.game.input.held('guard') || ['roll', 'light', 'heavy', 'art', 'rite', 'flask'].some((a) => this.game.input.pressed(a)) || (!this.emote.hold && this.t >= this.emote.time)) {
+          this.state = 'move';
+          this._move(dt, mi, lock);
+        }
+        break;
     }
     const s = this.state;
     this.riposteCandidate = s === 'move' || s === 'guard' || s === 'attack' ? this.findRiposteTarget() : null;
@@ -611,6 +636,7 @@ export class Player extends Actor {
     if (this._take('rite') && this.startRite(mi)) return;
     if (this._take('flask') && this.startHeal()) return;
     if (input.held('guard')) { this._raiseGuard(); return; }
+    if (this.onGround && mi.mag === 0 && this._startEmote()) return;
 
     const moving = mi.mag > 0;
     if (input.held('sprint') && moving && this.stamina > 1 && !this.winded) {
@@ -627,6 +653,21 @@ export class Player extends Actor {
     this.vel.z = damp(this.vel.z, mi.z * speed, 12, dt);
     if (lock && !this.sprinting) this.yaw = dampAngle(this.yaw, yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z), 14, dt);
     else if (moving) this.yaw = dampAngle(this.yaw, Math.atan2(mi.x, mi.z), 12, dt);
+  }
+
+  // Starts the emote whose key was just pressed, if any.
+  _startEmote() {
+    const input = this.game.input;
+    for (const name in EMOTES) {
+      if (!input.pressed(name)) continue;
+      input.consume(name);
+      this.state = 'emote';
+      this.t = 0;
+      this.emote = EMOTES[name];
+      this.emoteKeys = this.emote.keys.map(([t, p]) => [t, p ?? this.stance.rest]);
+      return true;
+    }
+    return false;
   }
 
   _roll(dt, mi) {
@@ -899,6 +940,10 @@ export class Player extends Actor {
         p.torsoX += clamp((this.horse?.speed ?? 0) / 18, 0, 1) * 0.25;
         break;
       }
+      case 'emote':
+        framePose(p, this.emoteKeys, Math.min(this.t, this.emote.time), easeInOut);
+        k = dampK(14, dt);
+        break;
       case 'heal': copyPose(p, POSES.heal); break;
       case 'hurt': copyPose(p, POSES.hurt); k = dampK(20, dt); break;
       case 'fog': copyPose(p, POSES.fog); addGait(p, (this.gait += dt * 5), 0.35); break;

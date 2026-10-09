@@ -25,6 +25,7 @@ export const CONTROLS = [
   ['I', 'Equipment'],
   ['M', 'Map · fast travel between lit lanterns'],
   ['N', 'Multiplayer · Enter to chat'],
+  ['Z X B T', 'Emotes: wave, bow, sit, cheer'],
   ['Esc / P', 'Pause'],
   ['`', 'Test menu'],
 ];

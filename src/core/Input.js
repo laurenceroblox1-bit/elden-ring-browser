@@ -24,6 +24,10 @@ export const BINDINGS = {
   map: ['KeyM', 'Pad15'], // D-pad right
   testMenu: ['Backquote'],
   multiplayer: ['KeyN'],
+  emoteWave: ['KeyZ', 'Pad14'], // D-pad left
+  emoteBow: ['KeyX'],
+  emoteSit: ['KeyB'],
+  emoteCheer: ['KeyT'],
   chat: ['Enter', 'NumpadEnter'],
   pause: ['Escape', 'KeyP', 'Pad9'], // Start
   back: ['Pad1'], // B closes menus
