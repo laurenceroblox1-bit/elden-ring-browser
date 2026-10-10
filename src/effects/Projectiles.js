@@ -45,6 +45,8 @@ function looks() {
     magma: { geo: new THREE.IcosahedronGeometry(0.6, 0), mat: new THREE.MeshStandardMaterial({ color: 0x3a2a24, emissive: 0xff5010, emissiveIntensity: 0.9, roughness: 0.8, flatShading: true }), glow: glow(0xff6a20, 0.6), glowSize: 2.0, color: 0xff6a1a, color2: 0xffc060, trail: 2 },
     spore: { geo: ico(0.2, 1), mat: additive(0xd0ffc0, 0.85), glow: glow(0x90e070, 0.8), glowSize: 1.6, color: 0x9ae070, color2: 0xe080ff, trail: 2 },
     water: { geo: ico(0.22, 1), mat: additive(0xd0f4ff, 0.8), glow: glow(0x60c0e0, 0.7), glowSize: 1.6, color: 0x9fe0ff, color2: 0xffffff, trail: 3 },
+    sand: { geo: ico(0.2, 1), mat: additive(0xfff0c0, 0.7), glow: glow(0xd8a050, 0.7), glowSize: 1.5, color: 0xe8c080, color2: 0xfff0c8, trail: 3 },
+    spark: { geo: new THREE.OctahedronGeometry(0.14, 0).scale(0.6, 0.6, 3), mat: additive(0xf0f8ff), glow: glow(0x70c0ff, 0.9), glowSize: 1.6, color: 0xbfe8ff, color2: 0xffffff, aligned: true, trail: 3 },
   };
   return LOOKS;
 }

@@ -24,6 +24,7 @@ import { NPC } from '../entities/NPC.js';
 import { HUD } from '../ui/HUD.js';
 import { TestMenu } from '../ui/TestMenu.js';
 import { NetPanel } from '../ui/NetPanel.js';
+import { ShopPanel } from '../ui/ShopPanel.js';
 import { Net } from '../net/Net.js';
 import { MapScreen } from '../ui/MapScreen.js';
 import { navigate, focusFirst } from './Gamepad.js';
@@ -35,7 +36,7 @@ import { STONES } from '../data/biomes.js';
 import { MAX_LEVEL, upgradeCost, levelName } from '../data/smithing.js';
 
 // The weather each region brings with it; the Vale and the fen keep whatever the Vale has.
-const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores' };
+const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm' };
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -109,7 +110,7 @@ export class Game {
     this.debugViews = new DebugViews(this);
     // Full-screen menus that build their own DOM (the others live in HUD's template).
     this.net = new Net(this);
-    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this), multiplayer: new NetPanel(this.hud.root, this) };
+    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this), multiplayer: new NetPanel(this.hud.root, this), shop: new ShopPanel(this.hud.root, this) };
     this.input.pad.onChange = (on, id) => this._onPad(on, id);
     this._registerInteractables();
     this._combatTips();
@@ -143,6 +144,8 @@ export class Game {
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
     const cd = this.world.castleDoor;
     I.add({ x: cd.x, z: cd.z, radius: 4, enabled: () => !this.state.flags.wardenDead, label: () => 'Examine the doors', action: () => this.talk('castle') });
+    // Tamsin's crates at the oasis: her shop, once you've spoken with her.
+    I.add({ x: 551, z: 36, radius: 2.4, enabled: () => !!this.state.flags.metTamsin, label: () => "Trade with Tamsin", action: () => this.openMenu('shop') });
     // Hessa's anvil in the Sunken Forge: smithing (data/smithing.js).
     I.add({ x: -90, z: 545, radius: 2.4, label: () => this._anvilLabel(), action: () => this.smith() });
   }
@@ -805,6 +808,7 @@ export class Game {
       case 'testmenu': shut('testMenu', 'pause', 'back'); break;
       case 'map': shut('map', 'pause', 'back'); break;
       case 'multiplayer': shut('multiplayer', 'pause', 'back'); break;
+      case 'shop': shut('interact', 'pause', 'back'); break;
       case null:
         if (i.pressed('pause')) this.openModal('pause', true);
         else if (i.pressed('journal')) this.openModal('journal');

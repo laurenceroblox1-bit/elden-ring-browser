@@ -36,6 +36,10 @@ const M = {
   capFlesh: () => mat(0xc8a8d8, { emissive: 0x7a2a8a, emissiveIntensity: 0.5 }),
   sporeGlow: () => mat(0x8ff0dc, { emissive: 0x30c0a0, emissiveIntensity: 1.4 }),
   grove: () => mat(0x3a2a24),
+  sunBronze: () => mat(0xc8963a, { metalness: 0.7, roughness: 0.35 }),
+  lapis: () => mat(0x2a4a9a, { metalness: 0.3, roughness: 0.5 }),
+  copper: () => mat(0x5aa08a, { metalness: 0.6, roughness: 0.4 }),
+  spark: () => mat(0xe0f4ff, { emissive: 0x70c0ff, emissiveIntensity: 1.8 }),
   frostRim: () => mat(0xe8f4fa, { roughness: 0.6 }),
 };
 
@@ -261,9 +265,57 @@ const BUILD = {
     g.add(mesh(box(0.02, 0.03, 0.4), M.sporeGlow(), { z: 1.44, y: 0.34, rx: 1.4, shadow: false }));
     return { right: g };
   },
+  // Sun Khopesh: a hooked bronze blade.
+  sun_khopesh() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.2), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.16, 0.04, 0.05), M.lapis(), { z: 0.1 }));
+    g.add(mesh(box(0.07, 0.018, 0.46), M.sunBronze(), { z: 0.35 }));
+    g.add(mesh(box(0.12, 0.018, 0.4), M.sunBronze(), { z: 0.72, x: 0.07, ry: -0.6 }));
+    g.add(mesh(box(0.012, 0.02, 0.4), M.ember(), { z: 0.72, x: 0.12, ry: -0.6, shadow: false }));
+    return { right: g };
+  },
+  // Solkar's Horn: the forked horn of the Sun Scarab on a gilded haft.
+  scarab_horn() {
+    const g = group();
+    g.add(mesh(cyl(0.035, 0.04, 1.5, 6), M.sunBronze(), { rx: Math.PI / 2, z: 0.42 }));
+    g.add(mesh(cyl(0.046, 0.046, 0.3, 6), M.leather(), { rx: Math.PI / 2, z: -0.05 }));
+    g.add(mesh(box(0.22, 0.22, 0.34), M.lapis(), { z: 1.2 }));
+    g.add(mesh(box(0.1, 0.1, 0.44), M.sunBronze(), { z: 1.3, y: 0.2, rx: -0.9 }));
+    g.add(mesh(box(0.08, 0.08, 0.3), M.sunBronze(), { z: 1.3, y: -0.2, rx: 0.9 }));
+    return { right: g };
+  },
+  // Spire Spear: a copper-wound haft and a leaf of blue-white steel.
+  storm_spear() {
+    const g = group();
+    g.add(mesh(cyl(0.024, 0.026, 2.2, 6), M.iron(), { rx: Math.PI / 2, z: 0.42 }));
+    g.add(mesh(cyl(0.034, 0.034, 0.5, 6), M.copper(), { rx: Math.PI / 2, z: 0.0 }));
+    const head = mesh(cone(0.07, 0.4, 4), M.steel(), { rx: Math.PI / 2, z: 1.72 });
+    head.scale.set(1, 1, 0.35);
+    g.add(head);
+    g.add(mesh(box(0.012, 0.012, 0.3), M.spark(), { z: 1.66, y: 0.01, shadow: false }));
+    return { right: g };
+  },
+  // Herald's Glaive: a dark haft, a copper collar, a head of captured lightning.
+  heralds_glaive() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.03, 2.3, 6), M.iron(), { rx: Math.PI / 2, z: 0.45 }));
+    g.add(mesh(cyl(0.045, 0.045, 0.1, 6), M.copper(), { rx: Math.PI / 2, z: 1.56 }));
+    g.add(mesh(box(0.03, 0.14, 0.5), M.spark(), { z: 1.86, shadow: false }));
+    g.add(mesh(box(0.03, 0.22, 0.08), M.spark(), { z: 1.7, y: 0.1, rx: 0.6, shadow: false }));
+    return { right: g };
+  },
 };
 
 const BUILD_SHIELD = {
+  // Sunsteel Shield: a round shield of gilded steel with a lapis sun.
+  sunsteel_shield() {
+    const g = group({ x: 0.08, y: -0.17 });
+    g.add(mesh(cyl(0.34, 0.34, 0.04, 14), M.sunBronze(), { rz: Math.PI / 2 }));
+    g.add(mesh(cyl(0.16, 0.16, 0.05, 10), M.lapis(), { rz: Math.PI / 2, x: 0.01 }));
+    g.add(mesh(cone(0.06, 0.08, 8), M.sunBronze(), { rz: -Math.PI / 2, x: 0.05 }));
+    return g;
+  },
   // Thornguard: a kite shield of grey cap-flesh bristling with violet thorns.
   thornguard() {
     const g = group({ x: 0.09, y: -0.15 });

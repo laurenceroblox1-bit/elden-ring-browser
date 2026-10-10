@@ -207,4 +207,50 @@ export const QUESTS = {
     reward: { ash: 1600, item: 'glowcap_spore', flask: 1 },
     doneText: 'The Hollows are already growing back, gently, the way they did before.',
   },
+  caravan: {
+    title: 'The Lost Caravan',
+    giver: 'Tamsin, Wandering Trader',
+    summary: "Tamsin's family crossed the dunes every year with a caravan of goods for the Sanctum. One year they didn't come back. She has found the oasis; she hasn't dared go further.",
+    stages: [
+      { text: 'Find the Lost Caravan north of the oasis and bring back its sun-disc.', on: { type: 'item', id: 'sun_disc' }, marker: [520, 160] },
+      { text: 'Bring the sun-disc to Tamsin at the oasis.', on: { type: 'talk', id: 'tamsin' }, marker: [548, 38] },
+    ],
+    reward: { ash: 600, item: 'smithing_stone', items: 2 },
+    doneText: 'Tamsin wears the disc on a cord now. She says it is the first time she has felt like a trader and not a runaway.',
+  },
+  solkar: {
+    title: 'Under the Sanctum Sand',
+    main: true,
+    giver: 'Tamsin, Wandering Trader',
+    summary: "Something huge moves under the sand of the Sanctum of the Sun. The revenants still guard it as if it were holy. Tamsin thinks it is what took her family's caravan.",
+    stages: [
+      { text: 'Kindle the Sunrest Shrine at the edge of the Dunes.', on: { type: 'shrine', id: 'sunrest' }, marker: [470, 52] },
+      { text: 'Step into the Sanctum of the Sun and face what lies under its sand.', on: { type: 'boss', id: 'solkar' }, marker: [650, 120] },
+    ],
+    reward: { ash: 1800, flask: 1 },
+    doneText: 'The Sanctum is quiet. Tamsin says the dunes already sound different; she can\'t say how.',
+  },
+  gargoyles: {
+    title: 'Stone Watchers',
+    giver: 'Brother Aldous',
+    summary: 'The gargoyles from the monastery roof came down when the storm did, and now they watch the Heights for the Herald. Aldous wants them stilled.',
+    stages: [
+      { text: 'Still the Spire Gargoyles', on: { type: 'kill', tag: 'gargoyle', count: 2 }, marker: [386, -410] },
+    ],
+    reward: { ash: 700, item: 'smithing_stone', items: 2 },
+    doneText: 'Aldous rang the little hand-bell he keeps, twice, for each of them.',
+  },
+  vaelor: {
+    title: 'The Storm Herald',
+    main: true,
+    giver: 'Brother Aldous',
+    summary: "Abbot Vaelor called the storm down to guard the Stormspire when the Warden fell silent, and the storm took him. He stands on the summit still, calling it. Aldous asks you to end his vigil.",
+    stages: [
+      { text: 'Kindle the Stormgate Shrine on the Thunder Stair.', on: { type: 'shrine', id: 'stormgate' }, marker: [360, -300] },
+      { text: "Climb to the Herald's Summit and break the storm.", on: { type: 'boss', id: 'vaelor' }, marker: [420, -470] },
+      { text: 'Tell Brother Aldous at the monastery.', on: { type: 'talk', id: 'aldous' }, marker: [326, -404] },
+    ],
+    reward: { ash: 1800, flask: 1 },
+    doneText: 'For the first time in years the sun came out over the Stormspire. Aldous sat in it all afternoon.',
+  },
 };

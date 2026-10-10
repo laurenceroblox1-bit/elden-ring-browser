@@ -8,7 +8,7 @@
 // plants and rocks; updateBiomes(world, dt, time) animates lava, sea, glow, smoke and the lighthouse.
 import * as THREE from '../lib/three.js';
 import { mulberry32, smoothstep } from '../core/math.js';
-import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, BIOME_ZONES as Z } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, BIOME_ZONES as Z } from '../data/biomes.js';
 import { WORLD } from '../data/world.js';
 import { mat, mesh, box, cyl, cone, glowSprite, glowTexture } from '../models/kit.js';
 import * as P from '../models/props.js';
@@ -161,10 +161,30 @@ export function buildBiomes(w) {
   B.sea.uniforms.uDeep.value.setHex(0x1f4c66);
   B.sea.uniforms.uFoam.value.setHex(0xf4f0e2);
 
+  // The oasis: a small pool of clear green water in the dunes.
+  B.oasis = new Water(scene, { x: OASIS.x, z: OASIS.z, r: OASIS.r * 1.2 }, w.oasisLevel, (x, z) => w.oasisLevel - w.getHeight(x, z));
+  B.oasis.uniforms.uShallow.value.setHex(0x6fbfa8);
+  B.oasis.uniforms.uDeep.value.setHex(0x2a6a70);
+
+  // One light for lightning flashes (kept in the scene at zero so the light count never changes).
+  B.flashLight = new THREE.PointLight(0xdfe8ff, 0, 260, 1.2);
+  scene.add(B.flashLight);
+  B.flashT = 0;
+  B.flash = (x, y, z) => {
+    B.flashLight.position.set(x, y, z);
+    B.flashT = 0.3;
+  };
+  B.stormT = 4;
+
   cinder(w, B);
   coast(w, B);
   glowcap(w, B);
+  dunes(w, B);
+  storm(w, B);
 }
+
+// The storm itself is a combatant of sorts: its bolts strike players and beasts alike.
+const STORM = { team: 'storm', pos: new THREE.Vector3(), alive: true, yaw: 0, onParried() {} };
 
 // ---------- the Cinderfall Wastes ----------
 
@@ -472,6 +492,175 @@ function glowcap(w, B) {
   }
 }
 
+// ---------- the Gilded Dunes ----------
+
+function dunes(w, B) {
+  const rng = mulberry32(9901);
+  const SAND = 0xc88a50, SAND2 = 0xa86a3e, GOLD = 0xd8b058;
+  const obelisk = (x, z, h, ry = 0) => {
+    w.block(x, z, 1.6, h, 1.6, ry, { color: SAND });
+    w.block(x, z, 1.0, 1.2, 1.0, ry, { y: w.getHeight(x, z) - 0.3 + h, color: SAND2, collide: false });
+  };
+  // The Sand Gate: two obelisks either side of the pass, one fallen across the dunes.
+  obelisk(431 - 1, 63 + 9, 11, 0.1);
+  obelisk(431 + 1, 63 - 9, 9, -0.1);
+  w.block(442, 70, 1.4, 1.4, 9, 0.6, { y: w.getHeight(442, 70) - 0.2, color: SAND, collide: false });
+  // Sunrest: a broken colonnade round the shrine.
+  const sr = Z.sunrest;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.3;
+    if (Math.cos(a) < -0.5) continue;
+    w.block(sr.x + Math.sin(a) * 7.5, sr.z + Math.cos(a) * 7.5, 1.3, 2.5 + rng() * 3.5, 1.3, a, { color: SAND });
+  }
+  // Tamsin's camp at the oasis: a striped awning on poles, rugs, crates.
+  const tx = 548, tz = 38;
+  for (const [dx, dz] of [[-2, -1.5], [2, -1.5], [-2, 1.5], [2, 1.5]]) w.block(tx + dx, tz + dz, 0.2, 2.6, 0.2, 0, { color: 0x5a4632 });
+  w.block(tx, tz, 4.6, 0.12, 3.6, 0, { y: w.getHeight(tx, tz) + 2.4, rx: 0.08, color: 0xb04030, collide: false });
+  w.block(tx, tz, 4.6, 0.13, 1.2, 0, { y: w.getHeight(tx, tz) + 2.45, color: 0xe8d8b0, collide: false });
+  w.block(tx + 0.5, tz + 0.4, 2.4, 0.05, 1.6, 0.2, { y: w.getHeight(tx, tz) - 0.24, color: 0x8a3a5a, collide: false });
+  for (const [dx, dz, s] of [[3.2, -2.2, 0.9], [3.9, -1.2, 0.7], [-3.4, 2.4, 0.8]]) w.block(tx + dx, tz + dz, s, s, s, rng(), { color: 0x7a5a3a });
+  // The Lost Caravan: overturned wagons, scattered crates, the bones of its beasts.
+  const cv = Z.caravan;
+  for (const [dx, dz, ry, tip] of [[-6, -4, 0.5, 1.3], [5, 3, 2.1, 0], [-1, 8, 1.2, 1.5]]) {
+    const x = cv.x + dx, z = cv.z + dz, gy = w.getHeight(x, z);
+    w.block(x, z, 2.2, 1.0, 4.2, ry, { y: gy - 0.2 + (tip ? 0.6 : 0.3), rz: tip, color: 0x6a4a2e });
+    if (!tip) w.block(x, z, 2.4, 1.2, 4.0, ry, { y: gy + 1.2, rx: 0.1, color: 0xd8c8a0, collide: false });
+    for (const s of [-1, 1]) w.block(x + Math.cos(ry) * s * 1.2, z - Math.sin(ry) * s * 1.2, 0.2, 1.3, 1.3, ry, { y: gy - 0.4, rz: tip ? 1.2 : 0, color: 0x3a2a1e, collide: false });
+  }
+  for (let i = 0; i < 12; i++) w.block(cv.x + (rng() - 0.5) * 22, cv.z + (rng() - 0.5) * 22, 0.7 + rng() * 0.5, 0.6 + rng() * 0.4, 0.7 + rng() * 0.5, rng() * 3, { color: rng() < 0.5 ? 0x7a5a3a : 0x8a6a46, collide: false });
+  for (let i = 0; i < 3; i++) {
+    const x = cv.x + 8 + i * 3, z = cv.z - 6 - i * 2, gy = w.getHeight(x, z);
+    for (let k = 0; k < 5; k++) w.block(x + k * 0.5, z, 0.12, 1.1, 0.12, 0, { y: gy - 0.2, rz: 0.5, color: 0xe8dcc0, collide: false });
+  }
+  // Sandstone arches out in the dunes.
+  for (const [x, z, ry] of [[505, 110, 0.4], [600, 60, -0.3], [570, 170, 1.2], [480, 140, 0.9]]) {
+    const cs = Math.cos(ry), sn = Math.sin(ry), gy = Math.min(w.getHeight(x - cs * 4, z + sn * 4), w.getHeight(x + cs * 4, z - sn * 4));
+    for (const sd of [-1, 1]) w.block(x + cs * sd * 4, z - sn * sd * 4, 2.2, 9, 2.6, ry, { y: gy - 0.5, color: SAND2 });
+    w.block(x, z, 10.5, 2.0, 2.6, ry, { y: gy + 8.2, color: SAND, collide: false });
+  }
+  // The Sanctum of the Sun: a ring of columns open to the west, a stepped pyramid at its back with the
+  // sun's golden disc on its face, and a floor of worn flagstones.
+  const S = SANCTUM, sy = w.getHeight(S.x, S.z);
+  const segs = 24;
+  for (let i = 0; i < segs; i++) {
+    const a = (i / segs) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a + Math.PI / 2), Math.cos(a + Math.PI / 2))) < 0.36) continue; // the way in, from the west
+    const x = S.x + Math.sin(a) * (S.r + 1), z = S.z + Math.cos(a) * (S.r + 1);
+    const h = i % 4 === 1 ? 4 + rng() * 2 : 9 + rng() * 1.5;
+    w.block(x, z, 2.2, h, 2.2, a, { y: sy - 0.5, color: SAND });
+    if (h > 8) w.block(x, z, 2.8, 0.7, 2.8, a, { y: sy - 0.5 + h, color: GOLD, collide: false });
+  }
+  const px = S.x + S.r + 14, pz = S.z;
+  for (let k = 0; k < 6; k++) w.block(px + k * 1.5, pz, 22 - k * 3.2, 3, 22 - k * 3.2, 0, { y: sy - 0.4 + k * 3, color: k % 2 ? SAND2 : SAND, collide: k === 0 });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(4, 16), mat(0xffd070, { emissive: 0xffa020, emissiveIntensity: 0.9, side: THREE.DoubleSide }));
+  disc.position.set(px - 10.5, sy + 9, pz);
+  disc.rotation.y = -Math.PI / 2;
+  w.scene.add(disc);
+  B.sunDisc = disc;
+  for (let i = 0; i < 50; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (S.r - 3);
+    w.block(S.x + Math.sin(a) * d, S.z + Math.cos(a) * d, 1.6 + rng() * 1.6, 0.16, 1.6 + rng() * 1.6, rng() * 3, { y: sy - 0.1, color: 0xc89a60, collide: false });
+  }
+}
+
+// ---------- the Stormspire Heights ----------
+
+function storm(w, B) {
+  const rng = mulberry32(1203);
+  const STONE = 0x6a6e76, DARK = 0x4a4e56, COPPER = 0x5a8a7a;
+  // The Thunder Stair: weathered waymarks with copper rods along the climb.
+  for (const [x, z] of [[340, -232], [356, -282], [366, -322], [380, -372]]) {
+    w.block(x + 5, z, 1.2, 3.2, 1.2, rng(), { color: STONE });
+    w.block(x + 5, z, 0.12, 2.2, 0.12, 0, { y: w.getHeight(x + 5, z) + 2.8, color: COPPER, collide: false });
+  }
+  // Stormgate: a ring of standing stones round the shrine.
+  const sg = Z.stormgate;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.2;
+    if (Math.cos(a) > 0.6) continue;
+    w.block(sg.x + Math.sin(a) * 7.5, sg.z + Math.cos(a) * 7.5, 1.2, 2.8 + rng() * 2.4, 0.8, a, { color: STONE });
+  }
+  // The Broken Monastery: a walled cloister, a roofless chapel and a leaning bell tower.
+  const mo = Z.monastery, my = w.getHeight(mo.x, mo.z) - 0.3;
+  const wall = (x0, z0, x1, z1, gap = null) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0), n = Math.ceil(len / 3);
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
+      if (gap && Math.hypot(x - gap[0], z - gap[1]) < 2.8) continue;
+      w.block(x, z, len / n + 0.05, 2.5 + Math.abs(Math.sin(i * 2.3 + x0)) * 3.5, 1.0, ry, { y: my, color: i % 3 ? STONE : DARK });
+    }
+  };
+  wall(mo.x - 14, mo.z - 12, mo.x + 14, mo.z - 12);
+  wall(mo.x - 14, mo.z + 12, mo.x + 14, mo.z + 12, [mo.x + 6, mo.z + 12]);
+  wall(mo.x - 14, mo.z - 12, mo.x - 14, mo.z + 12);
+  wall(mo.x + 14, mo.z - 12, mo.x + 14, mo.z + 12, [mo.x + 14, mo.z + 4]);
+  // The chapel: a raised floor, an altar, and two broken arches.
+  w.block(mo.x - 6, mo.z - 6, 9, 0.4, 7, 0, { y: my + 0.1, color: DARK, collide: false });
+  w.block(mo.x - 6, mo.z - 9, 2.4, 1.1, 1.0, 0, { y: my + 0.4, color: 0x8a8e96 });
+  for (const sx of [-1, 1]) {
+    w.block(mo.x - 6 + sx * 3.6, mo.z - 3, 1.0, 6, 1.0, 0, { y: my, color: STONE });
+    w.block(mo.x - 6 + sx * 3.6, mo.z - 8, 1.0, 5, 1.0, 0, { y: my, color: STONE });
+  }
+  w.block(mo.x - 6, mo.z - 3, 8.2, 0.8, 1.0, 0, { y: my + 6, color: DARK, collide: false });
+  // The bell tower, leaning, its bell long gone.
+  for (let i = 0; i < 5; i++) w.block(mo.x + 9, mo.z - 7, 3.4 - i * 0.2, 3, 3.4 - i * 0.2, 0, { y: my + i * 3, rz: i * 0.03, color: i % 2 ? STONE : DARK, collide: i === 0 });
+  w.block(mo.x + 9.6, mo.z - 7, 0.2, 4, 0.2, 0, { y: my + 15, color: COPPER, collide: false });
+  // Spires: needles of dark rock all over the heights, a few with copper rods that draw the lightning.
+  B.rods = [];
+  const spires = [];
+  for (let i = 0, tries = 0; spires.length < 70 && tries < 2000; tries++) {
+    const L = LOBES.storm;
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (L.r - 8);
+    const x = L.x + Math.sin(a) * d, z = L.z + Math.cos(a) * d;
+    if (w.roadDistance(x, z) < 9) continue;
+    let ok = true;
+    for (const zn of Object.values(Z)) if (zn.flat != null && Math.hypot(x - zn.x, z - zn.z) < zn.flat + 8) ok = false;
+    if (Math.hypot(x - SUMMIT.x, z - SUMMIT.z) < SUMMIT.r + 6 || Math.hypot(x - 404, z + 414) < 5) ok = false;
+    if (!ok) continue;
+    const h = 8 + Math.pow(rng(), 1.5) * 30, r = 1.4 + h * 0.07 + rng();
+    spires.push({ x, z, h, r });
+    w.addCircle(x, z, r * 0.8);
+    if (h > 22 && B.rods.length < 12) B.rods.push({ x, z, y: w.getHeight(x, z) + h * 0.98 });
+    i++;
+  }
+  const geo = new THREE.CylinderGeometry(0.25, 1, 1, 6).translate(0, 0.5, 0);
+  const sm = new THREE.MeshStandardMaterial({ color: 0x4e525a, roughness: 0.9, flatShading: true });
+  const im = new THREE.InstancedMesh(geo, sm, spires.length);
+  const dummy = new THREE.Object3D();
+  const col = new THREE.Color();
+  spires.forEach((sp, i) => {
+    dummy.position.set(sp.x, w.getHeight(sp.x, sp.z) - 1, sp.z);
+    dummy.rotation.set((rng() - 0.5) * 0.12, rng() * 6, (rng() - 0.5) * 0.12);
+    dummy.scale.set(sp.r, sp.h, sp.r);
+    dummy.updateMatrix();
+    im.setMatrixAt(i, dummy.matrix);
+    im.setColorAt(i, col.setHex(0xffffff).offsetHSL(0, 0, (rng() - 0.5) * 0.15));
+  });
+  im.castShadow = im.receiveShadow = true;
+  w.scene.add(im);
+  const rodM = mat(0x8fd8c8, { emissive: 0x60c0ff, emissiveIntensity: 0.6 });
+  for (const r of B.rods) w.scene.add(mesh(box(0.2, 3, 0.2), rodM, { x: r.x, y: r.y + 1.5, z: r.z }));
+  B.rodMat = rodM;
+  // The Herald's Summit: a ring of stones, each with a copper rod, round a great iron lightning-mast.
+  const S = SUMMIT, sy = w.getHeight(S.x, S.z);
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - 3.6), Math.cos(a - 3.6))) < 0.4) continue; // the way in, from the road
+    const x = S.x + Math.sin(a) * (S.r + 1), z = S.z + Math.cos(a) * (S.r + 1);
+    w.block(x, z, 1.8, 5 + rng() * 2, 1.2, a, { y: sy - 0.5, color: STONE });
+    w.block(x, z, 0.15, 2.4, 0.15, 0, { y: sy + 6.2, color: COPPER, collide: false });
+  }
+  const mx = S.x + Math.sin(0.5) * 18, mz = S.z + Math.cos(0.5) * 18;
+  w.block(mx, mz, 1.4, 22, 1.4, 0, { y: sy - 0.5, color: 0x3a3e46 });
+  for (let k = 0; k < 3; k++) w.block(mx, mz, 4 - k, 0.3, 0.3, k, { y: sy + 8 + k * 5, color: 0x3a3e46, collide: false });
+  B.mast = { x: mx, z: mz, y: sy + 22 };
+  B.rods.push({ x: mx, z: mz, y: sy + 21.5 });
+  for (let i = 0; i < 40; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (S.r - 3);
+    w.block(S.x + Math.sin(a) * d, S.z + Math.cos(a) * d, 1.4 + rng() * 1.6, 0.16, 1.4 + rng() * 1.6, rng() * 3, { y: sy - 0.1, color: 0x7a7e86, collide: false });
+  }
+}
+
 // ---------- scenery (batched by world/Scenery.js) ----------
 
 const sg = () => P.sceneryGeometries();
@@ -670,6 +859,75 @@ export function biomeScenery(sc) {
   }
   void L;
   buildCaps(w, B);
+
+  // The Dunes: palms round the oasis, cacti, dry scrub and wind-carved rocks, gold grass in the hollows.
+  for (let i = 0; i < 28; i++) {
+    const a = (i / 28) * Math.PI * 2 + rng() * 0.2, d = OASIS.r * (1.1 + rng() * 0.6);
+    const x = OASIS.x + Math.sin(a) * d, z = OASIS.z + Math.cos(a) * d;
+    if (!sc.clearOfPois(x, z, 2.5) || w.roadDistance(x, z) < 4.5) continue;
+    const s = 0.9 + rng() * 0.5;
+    sc._put(sc.big, palmParts(rng), x, z, { s, ry: 0 });
+    w.addCircle(x, z, 0.3 * s);
+    sc.trees.push({ x, z, y: w.getHeight(x, z), s, type: 'pine' });
+  }
+  for (let i = 0; i < 90; i++) {
+    const a = rng() * Math.PI * 2, d = OASIS.r * (0.9 + rng() * 0.9);
+    sc._put(sc.small, P.reedParts(rng), OASIS.x + Math.sin(a) * d, OASIS.z + Math.cos(a) * d, { s: 0.8 + rng() * 0.4, sink: 0.1 });
+  }
+  scatter('dunes', 70, 2500, 0, (x, z) => {
+    if (w.slopeAt(x, z) > 0.5 || Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.5) return false;
+    sc._put(sc.big, cactusParts(rng), x, z, { s: 0.8 + rng() * 0.6 });
+    w.addCircle(x, z, 0.4);
+  });
+  scatter('dunes', 160, 3000, -2, (x, z) => {
+    if (Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.2) return false;
+    const s = 0.4 + Math.pow(rng(), 2) * 2.4;
+    if (s > 0.9 && w.roadDistance(x, z) < 6) return false;
+    sc._put(sc.big, P.rockParts(rng, rng() < 0.5 ? 0xb4683e : 0xc88a50), x, z, { rx: rng() * 0.3, rz: rng() * 0.3, sx: s * 1.3, sy: s * 0.8, sz: s });
+    if (s > 0.9) w.addCircle(x, z, s * 0.9);
+  });
+  scatter('dunes', 1300, 6000, -3.5, (x, z) => {
+    if (w.slopeAt(x, z) > 0.4 || Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r) return false;
+    const s = 0.6 + rng() * 0.6;
+    sc._put(sc.small, P.tuftParts(rng, rng() < 0.6 ? 0xc8a85a : 0xa89048), x, z, { s, sy: s * 0.9, sink: 0.05 });
+  });
+  scatter('dunes', 60, 2000, -2, (x, z) => {
+    sc._put(sc.big, P.deadParts(rng), x, z, { s: 0.6 + rng() * 0.4 });
+    w.addCircle(x, z, 0.25);
+  });
+  // The Heights: twisted wind-bent pines, boulders and lichen-grey grass.
+  scatter('storm', 140, 3000, 0, (x, z) => {
+    if (w.slopeAt(x, z) > 0.55) return false;
+    const s = 0.7 + rng() * 0.5;
+    sc._put(sc.big, P.pineParts(rng), x, z, { s, rz: (rng() - 0.5) * 0.25, rx: (rng() - 0.5) * 0.25 });
+    w.addCircle(x, z, 0.3 * s);
+    sc.trees.push({ x, z, y: w.getHeight(x, z), s, type: 'pine' });
+  });
+  scatter('storm', 220, 3000, -2, (x, z) => {
+    const s = 0.4 + Math.pow(rng(), 2) * 2.4;
+    if (s > 0.9 && w.roadDistance(x, z) < 6) return false;
+    sc._put(sc.big, P.rockParts(rng, rng() < 0.6 ? 0x5c6068 : 0x6e7270), x, z, { rx: rng(), rz: rng(), sx: s * 1.2, sy: s * 0.8, sz: s });
+    if (s > 0.9) w.addCircle(x, z, s * 0.9);
+  });
+  scatter('storm', 1600, 6000, -3.5, (x, z) => {
+    if (w.slopeAt(x, z) > 0.5) return false;
+    const s = 0.6 + rng() * 0.6;
+    sc._put(sc.small, P.tuftParts(rng, rng() < 0.5 ? 0x8a8e6a : 0x6a7458), x, z, { s, sy: s * 0.8, sink: 0.05 });
+  });
+}
+
+function cactusParts(rng) {
+  const c = tone(0x5a8a3a, rng), parts = [];
+  const h = 2.5 + rng() * 2;
+  parts.push({ geo: sg().hex, matrix: xform(0, -0.2, 0, 0, 0, 0, 0.32, h, 0.32), color: c });
+  for (const sd of [-1, 1]) {
+    if (rng() < 0.3) continue;
+    const y = 0.8 + rng() * (h - 1.6);
+    parts.push({ geo: sg().hex, matrix: xform(sd * 0.25, y, 0, 0, 0, -sd * Math.PI / 2, 0.18, 0.55, 0.18), color: c });
+    parts.push({ geo: sg().hex, matrix: xform(sd * 0.75, y - 0.1, 0, 0, 0, 0, 0.18, 1.0 + rng() * 0.6, 0.18), color: c });
+  }
+  if (rng() < 0.4) parts.push({ geo: sg().octa, matrix: xform(0, h - 0.1, 0, 0, 0, 0, 0.15, 0.15, 0.15), color: tone(0xe86a8a, rng) });
+  return parts;
 }
 
 function buildCaps(w, B) {
@@ -744,6 +1002,31 @@ export function updateBiomes(w, dt, time) {
   if (region === 'glow' && Math.random() < dt * 16) {
     const x = cam.x + (Math.random() - 0.5) * 40, z = cam.z + (Math.random() - 0.5) * 40;
     ps.emit({ x, y: w.getHeight(x, z) + 0.5 + Math.random() * 4, z, count: 1, speed: 0.15, up: 0.2, color: 0x6ff0d8, color2: 0xe080ff, life: [3, 6], size: [0.05, 0.1], drag: 0.2, jitter: 1.5 });
+  }
+  // Lightning: the flash, the rods on the spires glowing, and over the Heights the storm striking now
+  // and then (on a rod, or near you: watch for the crackling circle).
+  if (B.flashT > 0) {
+    B.flashT -= dt;
+    B.flashLight.intensity = B.flashT > 0 ? 9000 * (B.flashT / 0.3) * (0.6 + Math.random() * 0.4) : 0;
+  }
+  if (B.rodMat) B.rodMat.emissiveIntensity = 0.5 + Math.random() * 0.15 + (B.flashT > 0 ? 3 : 0);
+  if (region === 'storm' && !g.cutscene && g.mode === 'playing' && (B.stormT -= dt) <= 0) {
+    B.stormT = 3.5 + Math.random() * 5;
+    const p = g.player.pos;
+    if (Math.random() < 0.45 && B.rods.length) {
+      const r = B.rods[Math.floor(Math.random() * B.rods.length)];
+      g.effects.lightning(STORM, r.x, r.z, 0.05, { height: 40, radius: 0.5 });
+    } else if (g.player.alive && !g.fieldBoss) {
+      const a = Math.random() * Math.PI * 2, d = 6 + Math.random() * 28;
+      const x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
+      if (w.inPlay(x, z, 2)) g.effects.lightning(STORM, x, z, 1.3, { radius: 2.4, hit: { dmg: 28, poise: 30, knock: 4, unblockable: true } });
+    }
+  }
+  if (B.sunDisc) B.sunDisc.rotation.z = time * 0.1;
+  B.oasis.update(time, sky, w.weather.rain);
+  if (region === 'dunes' && Math.random() < dt * 8) {
+    const x = cam.x + (Math.random() - 0.5) * 40, z = cam.z + (Math.random() - 0.5) * 40;
+    ps.emit({ x, y: w.getHeight(x, z) + 0.2, z, count: 2, speed: 0.4, up: 0.2, color: 0xe8c890, color2: 0xfff0c8, life: [1, 2], size: [0.05, 0.1], drag: 0.3, jitter: 0.4, dir: { x: 3, y: 0.2, z: 1 } });
   }
   // Lava spits now and then from the pools near you.
   if (region === 'cinder' && Math.random() < dt * 3) {

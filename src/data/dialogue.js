@@ -422,4 +422,97 @@ export const DIALOGUE = {
     if (q.status('bloom') === 'active') return { name, lines: ['The grove is at the end of the road, where the light turns pink. Hmmm.'] };
     return { name, lines: ['Hmmm. The caps are growing back. Slowly. That is the right speed.'] };
   },
+
+  tamsin(g) {
+    const q = g.quests;
+    const name = 'Tamsin, Wandering Trader';
+    const first = !g.state.flags.metTamsin;
+    g.state.flags.metTamsin = true;
+    if (q.status('caravan') === 'active' && g.hasItem('sun_disc')) {
+      return {
+        name,
+        lines: [
+          'That\'s... that\'s ours. My mother\'s mark, on the back. See it?',
+          'So they got that far. Further than I thought. Thank you. I\'ve not much, but these are good stones.',
+        ],
+        effect: () => {
+          g.takeItem('sun_disc');
+          q.complete('caravan');
+        },
+      };
+    }
+    if (q.status('caravan') === 'inactive') {
+      return {
+        name,
+        lines: [
+          first ? 'Water\'s free. Everything else costs. Tamsin, trader, at your service, as long as your service pays in ash.' : 'Back again.',
+          'My family ran caravans across the dunes to the Sanctum every year. One year they didn\'t come back. I\'ve got as far as this oasis on my own.',
+          'If you go north you might find what\'s left of them. Bring me the sun-disc they carried, if it\'s there. Gold, size of your palm.',
+          'And when you want to trade, my crates are just there. Stones, seeds, a shield fit for a sunrise.',
+        ],
+        effect: () => q.start('caravan'),
+      };
+    }
+    if (q.status('solkar') === 'inactive') {
+      const dead = g.state.flags.solkarDead;
+      return {
+        name,
+        lines: dead
+          ? ['You went into the Sanctum. And came out. Whatever was under the sand isn\'t now; the revenants just stand there, staring at nothing.', 'Thank you. For my family, and for every caravan after.']
+          : [
+            'The Sanctum of the Sun is east of here. The revenants guard it as if it were still holy.',
+            'There\'s something under its sand. I\'ve felt the ground move from here. I think that\'s what took the caravan.',
+            'Kindle the shrine at the edge of the dunes first. Then go and see.',
+          ],
+        effect: () => {
+          q.start('solkar');
+          if (dead) q.complete('solkar');
+        },
+      };
+    }
+    if (q.status('caravan') === 'active') return { name, lines: ['North of the oasis, past the arches. Look for the wagons.'] };
+    if (q.status('solkar') === 'active') return { name, lines: ['East, to the Sanctum. Mind the revenants\' shields; they\'re gilded, but they\'re still shields.'] };
+    return { name, lines: ['My crates are there whenever you\'ve ash to spend.'] };
+  },
+
+  aldous(g) {
+    const q = g.quests;
+    const name = 'Brother Aldous';
+    const dead = g.state.flags.vaelorDead;
+    if (q.status('vaelor') === 'inactive') {
+      return {
+        name,
+        lines: dead
+          ? ['The storm\'s broken. I watched it go from here. You went up there, didn\'t you. To Vaelor.', 'He was a good abbot once. Thank you for letting him stop.']
+          : [
+            'Mind the floor; the lightning comes through the roof, there being no roof.',
+            'I\'m Aldous. I was a monk here, when there were monks. Abbot Vaelor called the storm down to guard the Heights when the Warden\'s bells went quiet. The storm guards them still, and him with it.',
+            'He stands on the summit at the top of the stair, calling it. Kindle the Stormgate lantern on the way up. And when you reach him... let him rest.',
+          ],
+        effect: () => {
+          q.start('vaelor');
+          if (dead) q.complete('vaelor');
+        },
+      };
+    }
+    if (q.status('vaelor') === 'active' && dead) {
+      return {
+        name,
+        lines: ['It\'s over, then. The thunder\'s further away already.', 'Take what the brothers left. They\'d want it used.'],
+        effect: () => q.complete('vaelor'),
+      };
+    }
+    if (q.status('gargoyles') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'One more thing. The gargoyles from the roof came down with the storm. Stone, and they walk. They watch for him.',
+          'There are two. Still them, would you? I\'ll find you something for the trouble.',
+        ],
+        effect: () => q.start('gargoyles'),
+      };
+    }
+    if (q.status('vaelor') === 'active') return { name, lines: ['Up the stair. Follow the copper rods; they mark the way, and they draw the lightning off it.'] };
+    return { name, lines: [dead ? 'Sun on the Stormspire. I keep going outside to look at it.' : 'Listen. You can hear him calling it, up there.'] };
+  },
 };

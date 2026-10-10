@@ -4,7 +4,7 @@
 // parried (their swing was parried), riposted (held for the player's riposte) and knockdown.
 import { Actor } from './Actor.js';
 import { buildSentry, buildKnight } from '../models/characters.js';
-import { buildDrowned } from '../models/creatures.js';
+import { buildDrowned, buildRevenant, buildStormKnight } from '../models/creatures.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
 
@@ -21,6 +21,10 @@ const VARIANTS = {
   captain: { tag: 'sentry', name: 'Hollow Captain', hp: 170, poise: 45, ash: 260, radius: 0.55, height: 2.1, lock: 1.5, speed: 0.92, dmg: 1.4, guard: 0.5, guardMax: 90, reach: 1.12, pace: 0.85, build: () => buildSentry(true) },
   // The Drowned Coast's sailors: no shield, a long harpoon they mostly thrust with.
   drowned: { tag: 'drowned', name: 'Drowned Sailor', hp: 95, poise: 30, ash: 130, radius: 0.48, height: 1.9, lock: 1.35, speed: 0.9, dmg: 1.3, guard: 0, guardMax: 0, reach: 1.35, pace: 1.05, thrust: 0.75, build: buildDrowned },
+  // The Sanctum's dead guards, with a khopesh and a little gold shield; their blows carry the sun's heat.
+  revenant: { tag: 'revenant', name: 'Sand Revenant', hp: 110, poise: 34, ash: 160, radius: 0.46, height: 1.9, lock: 1.35, speed: 1.05, dmg: 1.35, guard: 0.4, guardMax: 70, reach: 1.0, pace: 0.95, burn: 10, build: buildRevenant },
+  // The Stormspire's sworn guard: plate, kite shield and a sword-edge that crackles.
+  stormknight: { tag: 'stormknight', name: 'Spire Knight', hp: 175, poise: 52, ash: 280, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.6, guard: 0.55, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildStormKnight },
   knight: { tag: 'knight', name: 'Dunmarrow Knight', hp: 160, poise: 50, ash: 240, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.55, guard: 0.6, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildKnight },
 };
 

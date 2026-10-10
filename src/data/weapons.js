@@ -372,6 +372,81 @@ export const WEAPONS = {
       rolling: { stamina: 18, dmg: 23, poise: 18, windup: 0.16, active: 0.16, recover: 0.42, lunge: 3.2, reach: 3.9, arc: 1.2, pose: 'sSweep', next: 'light1', sfx: 'swing' },
     },
   },
+
+  sun_khopesh: {
+    name: 'Sun Khopesh',
+    type: 'Curved sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.05,
+    burn: 8,
+    desc: 'A hooked bronze blade from the Lost Caravan, its edge still warm from a sun that set centuries ago. Its art flashes a disc of sunlight that burns whatever it cuts.',
+    art: 'solar_arc',
+    riposte: { dmg: 26 },
+    guard: { name: 'blade', absorb: 0.6, cost: 1.5, parryWindow: 0.2, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 13, dmg: 17, poise: 13, windup: 0.15, active: 0.14, recover: 0.34, lunge: 2.6, reach: 2.3, arc: 1.05, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 13, dmg: 17, poise: 13, windup: 0.13, active: 0.14, recover: 0.34, lunge: 2.6, reach: 2.3, arc: 1.05, pose: 'slashL', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 28, dmg: 42, poise: 44, windup: 0.48, active: 0.15, recover: 0.5, lunge: 3.2, reach: 2.5, arc: 0.7, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 13, dmg: 16, poise: 11, windup: 0.1, active: 0.14, recover: 0.34, lunge: 3.2, reach: 2.4, arc: 0.6, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  scarab_horn: {
+    name: "Solkar's Horn",
+    type: 'Great hammer',
+    hands: 2,
+    stance: 'maul',
+    scale: 1.55,
+    desc: "The Sun Scarab's horn on a haft of gilded cedar: a hammer that the Sanctum's priests would have called holy. Each blow lands with the weight of a beetle that once rolled the sun.",
+    art: 'quake',
+    riposte: { dmg: 38 },
+    guard: { name: 'club', absorb: 0.72, cost: 1.25, parryWindow: 0.1, raiseTime: 0.12, arc: 1.75, speed: 1.9 },
+    moves: {
+      light1: { stamina: 30, dmg: 46, poise: 52, windup: 0.6, active: 0.18, recover: 0.68, lunge: 2.4, reach: 3.0, arc: 1.3, pose: 'mSwing', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 30, dmg: 45, poise: 50, windup: 0.58, active: 0.16, recover: 0.7, lunge: 2.4, reach: 2.9, arc: 0.75, pose: 'mOverhead', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 46, dmg: 86, poise: 85, windup: 0.98, active: 0.18, recover: 0.88, lunge: 2.6, reach: 3.0, arc: 0.6, pose: 'mOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 27, dmg: 36, poise: 36, windup: 0.3, active: 0.18, recover: 0.6, lunge: 3.0, reach: 2.9, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
+    },
+  },
+
+  storm_spear: {
+    name: 'Spire Spear',
+    type: 'Spear',
+    hands: 1,
+    stance: 'spear',
+    scale: 1.05,
+    desc: 'A monk-guard\'s spear with a copper-wound haft that hums before a storm. Its art drives the point into the ground and calls a bolt down where it points. Thrusts can be made from behind a raised shield.',
+    art: 'thunder_thrust',
+    guardAttack: true,
+    riposte: { dmg: 27 },
+    guard: { name: 'spear', absorb: 0.5, cost: 1.6, parryWindow: 0.18, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 14, dmg: 20, poise: 15, windup: 0.18, active: 0.14, recover: 0.38, lunge: 2.6, reach: 3.3, arc: 0.36, pose: 'sThrustHi', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 14, dmg: 20, poise: 15, windup: 0.16, active: 0.14, recover: 0.38, lunge: 2.6, reach: 3.3, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 30, dmg: 42, poise: 40, windup: 0.5, active: 0.16, recover: 0.54, lunge: 5.0, reach: 3.6, arc: 0.36, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 14, dmg: 19, poise: 13, windup: 0.13, active: 0.14, recover: 0.38, lunge: 3.4, reach: 3.3, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  heralds_glaive: {
+    name: "Herald's Glaive",
+    type: 'Glaive',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.35,
+    desc: "Vaelor's spear-glaive, its head a bolt of lightning caught and held. Its art raises it to the sky and brings the storm down in a ring around you.",
+    art: 'stormcall',
+    riposte: { dmg: 34 },
+    guard: { name: 'glaive', absorb: 0.68, cost: 1.3, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 29, poise: 24, windup: 0.3, active: 0.2, recover: 0.48, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 18, dmg: 26, poise: 20, windup: 0.22, active: 0.14, recover: 0.42, lunge: 2.6, reach: 4.1, arc: 0.36, pose: 'sThrustHi', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 22, dmg: 31, poise: 28, windup: 0.32, active: 0.2, recover: 0.52, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 55, poise: 54, windup: 0.6, active: 0.16, recover: 0.6, lunge: 5.0, reach: 4.3, arc: 0.36, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 25, poise: 18, windup: 0.16, active: 0.14, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.
@@ -389,6 +464,12 @@ export const SHIELDS = {
     type: 'Greatshield',
     desc: 'A tower shield of blue-grey steel from the old Rime-Watch, rimed white at the edges. Lighter than it looks, and the cold that soaks into it never reaches the arm behind it.',
     guard: { name: 'greatshield', absorb: 1, cost: 0.68, parryWindow: 0.14, raiseTime: 0.1, arc: 1.95, speed: 1.8 },
+  },
+  sunsteel_shield: {
+    name: 'Sunsteel Shield',
+    type: 'Medium shield',
+    desc: 'A round shield of gilded steel from Tamsin\'s pack, polished bright enough to blind a revenant. It turns aside fire better than any other shield in the Vale.',
+    guard: { name: 'shield', absorb: 0.94, cost: 0.8, parryWindow: 0.2, raiseTime: 0.08, arc: 1.8, fireWard: true },
   },
   thornguard: {
     name: 'Thornguard',

@@ -348,3 +348,269 @@ export function buildWitch() {
   mergeHumanoid(r, [orb]);
   return { ...r, heart, glow, orb };
 }
+
+// ---------- the Gilded Dunes ----------
+
+// Dune Scorpions: the crab's layout again (claws as the "head", pincer as the "jaw"), but long and low,
+// sand-gold, with a jointed tail curled over its back and a glowing violet sting.
+export function buildScorpion() {
+  const shell = mat(0xc8902e, { roughness: 0.7 }), shell2 = mat(0x8a5a1e, { roughness: 0.7 }), sting = mat(0xe090ff, { emissive: 0xa040e0, emissiveIntensity: 1.6 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.45 });
+  root.add(body);
+  for (let i = 0; i < 4; i++) body.add(mesh(box(0.66 - i * 0.06, 0.24, 0.3), i % 2 ? shell2 : shell, { z: 0.36 - i * 0.26 }));
+  const neck = group({ y: 0.1, z: 0.5, rx: -0.55 });
+  body.add(neck);
+  for (const s of [-1, 1]) neck.add(mesh(box(0.06, 0.06, 0.06), mat(0x101010), { x: s * 0.1, y: 0.06, z: 0.08 }));
+  const head = group({ z: 0.1, rx: 0.55 });
+  neck.add(head);
+  for (const s of [-1, 1]) {
+    head.add(mesh(box(0.1, 0.1, 0.36), shell2, { x: s * 0.3, y: -0.08, z: 0.2, ry: -s * 0.3 }));
+    head.add(mesh(box(0.2, 0.14, 0.3), shell, { x: s * 0.42, y: -0.06, z: 0.48 }));
+  }
+  const jaw = group({ x: 0.42, y: -0.1, z: 0.62 });
+  head.add(jaw);
+  jaw.add(mesh(box(0.08, 0.06, 0.26), shell2, { z: 0.12 }));
+  head.add(mesh(box(0.08, 0.06, 0.26), shell2, { x: -0.42, y: -0.1, z: 0.74 }));
+  // The tail: segments climbing back and up over the body to the sting.
+  const tail = group({ y: 0.08, z: -0.5, rx: -0.6 });
+  body.add(tail);
+  let y = 0, z = 0;
+  for (let i = 0; i < 5; i++) {
+    const a = -0.3 - i * 0.45;
+    tail.add(mesh(box(0.16 - i * 0.015, 0.14, 0.26), i % 2 ? shell : shell2, { y, z, rx: a }));
+    y += Math.sin(-a) * 0.24;
+    z += -Math.cos(a) * 0.22 * (i < 3 ? 1 : -1);
+  }
+  tail.add(mesh(cone(0.07, 0.24, 4), sting, { y: y + 0.05, z: z + 0.12, rx: 2.2, shadow: false }));
+  const legs = [];
+  const mkLeg = (x, zz, front, joint = true) => {
+    const s = Math.sign(x);
+    const hip = group({ x, y: -0.05, z: zz, rz: -s * 0.8 });
+    body.add(hip);
+    hip.add(mesh(box(0.06, 0.32, 0.06), shell2, { y: -0.14 }));
+    const knee = group({ y: -0.3, rz: s * 1.2 });
+    hip.add(knee);
+    knee.add(mesh(box(0.05, 0.36, 0.05), shell, { y: -0.16 }));
+    if (joint) legs.push({ hip, knee, front, side: s });
+  };
+  mkLeg(0.32, 0.3, true); mkLeg(-0.32, 0.3, true); mkLeg(0.3, -0.2, false); mkLeg(-0.3, -0.2, false);
+  mkLeg(0.32, 0.05, false, false); mkLeg(-0.32, 0.05, false, false); mkLeg(0.28, -0.42, false, false); mkLeg(-0.28, -0.42, false, false);
+  mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
+  return { root, body, neck, head, jaw, tail, legs, materials: {} };
+}
+
+// Sand Revenants: the Sanctum's dead priest-guards, bound in sun-bleached wrappings with a gilded
+// collar, a curved khopesh and a little round shield of beaten gold. Their eyes are sun-coloured.
+export function buildRevenant() {
+  const wrap = mat(0xd8c8a0), wrap2 = mat(0xb8a47a), gold = mat(0xd8a840, { metalness: 0.7, roughness: 0.35 });
+  const r = buildHumanoid({ skin: wrap, body: wrap2, arms: wrap, legs: wrap2, boots: mat(0x8a7a5a), hands: wrap }, { chestW: 0.48, waistW: 0.4 });
+  for (let i = 0; i < 4; i++) r.torso.add(mesh(box(0.5, 0.03, 0.31), mat(0x9a8a62), { y: 0.12 + i * 0.12, rz: (i % 2 ? 0.08 : -0.08) }));
+  r.torso.add(mesh(cyl(0.3, 0.3, 0.06, 10), gold, { y: 0.57 })); // the collar
+  r.head.add(mesh(box(0.27, 0.12, 0.29), mat(0x2e4a8a), { y: 0.3, z: -0.03 })); // a striped headcloth
+  r.head.add(mesh(box(0.06, 0.28, 0.24), mat(0x2e4a8a), { x: 0.14, y: 0.12, z: -0.04 }));
+  r.head.add(mesh(box(0.06, 0.28, 0.24), mat(0x2e4a8a), { x: -0.14, y: 0.12, z: -0.04 }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.04, 0.025, 0.02), mat(0xffd070, { emissive: 0xffa020, emissiveIntensity: 2 }), { x, y: 0.15, z: 0.135, shadow: false }));
+  r.hips.add(mesh(box(0.42, 0.38, 0.02), mat(0x2e4a8a), { y: -0.2, z: 0.15 }));
+  const blade = mat(0xb8a060, { metalness: 0.7, roughness: 0.35 });
+  const sword = group();
+  sword.add(mesh(box(0.04, 0.04, 0.2), mat(0x2b241d)));
+  sword.add(mesh(box(0.07, 0.016, 0.4), blade, { z: 0.3 }));
+  sword.add(mesh(box(0.1, 0.016, 0.34), blade, { z: 0.62, x: 0.05, ry: -0.6 })); // the hooked khopesh blade
+  r.armR.hand.add(sword);
+  const mid = group({ z: 0.45 }), tip = group({ z: 0.85 });
+  r.armR.hand.add(mid, tip);
+  const shield = mesh(cyl(0.26, 0.26, 0.05, 12), gold, { rz: Math.PI / 2, x: 0.07 });
+  r.armL.elbow.add(shield);
+  shield.position.y = -0.18;
+  mergeHumanoid(r);
+  return { ...r, markers: { mid, tip } };
+}
+
+// Sand Wraiths: the dunes' dead, made of blown sand held in the shape of a hooded figure.
+export function buildSandWraith() {
+  const sand = mat(0xd8b070, { roughness: 1, emissive: 0x5a3a10, emissiveIntensity: 0.4, side: THREE.DoubleSide });
+  const dark = mat(0x9a7040, { roughness: 1, side: THREE.DoubleSide });
+  const eye = mat(0xfff0b0, { emissive: 0xffc040, emissiveIntensity: 3 });
+  const r = buildHumanoid({ skin: dark, body: sand, arms: sand, legs: sand, boots: sand, hands: dark }, { chestW: 0.46, waistW: 0.36 });
+  for (const leg of [r.legR, r.legL]) for (const g of [leg.hip, leg.knee]) for (const c of [...g.children]) if (c.isMesh) g.remove(c);
+  r.head.add(mesh(cone(0.25, 0.5, 6), dark, { y: 0.2, z: -0.05 }));
+  r.head.add(mesh(box(0.2, 0.18, 0.06), mat(0x1a120a), { y: 0.06, z: 0.12 }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.035, 0.025, 0.02), eye, { x, y: 0.08, z: 0.155, shadow: false }));
+  r.hips.add(mesh(cyl(0.22, 0.46, 1.0, 8, true), sand, { y: -0.5 }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    r.hips.add(mesh(box(0.14, 0.4, 0.02), dark, { x: Math.sin(a) * 0.4, y: -0.95, z: Math.cos(a) * 0.4, ry: a, rx: 0.2 }));
+  }
+  mergeHumanoid(r);
+  return r;
+}
+
+// Solkar, the Sun Scarab: a beetle the size of a house, gold and lapis-blue, a great forked horn, a
+// sun-disc glowing between its wing-cases. The hound layout again (horn on the "head", mandibles as
+// the "jaw", wing-cases on their own joints).
+export function buildScarab() {
+  const gold = mat(0xd8a838, { metalness: 0.5, roughness: 0.4 }), lapis = mat(0x2a4a9a, { metalness: 0.3, roughness: 0.5 });
+  const dark = mat(0x3a2a1a), sun = mat(0xfff0a0, { unique: true, emissive: 0xffb020, emissiveIntensity: 2.0 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.62 });
+  root.add(body);
+  body.add(mesh(box(0.86, 0.36, 1.1), dark, { y: -0.04 }));
+  body.add(mesh(box(0.8, 0.12, 0.3), gold, { z: 0.5, y: 0.08 })); // the pronotum's rim
+  body.add(mesh(box(0.7, 0.3, 0.36), lapis, { z: 0.48, y: 0.16 }));
+  const disc = mesh(cyl(0.18, 0.18, 0.04, 12), sun, { y: 0.34, z: 0.05, shadow: false });
+  body.add(disc);
+  const wings = [];
+  for (const s of [-1, 1]) {
+    const wing = group({ x: s * 0.06, y: 0.24, z: 0.3 });
+    body.add(wing);
+    wing.add(mesh(box(0.4, 0.14, 0.82), s < 0 ? lapis : lapis, { x: s * 0.2, z: -0.42 }));
+    wing.add(mesh(box(0.42, 0.04, 0.84), gold, { x: s * 0.2, z: -0.42, y: 0.08 }));
+    wings.push({ wing, side: s });
+  }
+  const neck = group({ y: 0.1, z: 0.66, rx: -0.55 });
+  body.add(neck);
+  neck.add(mesh(box(0.42, 0.24, 0.2), dark, { z: 0.08 }));
+  const head = group({ z: 0.18, rx: 0.55 });
+  neck.add(head);
+  head.add(mesh(box(0.44, 0.2, 0.26), gold));
+  head.add(mesh(box(0.12, 0.12, 0.5), gold, { y: 0.14, z: 0.2, rx: -0.6 })); // the horn
+  for (const s of [-1, 1]) head.add(mesh(box(0.06, 0.06, 0.24), gold, { x: s * 0.07, y: 0.42, z: 0.4, rx: -1.0, ry: s * 0.4 })); // its fork
+  for (const s of [-1, 1]) head.add(mesh(box(0.06, 0.05, 0.05), sun, { x: s * 0.16, y: 0.04, z: 0.13, shadow: false }));
+  const jaw = group({ y: -0.08, z: 0.14 });
+  head.add(jaw);
+  for (const s of [-1, 1]) jaw.add(mesh(box(0.05, 0.05, 0.22), dark, { x: s * 0.12, z: 0.08, ry: -s * 0.4 }));
+  const tail = group({ y: -0.02, z: -0.6, rx: -0.6 });
+  body.add(tail);
+  tail.add(mesh(box(0.5, 0.2, 0.2), dark));
+  const legs = [];
+  const mkLeg = (x, zz, front, joint = true) => {
+    const s = Math.sign(x);
+    const hip = group({ x, y: -0.1, z: zz, rz: -s * 0.7 });
+    body.add(hip);
+    hip.add(mesh(box(0.08, 0.36, 0.08), dark, { y: -0.16 }));
+    const knee = group({ y: -0.34, rz: s * 1.0 });
+    hip.add(knee);
+    knee.add(mesh(box(0.06, 0.4, 0.06), gold, { y: -0.18 }));
+    if (joint) legs.push({ hip, knee, front, side: s });
+  };
+  mkLeg(0.42, 0.36, true); mkLeg(-0.42, 0.36, true); mkLeg(0.44, -0.3, false); mkLeg(-0.44, -0.3, false);
+  mkLeg(0.46, 0.03, false, false); mkLeg(-0.46, 0.03, false, false);
+  const glow = glowSprite(0xffc040, 1.4, 0.6);
+  glow.position.set(0, 0.36, 0.05);
+  body.add(glow);
+  mergeRig(root, [body, neck, head, jaw, tail, ...wings.map((w) => w.wing), ...legs.flatMap((l) => [l.hip, l.knee])], { keep: [glow] });
+  return { root, body, neck, head, jaw, tail, legs, wings, sun, glow, materials: { ember: sun } };
+}
+
+// Tamsin, a wandering trader: a tall figure in layered desert robes and a wrapped turban, a scarf over
+// the face, rings of brass at the wrists, a pack bristling with goods on the back.
+export function buildTamsin() {
+  const robe = mat(0x8a3a2a, { side: THREE.DoubleSide }), sand = mat(0xd8c090), brass = mat(0xb08d4a, { metalness: 0.6, roughness: 0.4 });
+  const r = buildHumanoid({ skin: mat(0x9a6a4a), body: robe, arms: sand, legs: robe, boots: mat(0x5a3a22) }, { chestW: 0.5, waistW: 0.44 });
+  r.head.add(mesh(cyl(0.17, 0.19, 0.2, 8), sand, { y: 0.32 }));
+  r.head.add(mesh(box(0.27, 0.1, 0.06), mat(0x2e4a8a), { y: 0.06, z: 0.13 })); // face scarf
+  r.hips.add(mesh(cyl(0.24, 0.42, 0.8, 8, true), robe, { y: -0.38 }));
+  for (const arm of [r.armR, r.armL]) arm.elbow.add(mesh(cyl(0.08, 0.08, 0.04, 8), brass, { y: -0.26 }));
+  const pack = group({ y: 0.36, z: -0.26 });
+  pack.add(mesh(box(0.44, 0.56, 0.3), mat(0x6a4a2e)));
+  pack.add(mesh(box(0.1, 0.5, 0.1), brass, { x: 0.18, y: 0.42 }));
+  pack.add(mesh(cyl(0.08, 0.08, 0.5, 6), mat(0xd8c8a0), { z: 0.0, y: 0.34, rz: Math.PI / 2 }));
+  r.torso.add(pack);
+  mergeHumanoid(r);
+  return r;
+}
+
+// ---------- the Stormspire Heights ----------
+
+// Spire Knights: the storm-monks' sworn guard, in verdigris plate with a crackling blue sword-edge
+// and a tall kite shield.
+export function buildStormKnight() {
+  const plate = mat(0x5a8a7a, { metalness: 0.55, roughness: 0.45 }), dark = mat(0x34484a, { metalness: 0.5, roughness: 0.5 });
+  const spark = mat(0xcff0ff, { emissive: 0x60b0ff, emissiveIntensity: 2.2 });
+  const r = buildHumanoid({ skin: dark, body: plate, arms: plate, legs: dark, boots: dark, hands: dark }, { chestW: 0.58, shoulderW: 0.37 });
+  r.head.add(mesh(box(0.3, 0.36, 0.32), plate, { y: 0.17 }));
+  r.head.add(mesh(cone(0.08, 0.3, 4), plate, { y: 0.48 }));
+  r.head.add(mesh(box(0.22, 0.035, 0.02), spark, { y: 0.2, z: 0.165, shadow: false }));
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.26, 0.14, 0.3), plate, { y: 0.03 }));
+  r.hips.add(mesh(box(0.42, 0.5, 0.02), mat(0x2a3a5a), { y: -0.24, z: 0.15 }));
+  const sword = group();
+  sword.add(mesh(box(0.045, 0.045, 0.24), mat(0x2b241d)));
+  sword.add(mesh(box(0.26, 0.04, 0.05), plate, { z: 0.13 }));
+  sword.add(mesh(box(0.07, 0.018, 1.05), mat(0xb8c6ce, { metalness: 0.75, roughness: 0.3 }), { z: 0.68 }));
+  sword.add(mesh(box(0.02, 0.022, 0.98), spark, { z: 0.68, x: 0.035, shadow: false }));
+  r.armR.hand.add(sword);
+  const mid = group({ z: 0.65 }), tip = group({ z: 1.2 });
+  r.armR.hand.add(mid, tip);
+  const shield = group({ x: 0.07, y: -0.2 });
+  shield.add(mesh(box(0.06, 0.7, 0.46), dark));
+  shield.add(mesh(box(0.07, 0.5, 0.06), spark, { shadow: false }));
+  r.armL.elbow.add(shield);
+  r.root.scale.setScalar(1.06);
+  mergeHumanoid(r);
+  return { ...r, markers: { mid, tip } };
+}
+
+// Gargoyles: winged stone watchers from the monastery's roofs. A crouching body of grey stone, horns,
+// a beak, folded stone wings and claws; built at person size and scaled up.
+export function buildGargoyle() {
+  const stone = mat(0x7a7e86, { roughness: 0.95 }), stone2 = mat(0x5a5e66, { roughness: 0.95 });
+  const eye = mat(0xbfe8ff, { unique: true, emissive: 0x60b0ff, emissiveIntensity: 1.6 });
+  const r = buildHumanoid({ skin: stone, body: stone, arms: stone2, legs: stone2, boots: stone, hands: stone },
+    { chestW: 0.6, waistW: 0.42, shoulderW: 0.38, armW: 0.16, legW: 0.19 });
+  for (const s of [-1, 1]) {
+    r.head.add(mesh(cone(0.05, 0.3, 4), stone2, { x: s * 0.1, y: 0.32, z: -0.05, rx: -0.7, rz: -s * 0.4 }));
+    r.head.add(mesh(box(0.05, 0.035, 0.02), eye, { x: s * 0.06, y: 0.16, z: 0.135, shadow: false }));
+    // Folded wings of stone, rising behind the shoulders.
+    r.torso.add(mesh(box(0.06, 0.7, 0.5), stone2, { x: s * 0.24, y: 0.7, z: -0.28, rz: s * 0.5, rx: 0.3 }));
+    r.torso.add(mesh(box(0.06, 0.5, 0.34), stone, { x: s * 0.48, y: 0.98, z: -0.38, rz: s * 0.9, rx: 0.3 }));
+  }
+  r.head.add(mesh(cone(0.07, 0.16, 4), stone2, { y: 0.08, z: 0.16, rx: Math.PI / 2 + 0.4 })); // beak
+  for (const arm of [r.armR, r.armL]) for (let i = 0; i < 3; i++) arm.hand.add(mesh(cone(0.025, 0.16, 3), stone2, { x: (i - 1) * 0.04, y: -0.12, rx: Math.PI }));
+  mergeHumanoid(r);
+  return { ...r, magma: eye };
+}
+
+// Vaelor, the Storm Herald: the monastery's last abbot, who called the storm down and became its
+// voice. Tall, robed in storm-grey and copper, a crown of copper rods crackling with light, a long
+// spear-glaive whose head is a captured bolt.
+export function buildHerald() {
+  const robe = mat(0x4a5060, { side: THREE.DoubleSide }), copper = mat(0x5aa08a, { metalness: 0.6, roughness: 0.4 });
+  const spark = mat(0xe0f4ff, { unique: true, emissive: 0x70c0ff, emissiveIntensity: 2.2 });
+  const r = buildHumanoid({ skin: mat(0xa8a0b0), body: robe, arms: robe, legs: robe, boots: mat(0x2a2a30), hands: mat(0x6a6a78) }, { chestW: 0.52, waistW: 0.4 });
+  for (let i = 0; i < 3; i++) r.hips.add(mesh(cyl(0.28 + i * 0.08, 0.42 + i * 0.08, 0.36, 8, true), robe, { y: -0.14 - i * 0.28 }));
+  r.torso.add(mesh(box(0.56, 0.08, 0.32), copper, { y: 0.56 }));
+  for (let i = 0; i < 5; i++) {
+    const a = (i - 2) * 0.35;
+    r.head.add(mesh(box(0.03, 0.26 + (i === 2 ? 0.12 : 0), 0.03), copper, { x: Math.sin(a) * 0.12, y: 0.4, z: Math.cos(a) * 0.08 - 0.04, rz: -a * 0.5 }));
+  }
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.04, 0.025, 0.02), spark, { x, y: 0.15, z: 0.135, shadow: false }));
+  const glaive = group();
+  glaive.add(mesh(cyl(0.026, 0.03, 2.4, 6), mat(0x2a2a30), { rx: Math.PI / 2, z: 0.4 }));
+  glaive.add(mesh(cyl(0.05, 0.05, 0.1, 6), copper, { rx: Math.PI / 2, z: 1.58 }));
+  glaive.add(mesh(box(0.03, 0.12, 0.5), spark, { z: 1.86, shadow: false }));
+  glaive.add(mesh(box(0.03, 0.2, 0.08), spark, { z: 1.7, y: 0.1, rx: 0.6, shadow: false }));
+  const glow = glowSprite(0x80c8ff, 1.4, 0.7);
+  glow.position.z = 1.86;
+  glaive.add(glow);
+  r.armR.hand.add(glaive);
+  mergeHumanoid(r, [glaive]);
+  return { ...r, spark, glow };
+}
+
+// Brother Aldous: an old monk in a grey habit with a copper-wired staff, bent but quick-eyed.
+export function buildAldous() {
+  const habit = mat(0x5a5a62, { side: THREE.DoubleSide });
+  const r = buildHumanoid({ skin: mat(0xc4a088), body: habit, arms: habit, legs: habit, boots: mat(0x3a3028) }, { chestW: 0.46, waistW: 0.4 });
+  r.head.add(mesh(cone(0.23, 0.42, 6), habit, { y: 0.22, z: -0.06, rx: -0.2 }));
+  r.head.add(mesh(box(0.2, 0.14, 0.05), mat(0xe8e4dc), { y: 0.03, z: 0.13 }));
+  r.hips.add(mesh(cyl(0.22, 0.4, 0.84, 8, true), habit, { y: -0.4 }));
+  r.torso.add(mesh(box(0.46, 0.04, 0.3), mat(0x8a6a3a), { y: 0.06 }));
+  const staff = group();
+  staff.add(mesh(cyl(0.025, 0.025, 1.7, 5), mat(0x4a3a2a), { rx: Math.PI / 2, z: 0.2 }));
+  staff.add(mesh(cyl(0.035, 0.035, 0.4, 5), mat(0x5aa08a, { metalness: 0.6 }), { rx: Math.PI / 2, z: 1.0 }));
+  staff.add(mesh(box(0.05, 0.05, 0.05), mat(0xcff0ff, { emissive: 0x60b0ff, emissiveIntensity: 1.6 }), { z: 1.1, shadow: false }));
+  r.armL.hand.add(staff);
+  mergeHumanoid(r);
+  return r;
+}

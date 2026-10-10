@@ -19,6 +19,12 @@ import { Captain } from './Captain.js';
 import { Sporeling } from './Sporeling.js';
 import { Stalker } from './Stalker.js';
 import { Witch } from './Witch.js';
+import { Scorpion } from './Scorpion.js';
+import { SandWraith } from './SandWraith.js';
+import { Scarab } from './Scarab.js';
+import { ThunderWolf } from './ThunderWolf.js';
+import { Gargoyle } from './Gargoyle.js';
+import { Herald } from './Herald.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -45,6 +51,16 @@ const KINDS = {
   sporeling: Sporeling,
   stalker: Stalker,
   witch: Witch, // Sylvara, the Hollows' boss, in the Heartcap Grove
+  // The Gilded Dunes.
+  scorpion: Scorpion,
+  revenant: Sentry, // Sand Revenants: khopesh and a little gold shield
+  sandwraith: SandWraith,
+  scarab: Scarab, // Solkar, the Dunes' boss, under the Sanctum's sand
+  // The Stormspire Heights.
+  stormknight: Sentry, // Spire Knights: the knight's moveset with a crackling sword
+  thunderwolf: ThunderWolf,
+  gargoyle: Gargoyle, // an elite, like the Cinder Golems
+  herald: Herald, // Vaelor, the Heights' boss, on the summit
 };
 
 export function createEnemy(game, spawn) {

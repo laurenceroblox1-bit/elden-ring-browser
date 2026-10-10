@@ -75,7 +75,7 @@ export class Golem extends BigFoe {
         fire: (self, c) => self._lob(c.p),
       },
     };
-    this._enter();
+    if (new.target === Golem) this._enter();
   }
 
   arena() { return { x: this.spawn.x, z: this.spawn.z, leash: this.leash }; }
@@ -148,7 +148,7 @@ export class Golem extends BigFoe {
     super.update(dt);
     // The furnace inside it breathes.
     if (this.model.magma) this.model.magma.emissiveIntensity = 1.6 + Math.sin(this.game.time * 2.2 + this.spawn.x) * 0.4 + (this.state === 'attack' ? 0.8 : 0);
-    if (this.alive && this.shown && Math.random() < dt * 3) {
+    if (this.tag === 'golem' && this.alive && this.shown && Math.random() < dt * 3) {
       this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 3.2, z: this.pos.z, count: 1, speed: 0.2, up: 1.5, color: 0xff7a2a, color2: 0xffc060, life: [0.6, 1.2], size: [0.06, 0.12], jitter: 0.5 });
     }
   }

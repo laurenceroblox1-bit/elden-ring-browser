@@ -9,7 +9,7 @@ import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
 import { Ambient } from './Ambient.js';
 import { WIND } from './Wind.js';
-import { LOBES, SEA, LAVA, VOLCANO } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, OASIS } from '../data/biomes.js';
 import { buildBiomes, updateBiomes } from './Biomes.js';
 
 const SIZE = WORLD.size;
@@ -21,6 +21,7 @@ const TILES = 3; // terrain is split into TILES x TILES meshes so off-screen gro
 
 const C = (hex) => new THREE.Color(hex);
 const tmpC = new THREE.Color();
+const tmpC2 = new THREE.Color();
 const COL = {
   gold: C(0xa38f48), olive: C(0x6f7838), deep: C(0x4f5a2c), dry: C(0x9c8058),
   dirt: C(0x7d6649), road: C(0x9a8460), rock: C(0x77736a), rockDark: C(0x55524b),
@@ -38,6 +39,11 @@ const COL = {
   // The Glowcap Hollows.
   moss: C(0x43345c), mossTeal: C(0x2d5d5d), spore: C(0x5cc4b2), sporePink: C(0xb05aa8), hollowRock: C(0x4b4560),
   hollowRoad: C(0x5a4d68),
+  // The Gilded Dunes.
+  dune: C(0xe2b46a), duneLit: C(0xf0cc84), duneShade: C(0xc08e4e), sandstone: C(0xb4683e), sandstoneDark: C(0x8e4e30),
+  oasisGrass: C(0x6e9a3a), duneRoad: C(0xc8a070),
+  // The Stormspire Heights.
+  slate: C(0x5c6068), slateDark: C(0x3c4048), stormMoss: C(0x4e5e48), stormLichen: C(0x8a8e6a), stormRoad: C(0x6e6a64),
 };
 
 // Points along the lava river, as segments.
@@ -70,6 +76,7 @@ export class World {
     this.fenFloor = this._raw(FEN.x, FEN.z).big;
     this.fenLevel = this.fenFloor - 0.35;
     // Each lava pool's surface sits a little under the ash around it.
+    this.oasisLevel = this._raw(OASIS.x, OASIS.z).big - 1.2;
     this.lavaPools = LAVA.pools.map((p) => ({ ...p, level: this._raw(p.x, p.z).big - 1.0 }));
     this.flatZones = Object.values(ZONES).filter((z) => z.flat != null).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
 
@@ -165,6 +172,18 @@ export class World {
       // A sunken hollow with a soft, rolling floor.
       big = lerp(big, big * 0.35 - 7 + fbm(this.noise2, x * 0.015 + 9, z * 0.015 + 3, 2) * 4, B.glow);
     }
+    if (B.dunes > 0) {
+      // Long dune ridges across the wind, and flat-topped sandstone mesas standing out of them.
+      const n = fbm(this.noise2, x * 0.006 - 40, z * 0.006 + 12, 3);
+      const ridge = Math.sin((x * 0.75 + z * 0.66) * 0.045 + n * 3) * 4.5 + Math.sin((x * 0.4 - z * 0.9) * 0.09 + n * 5) * 1.4;
+      const mesa = smoothstep(0.42, 0.5, fbm(this.noise, x * 0.011 + 31, z * 0.011 - 8, 2)) * 14;
+      big = lerp(big, 6 + ridge + n * 8 + mesa, B.dunes);
+    }
+    if (B.storm > 0) {
+      // A high, broken plateau of crags: ridged noise, sharp and grey.
+      const rn = 1 - Math.abs(fbm(this.noise2, x * 0.009 + 77, z * 0.009 - 21, 3));
+      big = lerp(big, 22 + rn * rn * 26 + fbm(this.noise, x * 0.004, z * 0.004, 2) * 10, B.storm);
+    }
     for (const k in LOBES) {
       const L = LOBES[k];
       const d = this.lobeDist(L, x, z);
@@ -248,6 +267,9 @@ export class World {
     // Fen pools, with ragged shores; the road stays a causeway between them.
     const pool = this.fenPoolDepth(x, z);
     if (pool > 0) h = lerp(h, this.fenLevel - 2.6, pool * smoothstep(3.5, 8, rd));
+    // The oasis pool, sunk into the dunes.
+    const od = Math.hypot(x - OASIS.x, z - OASIS.z);
+    if (od < OASIS.r * 1.6) h = lerp(h, this.oasisLevel - 2.4, 1 - smoothstep(OASIS.r * 0.5, OASIS.r * 1.05 + this.noise(x * 0.1, z * 0.1) * 2, od));
     // Lava basins and the lava river's channel, sunk below the ash.
     const lava = this.lavaDepth(x, z);
     if (lava > 0) h = lerp(h, this.lavaLevelAt(x, z) - 1.6, lava);
@@ -383,13 +405,34 @@ export class World {
           tmpC.lerp(COL.hollowRoad, rw * 0.8);
           c.lerp(tmpC, B.glow);
         }
+        if (B.dunes > 0) {
+          // Gold sand, lit on the windward faces of the ridges; red sandstone on the mesas' cliffs;
+          // green round the oasis.
+          tmpC.copy(COL.duneShade).lerp(COL.dune, smoothstep(0.1, 0.6, t)).lerp(COL.duneLit, smoothstep(0.1, 0.5, (hr - hl) / CELL) * 0.6);
+          tmpC.lerp(tmpC2.copy(COL.sandstone).lerp(COL.sandstoneDark, strata), smoothstep(0.4, 0.75, slope));
+          tmpC.lerp(COL.duneRoad, rw * 0.7);
+          const od = Math.hypot(x - OASIS.x, z - OASIS.z);
+          tmpC.lerp(COL.oasisGrass, (1 - smoothstep(OASIS.r * 1.1, OASIS.r * 1.9 + nz * 4, od)) * 0.85);
+          c.lerp(tmpC, B.dunes);
+        }
+        if (B.storm > 0) {
+          // Grey slate and dark crag, moss in the hollows, pale lichen on the tops.
+          tmpC.copy(COL.slate).lerp(COL.stormMoss, smoothstep(0.2, 0.7, macro) * 0.6);
+          tmpC.lerp(COL.stormLichen, smoothstep(0.65, 0.9, t) * 0.4);
+          tmpC.lerp(COL.slateDark, smoothstep(0.4, 0.85, slope));
+          tmpC.lerp(COL.stormRoad, rw * 0.8);
+          c.lerp(tmpC, B.storm);
+        }
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
         const snowLine = h + nz * 7;
         // Around the Wastes the high peaks are ash and rock, not snow.
         const hot = 1 - smoothstep(LOBES.cinder.r * 1.1, LOBES.cinder.r * 1.6, Math.hypot(x - LOBES.cinder.x, z - LOBES.cinder.z));
         if (hot > 0) c.lerp(tmpC.copy(COL.basalt).lerp(COL.cinder, strata), hot * smoothstep(30, 60, h));
-        const snow = smoothstep(76, 92, snowLine) * (1 - smoothstep(0.85, 1.4, slope) * 0.7) * (1 - hot);
+        // ...and round the Dunes they are red rock.
+        const dry = 1 - smoothstep(LOBES.dunes.r * 1.1, LOBES.dunes.r * 1.6, Math.hypot(x - LOBES.dunes.x, z - LOBES.dunes.z));
+        if (dry > 0) c.lerp(tmpC.copy(COL.sandstone).lerp(COL.sandstoneDark, strata), dry * smoothstep(25, 50, h));
+        const snow = smoothstep(76, 92, snowLine) * (1 - smoothstep(0.85, 1.4, slope) * 0.7) * (1 - Math.max(hot, dry));
         c.lerp(COL.scree, smoothstep(58, 76, snowLine) * smoothstep(0.3, 0.7, slope) * 0.45 * (1 - snow));
         c.lerp(COL.snow, snow);
         col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
@@ -476,6 +519,7 @@ export class World {
   isWater(x, z) {
     if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return this.getHeight(x, z) < this.waterLevel - 0.3;
     if (x < SEA.shoreX + 30 && this.lobeDist(LOBES.coast, x, z) < LOBES.coast.r + 10) return this.getHeight(x, z) < SEA.level - 0.3;
+    if (Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.2) return this.getHeight(x, z) < this.oasisLevel - 0.3;
     return this.fenPoolDepth(x, z) > 0 && this.getHeight(x, z) < this.fenLevel - 0.3;
   }
 

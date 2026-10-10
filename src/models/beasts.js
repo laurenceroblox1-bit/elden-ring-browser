@@ -9,11 +9,11 @@ import { mat, mesh, box, cone, group, mergeRig } from './kit.js';
 // `frost` builds a Rime Wolf: white and pale-grey coat, ice-blue eyes and maw, a ruff of frost.
 // `fire` builds an Ember Hound of the Cinderfall Wastes: charred black hide split by glowing seams,
 // a mane of flame along the spine.
-export function buildHound({ mother = false, frost = false, fire = false } = {}) {
-  const hide = mat(mother ? 0x4a4644 : frost ? 0xd9dee2 : fire ? 0x2e2422 : 0x6b6e6f, { roughness: 0.95 });
-  const dark = mat(mother ? 0x2a2626 : frost ? 0x8e9aa6 : fire ? 0x1a1414 : 0x3e4043, { roughness: 0.95 });
+export function buildHound({ mother = false, frost = false, fire = false, storm = false } = {}) {
+  const hide = mat(mother ? 0x4a4644 : frost ? 0xd9dee2 : fire ? 0x2e2422 : storm ? 0x3e4656 : 0x6b6e6f, { roughness: 0.95 });
+  const dark = mat(mother ? 0x2a2626 : frost ? 0x8e9aa6 : fire ? 0x1a1414 : storm ? 0x242a36 : 0x3e4043, { roughness: 0.95 });
   const bone = mat(frost ? 0xbfd8e6 : fire ? 0x6a4a3a : 0xd8cfb8);
-  const ember = frost ? mat(0xcff0ff, { emissive: 0x58b8ff, emissiveIntensity: 2.4 }) : mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
+  const ember = storm ? mat(0xe0f4ff, { emissive: 0x70c0ff, emissiveIntensity: 2.6 }) : frost ? mat(0xcff0ff, { emissive: 0x58b8ff, emissiveIntensity: 2.4 }) : mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
   const maw = frost ? mat(0x2a4a6a, { emissive: 0x3a8ad8, emissiveIntensity: 0.8 }) : mat(0x6a2414, { emissive: 0xff4a10, emissiveIntensity: 0.7 });
 
   const root = new THREE.Group();
@@ -52,6 +52,12 @@ export function buildHound({ mother = false, frost = false, fire = false } = {})
     // A ruff of frost along the neck and shoulders.
     for (let i = 0; i < 4; i++) neck.add(mesh(cone(0.05, 0.16, 4), mat(0xf2f8fc), { x: (i % 2 ? 1 : -1) * 0.08, y: 0.1, z: 0.28 - i * 0.08, rx: -0.6, rz: (i % 2 ? -1 : 1) * 0.4 }));
     body.add(mesh(box(0.44, 0.1, 0.4), mat(0xf2f8fc), { y: 0.22, z: 0.28 }));
+  }
+  if (storm) {
+    // A crest of crackling light down the spine.
+    const spark = mat(0xe0f4ff, { emissive: 0x70c0ff, emissiveIntensity: 2.4 });
+    for (let i = 0; i < 5; i++) body.add(mesh(box(0.03, 0.16, 0.1), spark, { y: 0.26, z: 0.42 - i * 0.2, rz: (i % 2 ? 0.3 : -0.3), shadow: false }));
+    for (let i = 0; i < 3; i++) neck.add(mesh(box(0.03, 0.14, 0.08), spark, { y: 0.12, z: 0.28 - i * 0.1, shadow: false }));
   }
   if (fire) {
     // A mane of fire down the neck and spine, and glowing seams on the flanks.

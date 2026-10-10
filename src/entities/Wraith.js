@@ -141,7 +141,7 @@ export class Wraith extends Foe {
       if (m === MOVES.shards) this._shards(c.p);
       else {
         const N = this.nova;
-        g.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: N.maxR, speed: N.speed, color: this.look.c1, hit: { dmg: N.dmg, poise: N.poise, frost: N.frost, poison: N.poison, knock: 3 } });
+        g.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: N.maxR, speed: N.speed, color: this.look.c1, hit: { dmg: N.dmg, poise: N.poise, frost: N.frost, poison: N.poison, knock: N.knock ?? 3 } });
         if (N.cloud) g.effects.hazard(this, this.pos.x, this.pos.z, { radius: N.cloud, life: 5, look: 'spore', hit: { dmg: 2, poise: 0, poison: 14, unblockable: true } });
         g.audio.play(this.look.sound);
         g.particles.emit({ x: this.pos.x, y: this.pos.y + 1, z: this.pos.z, count: 30, speed: 5, up: 1, color: this.look.c1, color2: this.look.c2, life: [0.3, 0.7], size: [0.08, 0.18], drag: 2 });

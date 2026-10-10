@@ -7,6 +7,7 @@ ringGeo.rotateX(-Math.PI / 2);
 const discGeo = new THREE.CircleGeometry(1, 40);
 discGeo.rotateX(-Math.PI / 2);
 const spikeGeo = new THREE.ConeGeometry(1, 1, 4).translate(0, 0.5, 0);
+const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 
 function fxMaterial(color, opacity) {
   return new THREE.MeshBasicMaterial({
@@ -175,6 +176,76 @@ export class Effects {
       dispose() {
         game.scene.remove(disc);
         disc.material.dispose();
+      },
+    });
+  }
+
+  // A bolt of lightning strikes (x, z) after `delay` seconds, telegraphed by a crackling white circle
+  // on the ground. Anyone in it when it lands is struck (o.hit); the flash lights up the country round.
+  lightning(owner, x, z, delay, o = {}) {
+    const game = this.game;
+    game.net?.coop.fx('bolt', owner, o, { x, z, delay });
+    const R = o.radius ?? 2.2;
+    const y = game.world.getHeight(x, z);
+    const ring = new THREE.Mesh(ringGeo, fxMaterial(o.color ?? 0xdff0ff, 0));
+    ring.position.set(x, y + 0.12, z);
+    ring.scale.set(R, 1, R);
+    const disc = new THREE.Mesh(discGeo, fxMaterial(o.color ?? 0x9fc8ff, 0));
+    disc.position.set(x, y + 0.1, z);
+    disc.scale.set(0.01, 1, 0.01);
+    // The bolt: a jagged chain of thin glowing boxes from the clouds to the ground.
+    const bolt = new THREE.Group();
+    const boltMat = fxMaterial(0xeef6ff, 1);
+    let px = x, py = y + (o.height ?? 45), pz = z;
+    const n = 9;
+    for (let i = 1; i <= n; i++) {
+      const u = i / n;
+      const nx = i === n ? x : x + (Math.random() - 0.5) * 5 * (1 - u * 0.6), ny = y + (o.height ?? 45) * (1 - u), nz = i === n ? z : z + (Math.random() - 0.5) * 5 * (1 - u * 0.6);
+      const len = Math.hypot(nx - px, ny - py, nz - pz);
+      const seg = new THREE.Mesh(boxGeo, boltMat);
+      seg.position.set((px + nx) / 2, (py + ny) / 2, (pz + nz) / 2);
+      seg.scale.set(0.35, len, 0.35);
+      seg.lookAt(nx, ny, nz);
+      seg.rotateX(Math.PI / 2);
+      bolt.add(seg);
+      px = nx; py = ny; pz = nz;
+    }
+    bolt.visible = false;
+    game.scene.add(ring, disc, bolt);
+    let t = 0, struck = false;
+    const hitSet = new Set();
+    return this.add({
+      update(dt) {
+        t += dt;
+        if (!struck) {
+          const warn = Math.min(1, t / delay);
+          ring.material.opacity = (0.5 + Math.random() * 0.4) * Math.min(1, t * 3);
+          disc.material.opacity = 0.22;
+          disc.scale.set(R * warn, 1, R * warn);
+          if (t >= delay) {
+            struck = true;
+            if (o.noBolt) return true; // just the warning circle (something else comes up out of it)
+            bolt.visible = true;
+            if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 0.9, z), R, o.hit, hitSet);
+            const d = Math.hypot(game.player.pos.x - x, game.player.pos.z - z);
+            game.audio.playAt('crack', { x, z }, 120);
+            game.after?.(Math.min(2, d / 120), () => game.audio.play('thunder'));
+            game.particles.emit({ x, y: y + 0.5, z, count: 40, speed: 7, up: 3, color: 0xeef6ff, color2: 0x8fc8ff, life: [0.2, 0.6], size: [0.08, 0.2], drag: 2.5, gravity: 4 });
+            game.world.biomes?.flash?.(x, y + 6, z);
+            if (d < 25) game.cameraShake(0.3, d < 10 ? 1 : 0.5);
+          }
+          return true;
+        }
+        const u = t - delay;
+        bolt.visible = !o.noBolt && (u < 0.08 || (u > 0.12 && u < 0.2));
+        ring.material.opacity = disc.material.opacity = Math.max(0, 0.5 - u);
+        return u < 0.6;
+      },
+      dispose() {
+        game.scene.remove(ring, disc, bolt);
+        ring.material.dispose();
+        disc.material.dispose();
+        boltMat.dispose();
       },
     });
   }

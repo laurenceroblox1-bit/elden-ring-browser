@@ -43,9 +43,10 @@ export class AudioFx {
     this.region = r;
     if (!this.ctx) return;
     const t = this.ctx.currentTime;
-    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : 0, t, 1.5);
     this.rumble?.gain.setTargetAtTime(r === 'cinder' ? 0.5 : 0, t, 1.5);
     this.surf?.gain.setTargetAtTime(r === 'coast' ? 0.42 : 0, t, 1.5);
+    this.rainBed?.gain.setTargetAtTime(r === 'storm' ? 0.3 : 0, t, 1.5);
+    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : r === 'dunes' ? 0.14 : r === 'storm' ? 0.12 : 0, t, 1.5);
     clearInterval(this.croakTimer);
     if (r === 'fen') {
       this.croakTimer = setInterval(() => {
@@ -67,6 +68,12 @@ export class AudioFx {
         const f = 1500 + Math.random() * 500;
         for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) this._tone({ freq: f, to: f * 0.62, type: 'triangle', dur: 0.22, gain: 0.03, delay: i * 0.28, dest: this.amb });
       }, 2600);
+    } else if (r === 'dunes') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.5) return;
+        // Sand hissing over the ridges.
+        this._noise({ dur: 1.6, type: 'bandpass', freq: 3500, to: 2200, q: 0.8, gain: 0.05, attack: 0.6, dest: this.amb });
+      }, 2400);
     } else if (r === 'glow') {
       this.croakTimer = setInterval(() => {
         if (this.muted || Math.random() < 0.3) return;
@@ -104,6 +111,7 @@ export class AudioFx {
     };
     this.rumble = bed(80, 'lowpass', 0.8, 0.07, 0.4);
     this.surf = bed(700, 'lowpass', 0.6, 0.13, 0.85);
+    this.rainBed = bed(3200, 'highpass', 0.5, 0.31, 0.2);
   }
 
   _startHowl() {
@@ -312,6 +320,16 @@ export class AudioFx {
         this._tone({ freq: 1760, to: 1320, type: 'triangle', dur: 0.7, gain: 0.12 });
         this._tone({ freq: 2640, type: 'sine', dur: 0.9, gain: 0.07, delay: 0.05 });
         break;
+      case 'crack':
+        // The bolt itself: a sharp white crack.
+        this._noise({ dur: 0.25, type: 'highpass', freq: 1800, gain: 0.6 });
+        this._noise({ dur: 0.5, type: 'lowpass', freq: 900, to: 200, gain: 0.5, attack: 0.01 });
+        break;
+      case 'thunder':
+        // A long rolling rumble.
+        this._noise({ dur: 3.2, type: 'lowpass', freq: 160, to: 60, gain: 0.55, attack: 0.08 });
+        this._noise({ dur: 2.4, type: 'lowpass', freq: 380, to: 90, gain: 0.25, attack: 0.3, delay: 0.3 });
+        break;
       case 'ignite':
         // A whoomph of catching flame.
         this._noise({ dur: 0.6, type: 'lowpass', freq: 300, to: 2400, gain: 0.4, attack: 0.04 });
@@ -510,6 +528,11 @@ export class AudioFx {
         this._tone({ freq: 82, to: 78, type: 'sawtooth', dur: 2.6, gain: 0.06, attack: 0.6, dest: this.music });
         this._noise({ dur: 3, type: 'lowpass', freq: 400, to: 900, gain: 0.12, attack: 1.2, dest: this.music });
       }, 6000],
+      storm: [() => {
+        this._noise({ dur: 2.6, type: 'lowpass', freq: 140, to: 60, gain: 0.3, attack: 0.1, dest: this.music });
+        this._bell(196, 0.05, 4, this.music);
+        this._bell(233, 0.035, 4, this.music);
+      }, 3800],
       spore: [() => {
         const f = [523, 622, 784, 932][Math.floor(Math.random() * 4)];
         this._bell(f, 0.04, 5, this.music);

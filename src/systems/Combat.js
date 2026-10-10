@@ -108,7 +108,7 @@ export class Combat {
     // Frost: a blow that lands builds frostbite; a guarded one lets a little of the cold through.
     if (h.frost && result !== 'parry' && target.alive) target.addFrost?.(result === 'block' ? h.frost * 0.35 : h.frost);
     // Fire and poison build the same way.
-    if (h.burn && result !== 'parry' && target.alive) target.addBurn?.(result === 'block' ? h.burn * 0.35 : h.burn);
+    if (h.burn && result !== 'parry' && target.alive) target.addBurn?.(result === 'block' ? (target.guardStats?.fireWard ? 0 : h.burn * 0.35) : h.burn);
     if (h.poison && result !== 'parry' && target.alive) target.addPoison?.(result === 'block' ? h.poison * 0.35 : h.poison);
     this.feedback(attacker, target, h, result);
     return result;

@@ -23,7 +23,7 @@ export class Crab extends Hound {
     this.lockHeight = 0.7;
     this.dmgMul = 1.5;
     this.speedMul = 0.8;
-    this._enter();
+    if (new.target === Crab) this._enter();
   }
 
   takeHit(hit) {

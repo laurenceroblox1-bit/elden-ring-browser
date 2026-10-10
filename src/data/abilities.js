@@ -277,6 +277,64 @@ export const ARTS = {
     ],
   },
 
+  // Sun Khopesh: a flashing disc of sunlight thrown along the ground.
+  solar_arc: {
+    name: 'Solar Arc',
+    desc: 'A rising slash that throws a disc of sunlight skimming over the ground. It cuts through every foe in its path and sets them burning.',
+    focus: 14, stamina: 12, cooldown: 2.6,
+    time: 0.82, track: 0.26, cancel: 0.55,
+    keys: [[0, 'rest'], [0.24, 'emberWind'], [0.34, 'emberStrike'], [0.56, 'emberStrike'], [0.82, 'rest']],
+    events: [
+      [0.34, (p) => {
+        const g = p.game;
+        const f = front(p, 0.8, 0.9);
+        g.projectiles.spawn(p, {
+          kind: 'crescent', x: f.x, y: f.y, z: f.z, dirX: p.forwardX, dirY: 0, dirZ: p.forwardZ, speed: 24, life: 0.8, radius: 1.3,
+          pierce: true, hug: 0.9, scale: 1.3, color: 0xffd040, color2: 0xfff4c0, sound: 'boltHit',
+          hit: { dmg: 24 * p.dmgMult, poise: 24, burn: 30 },
+        });
+        g.audio.play('bolt');
+      }],
+    ],
+  },
+
+  // Spire Spear: drive the point down and a bolt falls where it points.
+  thunder_thrust: {
+    name: 'Thunder Thrust',
+    desc: 'Drive the spear forward and call the storm: a bolt of lightning strikes the ground a few strides ahead a moment later. Through any guard.',
+    focus: 16, stamina: 16, cooldown: 3.5,
+    time: 0.95, track: 0.4, cancel: 0.7,
+    keys: [[0, 'rest'], [0.18, 'pierceCrouch'], [0.3, 'pierceDrive'], [0.62, 'pierceDrive'], [0.95, 'rest']],
+    events: [
+      [0.3, (p) => {
+        const g = p.game;
+        g.audio.play('pierce');
+        g.combat.melee(p, { dmg: 22 * p.dmgMult, poise: 24, reach: 3.4, arc: 0.4 }, new Set());
+        const t = g.lockTarget && Math.hypot(g.lockTarget.pos.x - p.pos.x, g.lockTarget.pos.z - p.pos.z) < 16 ? g.lockTarget.pos : front(p, 5, 0);
+        g.effects.lightning(p, t.x, t.z, 0.45, { radius: 2.4, hit: { dmg: 40 * p.dmgMult, poise: 40, knock: 4, unblockable: true } });
+      }],
+    ],
+  },
+
+  // Herald's Glaive: the storm comes down in a ring around you.
+  stormcall: {
+    name: 'Stormcall',
+    desc: "Raise the Herald's glaive to the sky. Bolts of lightning come down in a ring around you, one after another, striking everything near.",
+    focus: 26, stamina: 18, cooldown: 7,
+    time: 1.4, track: 0, cancel: 1.1,
+    keys: [[0, 'rest'], [0.3, 'castRaise'], [1.1, 'castRaise'], [1.4, 'rest']],
+    events: [
+      [0.4, (p) => {
+        const g = p.game;
+        g.audio.play('thunder');
+        for (let i = 0; i < 6; i++) {
+          const a = p.yaw + (i / 6) * Math.PI * 2;
+          g.effects.lightning(p, p.pos.x + Math.sin(a) * 4.5, p.pos.z + Math.cos(a) * 4.5, 0.25 + i * 0.12, { radius: 2.4, hit: { dmg: 30 * p.dmgMult, poise: 34, knock: 4 } });
+        }
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',
@@ -468,6 +526,43 @@ export const RITES = {
         g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.6, maxR: 7, speed: 12, color: 0xb070e0, hit: { dmg: 16 * p.riteMult, poise: 20, poison: 50 } });
         g.effects.hazard(p, p.pos.x, p.pos.z, { radius: 4, life: 6, look: 'spore', hit: { dmg: 3 * p.riteMult, poise: 0, poison: 18 } });
         g.audio.play('spore');
+      }],
+    ],
+  },
+  sandstorm: {
+    name: 'Sandstorm',
+    type: 'Wind rite',
+    desc: 'Learned at the Oasis of Seven Palms: a whirling wall of sand bursts out from you, scouring and throwing back everything near.',
+    focus: 22, cooldown: 7,
+    time: 0.9, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.7,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.6, maxR: 9, speed: 15, color: 0xe8c080, hit: { dmg: 22 * p.riteMult, poise: 45, knock: 9 } });
+        g.particles.emit({ x: p.pos.x, y: p.pos.y + 0.8, z: p.pos.z, count: 70, speed: 9, up: 1.5, color: 0xe8c080, color2: 0xc89050, life: [0.4, 1.0], size: [0.12, 0.3], drag: 2, jitter: 1 });
+        g.audio.play('spore');
+      }],
+    ],
+  },
+  lightning_call: {
+    name: 'Call Lightning',
+    type: 'Storm rite',
+    desc: 'Point at the sky and name your foe: three bolts fall on them one after another, each after a crackling warning. Lock on to aim it.',
+    focus: 30, cooldown: 9,
+    time: 1.0, keys: RAISE, overlay: true, walk: 0.6, cancel: 0.8,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        const f = front(p, 0, 1.5);
+        const a = aim(p, f.x, f.y, f.z, 30, 0.5);
+        const t = a.target?.pos ?? front(p, 10, 0);
+        for (let i = 0; i < 3; i++) {
+          g.after(i * 0.35, () => {
+            const q = a.target?.alive ? a.target.pos : t;
+            g.effects.lightning(p, q.x, q.z, 0.5, { radius: 2.2, hit: { dmg: 34 * p.riteMult, poise: 30, knock: 3 } });
+          });
+        }
+        g.audio.play('cast');
       }],
     ],
   },

@@ -1,9 +1,10 @@
 // Friendly, talkable characters. What they say lives in data/dialogue.js.
 import { buildBrannoc, buildIlse, buildOrmund, buildHessa, buildWenna, buildMurk } from '../models/characters.js';
+import { buildTamsin, buildAldous } from '../models/creatures.js';
 import { pose, copyPose, applyPose } from '../models/pose.js';
 import { clamp, dampK, angleDiff, yawTo } from '../core/math.js';
 
-const BUILDERS = { brannoc: buildBrannoc, ilse: buildIlse, ormund: buildOrmund, hessa: buildHessa, wenna: buildWenna, murk: buildMurk };
+const BUILDERS = { brannoc: buildBrannoc, ilse: buildIlse, ormund: buildOrmund, hessa: buildHessa, wenna: buildWenna, murk: buildMurk, tamsin: buildTamsin, aldous: buildAldous };
 const IDLE = {
   brannoc: pose({ torsoX: 0.3, headX: -0.25, sRx: 0.1, eR: -0.4, sLx: -0.2, eL: -0.8 }),
   ilse: pose({ sLx: -0.4, eL: -0.9, hLx: -0.27, sRx: -0.3, eR: -0.9, sRy: 0.4, headX: 0.1 }),
@@ -11,6 +12,8 @@ const IDLE = {
   hessa: pose({ sRx: -0.2, eR: -1.2, sRz: 0.15, sLx: 0.05, eL: -1.4, sLy: -0.6, torsoX: 0.08 }),
   wenna: pose({ torsoX: 0.4, headX: -0.3, sLx: -0.5, eL: -0.5, sRx: 0.1, eR: -0.3 }),
   murk: pose({ sRx: -0.2, eR: -0.6, sLx: -0.2, eL: -0.6, sRz: 0.25, sLz: -0.25, headX: 0.1 }),
+  tamsin: pose({ sRx: -0.5, eR: -1.4, sRy: 0.4, sLx: -0.5, eL: -1.4, sLy: -0.4, torsoX: 0.05 }),
+  aldous: pose({ torsoX: 0.3, headX: -0.2, sLx: -0.4, eL: -0.5, sRx: 0.1, eR: -0.4 }),
 };
 
 export class NPC {
