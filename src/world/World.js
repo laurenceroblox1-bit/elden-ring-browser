@@ -17,6 +17,7 @@ const SEG = WORLD.segments;
 const CELL = SIZE / SEG;
 const HALF = SIZE / 2;
 const GRID = 16; // collider hash cell, metres
+const ROAD_CELL = 32, ROAD_REACH = 26, ROAD_FAR = 1e4; // road lookup grid (see roadDistance)
 const TILES = 3; // terrain is split into TILES x TILES meshes so off-screen ground is culled
 
 const C = (hex) => new THREE.Color(hex);
@@ -70,6 +71,20 @@ export class World {
 
     this.roadSegs = [];
     for (const road of ROADS) for (let i = 0; i < road.length - 1; i++) this.roadSegs.push([...road[i], ...road[i + 1]]);
+    // Road segments by grid cell, so a distance query only looks at the few roads nearby (every
+    // caller only cares within ROAD_REACH metres of a road; further than that reads as far away).
+    this.roadGrid = new Map();
+    for (const sg of this.roadSegs) {
+      const x0 = Math.floor((Math.min(sg[0], sg[2]) - ROAD_REACH) / ROAD_CELL), x1 = Math.floor((Math.max(sg[0], sg[2]) + ROAD_REACH) / ROAD_CELL);
+      const z0 = Math.floor((Math.min(sg[1], sg[3]) - ROAD_REACH) / ROAD_CELL), z1 = Math.floor((Math.max(sg[1], sg[3]) + ROAD_REACH) / ROAD_CELL);
+      for (let gx = x0; gx <= x1; gx++) {
+        for (let gz = z0; gz <= z1; gz++) {
+          const key = gx * 4096 + gz;
+          if (!this.roadGrid.has(key)) this.roadGrid.set(key, []);
+          this.roadGrid.get(key).push(sg);
+        }
+      }
+    }
 
     this.waterLevel = this._raw(LAKE.x, LAKE.z).big - 2;
     // The fen's pools all share one level, just under the fen floor.
@@ -240,19 +255,21 @@ export class World {
     return fd < FEN.r ? lerp(big, this.fenFloor, 1 - smoothstep(FEN.r * 0.5, FEN.r, fd)) : big;
   }
 
+  // Distance to the nearest road's centre line (anything past ROAD_REACH metres reads as far away).
   roadDistance(x, z) {
-    let d = Infinity;
-    for (const s of this.roadSegs) {
+    const list = this.roadGrid.get(Math.floor(x / ROAD_CELL) * 4096 + Math.floor(z / ROAD_CELL));
+    if (!list) return ROAD_FAR;
+    let d = ROAD_FAR;
+    for (const s of list) {
       const v = distToSegment(x, z, s[0], s[1], s[2], s[3]);
       if (v < d) d = v;
     }
     return d;
   }
 
-  _heightAt(x, z) {
+  _heightAt(x, z, rd = this.roadDistance(x, z)) {
     const { big, h: h0 } = this._raw(x, z);
     let h = h0;
-    const rd = this.roadDistance(x, z);
     h = lerp(h, big, (1 - smoothstep(2.5, 9, rd)) * 0.92);
     // The fen is a broad, nearly level basin with a little hummock left in it.
     const fd = Math.hypot(x - FEN.x, z - FEN.z);
@@ -260,6 +277,7 @@ export class World {
     const ld = Math.hypot(x - LAKE.x, z - LAKE.z);
     h = lerp(h, this.waterLevel - 3.5, 1 - smoothstep(LAKE.r * 0.4, LAKE.r, ld));
     for (const zn of this.flatZones) {
+      if (Math.abs(x - zn.x) > zn.r + 14 || Math.abs(z - zn.z) > zn.r + 14) continue;
       const d = Math.hypot(x - zn.x, z - zn.z);
       const w = 1 - smoothstep(zn.r, zn.r + 14, d);
       if (w > 0) h = lerp(h, zn.h, w);
@@ -283,8 +301,9 @@ export class World {
     for (let iz = 0; iz < n; iz++) {
       for (let ix = 0; ix < n; ix++) {
         const x = -HALF + ix * CELL, z = -HALF + iz * CELL;
-        this.heights[iz * n + ix] = this._heightAt(x, z);
-        this.roadW[iz * n + ix] = 1 - smoothstep(2, 5.5, this.roadDistance(x, z));
+        const rd = this.roadDistance(x, z);
+        this.heights[iz * n + ix] = this._heightAt(x, z, rd);
+        this.roadW[iz * n + ix] = 1 - smoothstep(2, 5.5, rd);
       }
     }
   }

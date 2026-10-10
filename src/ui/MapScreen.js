@@ -3,11 +3,11 @@
 // arena ring and Castle Dunmarrow. Live markers sit on top as DOM elements and are placed each
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
 import { WORLD, ZONES, ROADS, ARENA, LAKE, RIME } from '../data/world.js';
-import { LOBES, SEA } from '../data/biomes.js';
+import { LOBES, SEA, OASIS } from '../data/biomes.js';
 
 // Metres from the centre to each edge of the map: far enough for every lobe of the play area.
 const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z, ...Object.values(LOBES).map((L) => Math.hypot(L.x, L.z) + L.r)) + 14;
-const RES = 640; // canvas pixels per side
+const RES = 900; // canvas pixels per side (sharp enough to zoom in a little)
 const LIGHT = norm([-0.55, 0.75, -0.55]); // hill shading from the north-west, as on old survey maps
 
 // Height (m) -> colour: damp hollows, olive lowland, gold grass, dry slopes, rock, snow.
@@ -54,9 +54,16 @@ export class MapScreen {
     el.innerHTML = `
       <div class="panel wide map-panel" role="dialog" aria-label="Map">
         <div class="map-view">
-          <canvas class="map-canvas" width="${RES}" height="${RES}" aria-hidden="true"></canvas>
-          <div class="map-marks"></div>
+          <div class="map-zoom">
+            <canvas class="map-canvas" width="${RES}" height="${RES}" aria-hidden="true"></canvas>
+            <div class="map-marks"></div>
+          </div>
           <div class="map-north" aria-hidden="true">N</div>
+          <div class="map-zoom-btns">
+            <button class="btn map-zin" aria-label="Zoom in">+</button>
+            <button class="btn map-zout" aria-label="Zoom out">&minus;</button>
+            <button class="btn map-me" aria-label="Centre on you">&#9673;</button>
+          </div>
         </div>
         <div class="map-side">
           <div class="panel-head"><h2>The Vale</h2><span class="close-hint"><kbd data-glyph="close" data-key="M">M</kbd> Close</span></div>
@@ -71,6 +78,7 @@ export class MapScreen {
             <li><i class="lg npc"></i>Someone to talk to</li>
             <li><i class="lg gate"></i>The mist gate</li>
             <li><i class="lg remnant"></i>Your lost ash</li>
+            <li><i class="lg friend"></i>Another player</li>
           </ul>
         </div>
       </div>`;
@@ -81,9 +89,69 @@ export class MapScreen {
     this.travel = el.querySelector('.map-travel');
     this.status = el.querySelector('.map-status');
     el.addEventListener('click', (ev) => {
+      if (this.dragged) return; // the end of a drag isn't a click on whatever it ended over
       const b = ev.target.closest('button[data-shrine]');
       if (b) this.travelTo(b.dataset.shrine);
     });
+    // Zoom (wheel, buttons) and pan (drag). The canvas and markers scale together; markers keep
+    // their size (see --mz in style.css).
+    this.view = el.querySelector('.map-view');
+    this.zoomEl = el.querySelector('.map-zoom');
+    this.z = 1;
+    this.ox = this.oy = 0;
+    this.view.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      const r = this.view.getBoundingClientRect();
+      this.zoomAt(ev.deltaY < 0 ? 1.25 : 0.8, ev.clientX - r.left, ev.clientY - r.top);
+    }, { passive: false });
+    this.view.addEventListener('pointerdown', (ev) => {
+      if (ev.target.closest('.map-zoom-btns')) return;
+      this.drag = { x: ev.clientX, y: ev.clientY, ox: this.ox, oy: this.oy };
+      this.dragged = false;
+    });
+    addEventListener('pointermove', (ev) => {
+      const d = this.drag;
+      if (!d) return;
+      if (Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 4) this.dragged = true;
+      this.ox = d.ox + ev.clientX - d.x;
+      this.oy = d.oy + ev.clientY - d.y;
+      this._apply();
+    });
+    addEventListener('pointerup', () => {
+      this.drag = null;
+      setTimeout(() => { this.dragged = false; }, 0);
+    });
+    el.querySelector('.map-zin').addEventListener('click', () => this.zoomAt(1.5));
+    el.querySelector('.map-zout').addEventListener('click', () => this.zoomAt(1 / 1.5));
+    el.querySelector('.map-me').addEventListener('click', () => this.centreOnPlayer(Math.max(this.z, 2.4)));
+  }
+
+  // Zoom by `k` about a point of the view (its centre by default).
+  zoomAt(k, mx, my) {
+    const W = this.view.clientWidth, H = this.view.clientHeight;
+    mx ??= W / 2;
+    my ??= H / 2;
+    const z = Math.min(6, Math.max(1, this.z * k));
+    this.ox = mx - ((mx - this.ox) * z) / this.z;
+    this.oy = my - ((my - this.oy) * z) / this.z;
+    this.z = z;
+    this._apply();
+  }
+
+  centreOnPlayer(z = this.z) {
+    const p = this.game.player.pos, W = this.view.clientWidth, H = this.view.clientHeight;
+    this.z = z;
+    this.ox = W / 2 - (pctX(p.x) / 100) * W * z;
+    this.oy = H / 2 - (pctZ(p.z) / 100) * H * z;
+    this._apply();
+  }
+
+  _apply() {
+    const W = this.view.clientWidth, H = this.view.clientHeight;
+    this.ox = Math.min(0, Math.max(W - W * this.z, this.ox));
+    this.oy = Math.min(0, Math.max(H - H * this.z, this.oy));
+    this.zoomEl.style.transform = `translate(${this.ox}px, ${this.oy}px) scale(${this.z})`;
+    this.zoomEl.style.setProperty('--mz', this.z);
   }
 
   show() {
@@ -91,6 +159,8 @@ export class MapScreen {
     this.status.textContent = this.game.bossFight ? 'The mist holds you in the arena: no travel until the fight ends.' : '';
     this.refresh();
     this.root.hidden = false;
+    // Open close in on where you are; the whole world is a zoom-out (or two) away.
+    requestAnimationFrame(() => this.centreOnPlayer(2.2));
   }
 
   hide() {
@@ -184,6 +254,8 @@ export class MapScreen {
         if (B.coast > 0.5 && h < SEA.level) {
           c = mix([96, 150, 148], [36, 74, 98], Math.min(1, (SEA.level - h) / 8)); // the sea
           if (SEA.level - h < 0.4) c = mix(c, [236, 228, 200], 0.5);
+        } else if (Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.2 && h < w.oasisLevel) {
+          c = [70, 150, 140]; // the oasis
         } else if (B.cinder > 0.3 && w.isLava(x, z)) {
           c = [236, 104, 34]; // lava
         } else if (h < level && (lake || w.fenPoolDepth(x, z) > 0)) {
@@ -195,6 +267,8 @@ export class MapScreen {
           if (B.cinder > 0) c = mix(c, [64, 58, 56], B.cinder * 0.85); // ash
           if (B.coast > 0) c = mix(c, [222, 202, 150], B.coast * 0.8); // sand
           if (B.glow > 0) c = mix(c, [86, 64, 120], B.glow * 0.8); // violet moss
+          if (B.dunes > 0) c = mix(c, [228, 178, 104], B.dunes * 0.8); // gold sand
+          if (B.storm > 0) c = mix(c, [96, 100, 110], B.storm * 0.8); // grey crags
           c = c.map((v) => v * (0.5 + shade * 0.72));
         }
         c = mix(c, tint, PARCHMENT[1]);

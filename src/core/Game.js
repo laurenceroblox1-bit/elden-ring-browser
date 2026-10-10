@@ -635,6 +635,7 @@ export class Game {
       this.events.emit('bossDefeated', b.bossId);
       if (b.reward?.gear) this.after(2.5, () => this.giveGear(b.reward.gear));
       b.onDefeated?.();
+      this.weatherRegion = null; // the region's sky is worked out afresh (a beaten boss can change it)
       this.save();
     });
   }
@@ -1067,8 +1068,11 @@ export class Game {
     const own = REGION_WEATHER[region];
     if (was && !REGION_WEATHER[was]) this.valeWeather = this.world.getWeather(); // leaving the Vale: remember its sky
     if (own) {
-      // Once the Winter Lantern is out the snow stops falling (the thaw has begun).
-      this.world.setWeather(region === 'rime' && this.state.flags.saelithDead ? 'clear' : own, instant);
+      // A region's boss beaten changes its sky: the snow stops once the Winter Lantern is out, the
+      // storm breaks over the Stormspire, the spores settle in the Hollows, the sea mist lifts.
+      const f = this.state.flags;
+      const after = { rime: f.saelithDead && 'clear', storm: f.vaelorDead && 'clear', glow: f.sylvaraDead && 'mist', coast: f.morrowDead && 'clear', cinder: f.ashmawDead && 'ashfall' };
+      this.world.setWeather(after[region] || own, instant);
     } else if (was === null || REGION_WEATHER[was]) {
       this.world.setWeather(this.valeWeather ?? 'clear', instant);
     }

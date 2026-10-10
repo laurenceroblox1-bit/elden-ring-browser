@@ -972,14 +972,17 @@ export function updateBiomes(w, dt, time) {
   B.sea.update(time, sky, w.weather.rain);
   const cam = g.camera.position;
   const ps = g.particles;
-  // The volcano: glow breathing, smoke climbing from the crater and drifting off.
-  B.volcanoGlow.material.opacity = 0.4 + Math.sin(time * 0.6) * 0.08;
+  // The volcano: glow breathing, smoke climbing from the crater and drifting off (until Ashmaw dies:
+  // then the Old Fire is out and the mountain only steams a little).
+  const flags = g.state?.flags ?? {};
+  const fire = flags.ashmawDead ? 0.25 : 1;
+  B.volcanoGlow.material.opacity = (0.4 + Math.sin(time * 0.6) * 0.08) * fire;
   for (const s of B.smoke) {
     s.userData.t = (s.userData.t + dt * 0.025) % 1;
     const t = s.userData.t;
     s.position.set(B.volcanoTop.x + t * 60 + Math.sin(t * 9 + s.id) * 6, B.volcanoTop.y + t * 120, B.volcanoTop.z + Math.cos(t * 7 + s.id) * 6);
     s.scale.setScalar(16 + t * 70);
-    s.material.opacity = 0.55 * smoothstep(0, 0.1, t) * (1 - t);
+    s.material.opacity = 0.55 * smoothstep(0, 0.1, t) * (1 - t) * fire;
   }
   // The lighthouse turns its lamp at dusk and through the night.
   const lh = B.lighthouse;
@@ -1010,7 +1013,7 @@ export function updateBiomes(w, dt, time) {
     B.flashLight.intensity = B.flashT > 0 ? 9000 * (B.flashT / 0.3) * (0.6 + Math.random() * 0.4) : 0;
   }
   if (B.rodMat) B.rodMat.emissiveIntensity = 0.5 + Math.random() * 0.15 + (B.flashT > 0 ? 3 : 0);
-  if (region === 'storm' && !g.cutscene && g.mode === 'playing' && (B.stormT -= dt) <= 0) {
+  if (region === 'storm' && !flags.vaelorDead && !g.cutscene && g.mode === 'playing' && (B.stormT -= dt) <= 0) {
     B.stormT = 3.5 + Math.random() * 5;
     const p = g.player.pos;
     if (Math.random() < 0.45 && B.rods.length) {
