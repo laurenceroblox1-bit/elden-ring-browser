@@ -26,6 +26,13 @@ import { ThunderWolf } from './ThunderWolf.js';
 import { Gargoyle } from './Gargoyle.js';
 import { Herald } from './Herald.js';
 import { BellRinger } from './BellRinger.js';
+import { Boar } from './Boar.js';
+import { Barkhusk } from './Barkhusk.js';
+import { AntlerKing } from './AntlerKing.js';
+import { Shardback } from './Shardback.js';
+import { PrismWraith } from './PrismWraith.js';
+import { PrismGolem } from './PrismGolem.js';
+import { Colossus } from './Colossus.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -64,6 +71,17 @@ const KINDS = {
   herald: Herald, // Vaelor, the Heights' boss, on the summit
   // The Hollow Bell.
   bellringer: BellRinger, // the last fight: waits beyond the Bell's mist until the five great ones fall
+  // The Amberwood.
+  boar: Boar,
+  poacher: Sentry, // Amberwood Poachers: the sentry's state machine with a hatchet and no shield
+  barkhusk: Barkhusk, // an elite, like the Cinder Golems
+  antlerking: AntlerKing, // Hornwood, the Amberwood's boss, in the Antlered Glade
+  // The Shardlands.
+  shardback: Shardback,
+  glassminer: Sentry, // Glass-Mad Miners: a heavy pick and no shield
+  prismwraith: PrismWraith,
+  prismgolem: PrismGolem, // an elite
+  colossus: Colossus, // Corundel, the Shardlands' boss, in the Heart of Glass
 };
 
 export function createEnemy(game, spawn) {

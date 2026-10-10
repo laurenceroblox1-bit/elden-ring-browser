@@ -355,6 +355,107 @@ export const ARTS = {
     ],
   },
 
+  // Huntsman's Hatchet: thrown spinning at the foe.
+  hatchet_throw: {
+    name: 'Hatchet Throw',
+    desc: 'Throw the hatchet end over end at your foe; it cuts through the first thing it meets and is back in your hand before you know it.',
+    focus: 10, stamina: 12, cooldown: 1.8,
+    time: 0.7, track: 0.3, cancel: 0.5,
+    keys: [[0, 'rest'], [0.2, 'emberWind'], [0.3, 'emberStrike'], [0.5, 'emberStrike'], [0.7, 'rest']],
+    events: [
+      [0.3, (p) => {
+        const g = p.game;
+        const f = front(p, 0.8, 1.3);
+        const a = aim(p, f.x, f.y, f.z, 26, 0.3);
+        g.projectiles.spawn(p, {
+          kind: 'leaf', x: f.x, y: f.y, z: f.z, dirX: a.x, dirY: a.y ?? 0, dirZ: a.z, speed: 26, life: 0.9, radius: 0.55,
+          scale: 1.6, color: 0x9a9890, color2: 0xd8d0c0, sound: 'boltHit',
+          hit: { dmg: 34 * p.dmgMult, poise: 30 },
+        });
+        g.audio.play('swing');
+      }],
+    ],
+  },
+
+  // King's Antler: head down and charge, with roots bursting up in your wake.
+  antler_rush: {
+    name: 'Antler Rush',
+    desc: "Lower your head like the Antlered King and charge. Whatever you run into is thrown down, and roots burst out of the ground along the way you came.",
+    focus: 18, stamina: 26, cooldown: 4.5,
+    time: 1.0, track: 0.2, invuln: [0.18, 0.45], cancel: 0.8,
+    keys: [[0, 'rest'], [0.16, 'pierceCrouch'], [0.26, 'pierceDrive'], [0.66, 'pierceDrive'], [1.0, 'rest']],
+    events: [
+      [0.18, (p, act) => {
+        p.game.audio.play('heavySwing');
+        act.hit = { dmg: 46 * p.dmgMult, poise: 70, reach: 2.8, arc: 0.8, heavy: true, knock: 6 };
+        act.hitSet = new Set();
+        act.rootT = 0;
+      }],
+    ],
+    move(p, act, dt) {
+      const t = p.t, g = p.game;
+      let sp = 0;
+      if (act.hit && t < 0.62) {
+        sp = 16;
+        const lock = g.lockTarget;
+        if (lock && Math.hypot(lock.pos.x - p.pos.x, lock.pos.z - p.pos.z) < lock.radius + 1.4) sp = 0;
+        g.combat.melee(p, act.hit, act.hitSet);
+        if ((act.rootT -= dt) <= 0) {
+          act.rootT = 0.12;
+          g.effects.iceSpike(p, p.pos.x - p.forwardX * 1.5, p.pos.z - p.forwardZ * 1.5, 0.25, { look: 'root', radius: 1.5, count: 4, hit: { dmg: 18 * p.dmgMult, poise: 24, knock: 3 } });
+        }
+      }
+      p.vel.x = sp ? p.forwardX * sp : p.vel.x * Math.exp(-10 * dt);
+      p.vel.z = sp ? p.forwardZ * sp : p.vel.z * Math.exp(-10 * dt);
+    },
+  },
+
+  // Prism Blade: a lance of hard light.
+  prism_lance: {
+    name: 'Prism Lance',
+    desc: 'Thrust the crystal blade and loose a lance of hard light along it, piercing every foe in a line.',
+    focus: 14, stamina: 12, cooldown: 2.6,
+    time: 0.8, track: 0.3, cancel: 0.55,
+    keys: [[0, 'rest'], [0.18, 'pierceCrouch'], [0.3, 'pierceDrive'], [0.55, 'pierceDrive'], [0.8, 'rest']],
+    events: [
+      [0.3, (p) => {
+        const g = p.game;
+        const f = front(p, 1.0, 1.2);
+        const a = aim(p, f.x, f.y, f.z, 30, 0.3);
+        g.projectiles.spawn(p, {
+          kind: 'crystal', x: f.x, y: f.y, z: f.z, dirX: a.x, dirY: a.y ?? 0, dirZ: a.z, speed: 38, life: 0.8, radius: 0.6,
+          pierce: true, scale: 2.4, sound: 'boltHit',
+          hit: { dmg: 30 * p.dmgMult, poise: 26 },
+        });
+        g.audio.play('crack');
+      }],
+    ],
+  },
+
+  // Colossus Shard: crystal erupts in a line ahead.
+  crystal_rise: {
+    name: 'Crystal Rise',
+    desc: 'Drive the shard into the ground. Crystal erupts in a line ahead of you, one spike after another, through any guard.',
+    focus: 22, stamina: 28, cooldown: 5.5,
+    time: 1.35, track: 0.6, cancel: 1.0,
+    keys: [[0, 'rest'], [0.4, 'quakeRaise'], [0.62, 'quakeRaise'], [0.74, 'quakeSlam'], [1.08, 'quakeSlam'], [1.35, 'rest']],
+    events: [
+      [0.3, (p) => p.game.audio.play('heavySwing')],
+      [0.74, (p) => {
+        const g = p.game;
+        const f = front(p, 1.8, 0.8);
+        g.combat.sphere(p, f, 2.1, { dmg: 38 * p.dmgMult, poise: 60, heavy: true }, new Set());
+        for (let i = 0; i < 7; i++) {
+          const k = 3 + i * 2.6;
+          g.effects.iceSpike(p, p.pos.x + p.forwardX * k, p.pos.z + p.forwardZ * k, 0.1 + i * 0.08, { look: 'crystal', radius: 1.7, count: 4, hit: { dmg: 30 * p.dmgMult, poise: 34, knock: 3, unblockable: true } });
+        }
+        g.audio.play('slam');
+        g.cameraShake(0.4);
+        dust(g, f.x, f.z, 24, 0xc8c0e0, 0xffffff);
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',
@@ -601,6 +702,51 @@ export const RITES = {
     focus: 45, cooldown: 60,
     time: 1.0, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.8,
     events: [[0.5, (p) => p.game.summonAllies('knight', 1, 60)]],
+  },
+  bramble_snare: {
+    name: 'Bramble Snare',
+    type: 'Wood rite',
+    desc: 'A twist of the Amberwood\'s thorn, burned at one end. Roots erupt from the ground under your foe, then twice more around them. Lock on to aim it.',
+    focus: 26, cooldown: 8,
+    time: 0.9, keys: RAISE, overlay: true, walk: 0.7, cancel: 0.7,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        const f = front(p, 0, 1.5);
+        const a = aim(p, f.x, f.y, f.z, 24, 0.5);
+        const t = a.target?.pos ?? front(p, 8, 0);
+        const hit = { dmg: 30 * p.riteMult, poise: 34, knock: 3 };
+        g.effects.iceSpike(p, t.x, t.z, 0.4, { look: 'root', radius: 2.2, hit });
+        for (let i = 0; i < 2; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          g.effects.iceSpike(p, t.x + Math.sin(ang) * 2.6, t.z + Math.cos(ang) * 2.6, 0.7 + i * 0.2, { look: 'root', radius: 1.8, count: 5, hit });
+        }
+        g.audio.play('cast');
+      }],
+    ],
+  },
+  shard_volley: {
+    name: 'Shard Volley',
+    type: 'Crystal rite',
+    desc: 'Learned from the crystal hollows under the Shardlands\' western ridge: five splinters of crystal fly from your hand in a fan.',
+    focus: 20, cooldown: 4,
+    time: 0.8, keys: CAST, overlay: true, walk: 0.8, cancel: 0.6,
+    events: [
+      [0.36, (p) => {
+        const g = p.game;
+        const f = front(p, 0.8, 1.3);
+        const a = aim(p, f.x, f.y, f.z, 26, 0.35);
+        const base = Math.atan2(a.x, a.z), dy = (a.y ?? 0) / Math.max(1, Math.hypot(a.x, a.z));
+        for (let i = -2; i <= 2; i++) {
+          const ang = base + i * 0.12;
+          g.projectiles.spawn(p, {
+            kind: 'crystal', x: f.x, y: f.y, z: f.z, dirX: Math.sin(ang), dirY: dy, dirZ: Math.cos(ang), speed: 30, life: 1.0, radius: 0.4,
+            scale: 1.3, sound: 'boltHit', hit: { dmg: 16 * p.riteMult, poise: 12 },
+          });
+        }
+        g.audio.play('crack');
+      }],
+    ],
   },
   mending_light: {
     name: 'Mending Light',

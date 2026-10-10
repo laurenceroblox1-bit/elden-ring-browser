@@ -515,4 +515,106 @@ export const DIALOGUE = {
     if (q.status('vaelor') === 'active') return { name, lines: ['Up the stair. Follow the copper rods; they mark the way, and they draw the lightning off it.'] };
     return { name, lines: [dead ? 'Sun on the Stormspire. I keep going outside to look at it.' : 'Listen. You can hear him calling it, up there.'] };
   },
+
+  edda(g) {
+    const q = g.quests;
+    const name = 'Edda, Huntress of the Lodge';
+    const dead = g.state.flags.hornwoodDead;
+    if (q.status('poachers') === 'active' && q.state.poachers.stage === 1) {
+      return {
+        name,
+        lines: ['Gone? Good. They were setting snares on the deer paths. Not even for meat. For the antlers.', 'Here. My husband kept these for the day his hatchet went dull. It never did.'],
+        effect: () => q.complete('poachers'),
+      };
+    }
+    if (q.status('hornwood') === 'inactive') {
+      return {
+        name,
+        lines: dead
+          ? ['You went into the glade. The leaves stopped falling for a moment, all over the wood, when you did. Did you notice?', 'He was a good king, they say. Before. Thank you for ending it.']
+          : [
+            'Mind your feet; the leaves hide roots. Edda. I keep the lodge, for all the hunting there is.',
+            'King Hornwood made a pact with this wood, a hundred years ago, to keep it from the axe. It kept its side. It\'s been autumn ever since.',
+            'He holds court in the Antlered Glade at the end of the road, with antlers grown through his crown. Light the shrine past the gap if you haven\'t. Then go and see him.',
+          ],
+        effect: () => {
+          q.start('hornwood');
+          if (dead) q.complete('hornwood');
+        },
+      };
+    }
+    if (q.status('hornwood') === 'active' && dead) {
+      return {
+        name,
+        lines: ['So the king is dead. I felt the wood let go of something.', 'Take this. The lodge has more than it needs, and you look like you\'ll need it more.'],
+        effect: () => q.complete('hornwood'),
+      };
+    }
+    if (q.status('poachers') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Another thing. Poachers. They came in when the king stopped caring who did what in his wood. Three of them at least, with hatchets.',
+          'Run them off. Or don\'t bother running.',
+        ],
+        effect: () => q.start('poachers'),
+      };
+    }
+    if (q.status('hornwood') === 'active') return { name, lines: ['The glade is east, at the end of the road. The trees there are older than the lodge. Older than the Vale.'] };
+    if (q.status('poachers') === 'active') return { name, lines: ['They camp about the middle of the wood. Listen for the hatchets.'] };
+    return { name, lines: [dead ? 'Still autumn. I don\'t mind it now; it\'s only weather.' : 'The boars are bad this year. Keep your guard up.'] };
+  },
+
+  pell(g) {
+    const q = g.quests;
+    const name = 'Pell, Glass-Cutter';
+    const dead = g.state.flags.corundelDead;
+    if (q.status('pellslamp') === 'active' && g.hasItem('prism_lamp')) {
+      return {
+        name,
+        lines: ['My lamp. My lamp! Thirty years I carried this.', 'They went up there with it, my lads, and came back... the way you\'ve seen. Here. Stones from the good seam. Can\'t cut them myself any more.'],
+        effect: () => {
+          g.takeItem('prism_lamp');
+          q.complete('pellslamp');
+        },
+      };
+    }
+    if (q.status('pellslamp') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Careful where you step, friend. The glass cuts, and the lads bite. Pell. I ran this dig.',
+          'We came for the crystal. It grows here like grass, and it sings, and it sells. Then the lads went up to the Singing Spires to find where the singing came from.',
+          'They took my prism-lamp. Didn\'t bring it back. Didn\'t bring much of themselves back. If it\'s still up there, I\'d like it.',
+        ],
+        effect: () => q.start('pellslamp'),
+      };
+    }
+    if (q.status('corundel') === 'inactive') {
+      return {
+        name,
+        lines: dead
+          ? ['The ground stopped humming an hour ago. I\'ve not heard that silence in years. That was you, in the Heart?', 'Then the lads can rest. Thank you.']
+          : [
+            'There\'s a crater south of here. The Heart of Glass, we called it. The biggest crystal in the world, under it.',
+            'Something stood up out of it, the day we broke into it. Glass, all through. It walks the crater now, and every crystal on the steppe leans towards it like grass to the sun.',
+            'Light the shrine past the gate. Then go and break it, if anything can.',
+          ],
+        effect: () => {
+          q.start('corundel');
+          if (dead) q.complete('corundel');
+        },
+      };
+    }
+    if (q.status('corundel') === 'active' && dead) {
+      return {
+        name,
+        lines: ['Quiet. Listen to that. Quiet.', 'Take this. It\'s not much, but it\'s honest.'],
+        effect: () => q.complete('corundel'),
+      };
+    }
+    if (q.status('pellslamp') === 'active') return { name, lines: ['The Spires are south-east of the dig, up the little road. Tall as towers. You can\'t miss them; you can hear them.'] };
+    if (q.status('corundel') === 'active') return { name, lines: ['South, the Heart. Mind the beam. My lads called it the light that cuts.'] };
+    return { name, lines: [dead ? 'Quiet out there now. Good quiet.' : 'Hear them? The Spires. They never stop.'] };
+  },
 };

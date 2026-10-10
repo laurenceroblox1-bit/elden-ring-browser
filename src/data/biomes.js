@@ -15,6 +15,11 @@
 //   bell    The Hollow Bell (east, high on the peaks between the Dunes and the Heights): a barren shelf
 //           of cracked bronze and fallen bells under the great spire. Its mist only lifts once the five
 //           great ones of the outer regions are dead; the Bell-Ringer waits beyond it.
+//   amber   The Amberwood (south-east): an old forest in endless autumn, red and gold, leaf litter
+//           ankle-deep, the Amber Mere, the Huntsman's Lodge, and the Antlered Glade where the king of
+//           the wood holds court.
+//   shard   The Shardlands (south-west): a pale stone steppe split by ridges of living crystal that hum
+//           in the wind, the Singing Spires, Pell's Dig, and the Heart of Glass where the Colossus stands.
 
 // Play-area lobes (the Rimewold's is in world.js as RIME). Each is a circle; a ridge of peaks follows
 // its rim where it overlaps the Vale, broken only by a pass at `gate` (the road through), so the way
@@ -26,6 +31,8 @@ export const LOBES = {
   dunes: { x: 590, z: 80, r: 160, gate: [431, 63], gap: 11 },
   storm: { x: 390, z: -400, r: 150, gate: [347, -257], gap: 10 },
   bell: { x: 500, z: -170, r: 75, gate: [440, -124], gap: 7 },
+  amber: { x: 420, z: 420, r: 150, gate: [312, 312], gap: 10 },
+  shard: { x: -420, z: 420, r: 150, gate: [-312, 312], gap: 10 },
 };
 
 // The coast: the sea's surface level, and how far west you can wade before the water is too deep.
@@ -60,8 +67,11 @@ export const GREAT_ONES = [
   ['ashmawDead', 'Ashmaw, the Cinder Drake'], ['morrowDead', 'Captain Morrow, the Drowned'], ['sylvaraDead', 'Sylvara, the Bloom Witch'],
   ['solkarDead', 'Solkar, the Sun Scarab'], ['vaelorDead', 'Vaelor, the Storm Herald'],
 ];
-// The oasis pool (a little Water surface on a carved hollow).
+export const GLADE = { x: 490, z: 500, r: 30, trigger: 20, leash: 46 };
+export const HEART = { x: -490, z: 500, r: 30, trigger: 20, leash: 46 };
+// The oasis pool (a little Water surface on a carved hollow), and the Amberwood's mere (the same).
 export const OASIS = { x: 560, z: 20, r: 16 };
+export const MERE = { x: 474, z: 366, r: 18 };
 
 export const BIOME_ZONES = {
   // Cinderfall
@@ -101,6 +111,20 @@ export const BIOME_ZONES = {
   bellmist: { name: "The Bell's Mist", x: 440, z: -124, r: 14, flat: null },
   bellfoot: { name: 'Bellfoot Shrine', x: 432, z: -104, r: 12, flat: 10 },
   bellyard: { name: 'The Hollow Bell', x: BELLYARD.x, z: BELLYARD.z, r: 34, flat: 40 },
+  // The Amberwood
+  huntersgap: { name: "The Hunter's Gap", x: 312, z: 312, r: 20, flat: null },
+  leafwatch: { name: 'Leafwatch Shrine', x: 356, z: 340, r: 12, flat: 10 },
+  amberwood: { name: 'The Amberwood', x: 420, z: 420, r: 50, flat: null },
+  lodge: { name: "The Huntsman's Lodge", x: 362, z: 468, r: 20, flat: 18 },
+  mere: { name: 'The Amber Mere', x: MERE.x, z: MERE.z, r: 26, flat: null },
+  glade: { name: 'The Antlered Glade', x: GLADE.x, z: GLADE.z, r: 32, flat: 38 },
+  // The Shardlands
+  glassgate: { name: 'The Glass Gate', x: -312, z: 312, r: 20, flat: null },
+  prismwatch: { name: 'Prismwatch Shrine', x: -356, z: 340, r: 12, flat: 10 },
+  shardlands: { name: 'The Shardlands', x: -420, z: 420, r: 50, flat: null },
+  dig: { name: "Pell's Dig", x: -472, z: 368, r: 20, flat: 18 },
+  spires: { name: 'The Singing Spires', x: -366, z: 476, r: 24, flat: null },
+  heart: { name: 'The Heart of Glass', x: HEART.x, z: HEART.z, r: 32, flat: 38 },
 };
 
 export const BIOME_ROADS = [
@@ -122,6 +146,14 @@ export const BIOME_ROADS = [
   [[372, -350], [340, -390], [322, -405]],
   // North-east from the dunes road up to the Bell's mist and the yard beyond.
   [[360, 66], [400, 0], [422, -70], [432, -104], [440, -124], [462, -146]],
+  // South-east off the Cinder road, through the Hunter's Gap and the Amberwood to the Antlered Glade.
+  [[8, 290], [90, 300], [180, 304], [260, 304], [312, 312], [350, 348], [392, 392], [430, 432], [462, 470]],
+  [[392, 392], [376, 432], [366, 456]],
+  [[392, 392], [440, 380], [452, 372]],
+  // South-west from Brannoc's camp, through the Glass Gate to the Heart of Glass.
+  [[-52, 160], [-120, 200], [-200, 248], [-270, 290], [-312, 312], [-350, 348], [-392, 392], [-430, 432], [-462, 470]],
+  [[-392, 392], [-436, 380], [-460, 372]],
+  [[-392, 392], [-380, 440], [-372, 462]],
 ];
 
 export const BIOME_SHRINES = [
@@ -132,6 +164,10 @@ export const BIOME_SHRINES = [
   { id: 'sunrest', name: 'Sunrest Shrine', x: 470, z: 52 },
   { id: 'stormgate', name: 'Stormgate Shrine', x: 360, z: -300 },
   { id: 'bellfoot', name: 'Bellfoot Shrine', x: 432, z: -100 },
+  { id: 'leafwatch', name: 'Leafwatch Shrine', x: 356, z: 340 },
+  { id: 'gladesedge', name: "Glade's Edge Shrine", x: 446, z: 452 },
+  { id: 'prismwatch', name: 'Prismwatch Shrine', x: -356, z: 340 },
+  { id: 'glasslight', name: 'Glasslight Shrine', x: -446, z: 452 },
 ];
 
 export const BIOME_NPCS = [
@@ -140,6 +176,8 @@ export const BIOME_NPCS = [
   { id: 'murk', name: 'Murk', title: 'Myconid', x: -306, z: -436, yaw: -2.0 },
   { id: 'tamsin', name: 'Tamsin', title: 'Wandering Trader', x: 548, z: 38, yaw: 2.4 },
   { id: 'aldous', name: 'Brother Aldous', title: 'Last Monk of the Spire', x: 326, z: -404, yaw: 1.0 },
+  { id: 'edda', name: 'Edda', title: 'Huntress of the Lodge', x: 366, z: 462, yaw: 0.6 },
+  { id: 'pell', name: 'Pell', title: 'Glass-Cutter', x: -466, z: 364, yaw: -0.6 },
 ];
 
 export const BIOME_SPAWNS = [
@@ -203,11 +241,42 @@ export const BIOME_SPAWNS = [
   { kind: 'herald', x: SUMMIT.x + 4, z: SUMMIT.z - 6, yaw: 2.6 },
   // The Hollow Bell
   { kind: 'bellringer', x: BELLYARD.x + 8, z: BELLYARD.z - 8, yaw: -2.4 },
+  // The Amberwood
+  { kind: 'boar', pack: 'amber1', x: 330, z: 360, yaw: -2.2 },
+  { kind: 'boar', pack: 'amber1', x: 334, z: 366, yaw: -2.4 },
+  { kind: 'boar', pack: 'amber2', x: 450, z: 410, yaw: -2.6 },
+  { kind: 'boar', pack: 'amber2', x: 456, z: 404, yaw: -2.2 },
+  { kind: 'boar', pack: 'amber3', x: 520, z: 430, yaw: -2.0 },
+  { kind: 'poacher', x: 372, z: 380, yaw: -2.4 },
+  { kind: 'poacher', x: 400, z: 444, yaw: -2.8 },
+  { kind: 'poacher', x: 340, z: 440, yaw: 2.6 },
+  { kind: 'poacher', x: 432, z: 392, yaw: -2.0 },
+  { kind: 'bowman', x: 410, z: 470, yaw: -2.6 },
+  { kind: 'bowman', x: 488, z: 380, yaw: -2.0 },
+  { kind: 'barkhusk', x: 420, z: 410, yaw: -2.4 },
+  { kind: 'barkhusk', x: 500, z: 440, yaw: -2.6 },
+  { kind: 'antlerking', x: GLADE.x + 6, z: GLADE.z + 6, yaw: -2.4 },
+  // The Shardlands
+  { kind: 'shardback', pack: 'shard1', x: -334, z: 362, yaw: 2.2 },
+  { kind: 'shardback', pack: 'shard1', x: -340, z: 366, yaw: 2.4 },
+  { kind: 'shardback', pack: 'shard2', x: -440, z: 420, yaw: 2.6 },
+  { kind: 'shardback', pack: 'shard2', x: -446, z: 414, yaw: 2.2 },
+  { kind: 'shardback', pack: 'shard3', x: -520, z: 440, yaw: 2.0 },
+  { kind: 'glassminer', x: -372, z: 380, yaw: 2.4 },
+  { kind: 'glassminer', x: -486, z: 388, yaw: 2.8 },
+  { kind: 'glassminer', x: -402, z: 446, yaw: 2.6 },
+  { kind: 'prismwraith', x: -366, z: 470, yaw: 2.4 },
+  { kind: 'prismwraith', x: -500, z: 420, yaw: 2.0 },
+  { kind: 'prismwraith', x: -420, z: 500, yaw: 2.8 },
+  { kind: 'prismgolem', x: -420, z: 400, yaw: 2.4 },
+  { kind: 'prismgolem', x: -510, z: 460, yaw: 2.6 },
+  { kind: 'colossus', x: HEART.x - 6, z: HEART.z + 6, yaw: 2.4 },
 ];
 
 export const BIOME_PICKUPS = [
   { item: 'drowned_bell', quest: 'tides', x: -556, z: 96 },
   { item: 'sun_disc', quest: 'caravan', x: 524, z: 166 },
+  { item: 'prism_lamp', quest: 'pellslamp', x: -360, z: 484 },
 ];
 
 export const BIOME_LOOT = [
@@ -221,6 +290,12 @@ export const BIOME_LOOT = [
   { gear: 'sandstorm', x: 566, z: 32 }, // by the oasis pool
   { gear: 'storm_spear', x: 318, z: -414 }, // in the monastery's chapel
   { gear: 'lightning_call', x: 404, z: -414 }, // on a spire's foot
+  { gear: 'hunters_hatchet', x: 350, z: 464.5 }, // by the lodge's chopping block
+  { gear: 'oakheart_shield', x: 497, z: 361 }, // at the foot of the mere's little jetty
+  { gear: 'bramble_snare', x: 520, z: 470 }, // in a ring of thorn by the glade
+  { gear: 'prism_blade', x: -380, z: 392 }, // stuck in a crystal on the road
+  { gear: 'glass_aegis', x: -476.5, z: 361 }, // propped against Pell's cart
+  { gear: 'shard_volley', x: -530, z: 420 }, // in a crystal hollow under the western ridge
 ];
 
 export const BIOME_KEEP_CLEAR = [
@@ -234,6 +309,8 @@ export const BIOME_FIRES = [
   { x: -12, z: 448, light: false },
   { x: 544, z: 36, light: true }, // Tamsin's camp at the oasis
   { x: 330, z: -400, light: true }, // the monastery hearth
+  { x: 370, z: 466, light: true }, // the lodge's hearth
+  { x: -468, z: 369, light: true }, // Pell's fire
 ];
 
 // Smithing stones (weapon upgrades, see data/smithing.js) lying in the outer regions.
@@ -244,4 +321,6 @@ export const STONES = [
   { x: 150, z: 60 }, { x: -170, z: -180 }, { x: 40, z: -470 }, { x: -60, z: -540 },
   { x: 500, z: 120 }, { x: 640, z: 40 }, { x: 580, z: 190 }, { x: 700, z: 90 },
   { x: 350, z: -350 }, { x: 430, z: -400 }, { x: 300, z: -440 }, { x: 460, z: -500 },
+  { x: 330, z: 400 }, { x: 440, z: 480 }, { x: 520, z: 380 }, { x: 400, z: 520 },
+  { x: -330, z: 400 }, { x: -440, z: 480 }, { x: -520, z: 380 }, { x: -400, z: 520 },
 ];

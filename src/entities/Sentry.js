@@ -4,7 +4,7 @@
 // parried (their swing was parried), riposted (held for the player's riposte) and knockdown.
 import { Actor } from './Actor.js';
 import { buildSentry, buildKnight } from '../models/characters.js';
-import { buildDrowned, buildRevenant, buildStormKnight } from '../models/creatures.js';
+import { buildDrowned, buildRevenant, buildStormKnight, buildPoacher, buildGlassMiner } from '../models/creatures.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
 
@@ -25,6 +25,10 @@ const VARIANTS = {
   revenant: { tag: 'revenant', name: 'Sand Revenant', hp: 110, poise: 34, ash: 160, radius: 0.46, height: 1.9, lock: 1.35, speed: 1.05, dmg: 1.35, guard: 0.4, guardMax: 70, reach: 1.0, pace: 0.95, burn: 10, build: buildRevenant },
   // The Stormspire's sworn guard: plate, kite shield and a sword-edge that crackles.
   stormknight: { tag: 'stormknight', name: 'Spire Knight', hp: 175, poise: 52, ash: 280, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.6, guard: 0.55, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildStormKnight },
+  // The Amberwood's poachers: a hatchet, no shield, quick on their feet.
+  poacher: { tag: 'poacher', name: 'Amberwood Poacher', hp: 100, poise: 30, ash: 140, radius: 0.46, height: 1.85, lock: 1.3, speed: 1.15, dmg: 1.35, guard: 0, guardMax: 0, reach: 0.95, pace: 0.85, build: buildPoacher },
+  // Pell's old crew, crystal grown through them: a heavy pick, slow but hard-hitting.
+  glassminer: { tag: 'glassminer', name: 'Glass-Mad Miner', hp: 120, poise: 40, ash: 160, radius: 0.48, height: 1.9, lock: 1.35, speed: 0.9, dmg: 1.6, guard: 0, guardMax: 0, reach: 1.05, pace: 1.1, build: buildGlassMiner },
   knight: { tag: 'knight', name: 'Dunmarrow Knight', hp: 160, poise: 50, ash: 240, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.55, guard: 0.6, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildKnight },
 };
 

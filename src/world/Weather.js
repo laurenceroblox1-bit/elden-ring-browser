@@ -1,5 +1,5 @@
 // Weather: 'clear' | 'ashfall' | 'rain' | 'mist' | 'snow' | 'blizzard', and the outer regions'
-// 'cinders' | 'seamist' | 'spores' | 'dunesun' | 'sandstorm' | 'storm'. Each preset sets fog, light, haze, cloud cover
+// 'cinders' | 'seamist' | 'spores' | 'dunesun' | 'sandstorm' | 'storm' | 'bellmist' | 'autumn' | 'glint'. Each preset sets fog, light, haze, cloud cover
 // and wind, and blends to them over a few seconds. Falling ash and rain are one point cloud in a
 // box that wraps around the camera, animated entirely in the vertex shader (no per-frame uploads).
 import * as THREE from '../lib/three.js';
@@ -21,6 +21,8 @@ export const WEATHER = {
   sandstorm: { fogMul: 4.2, dim: 0.35, haze: 0.85, tint: 0xd8a868, cover: 0.8, wind: 3.4, fall: 'sandstorm' },
   storm: { fogMul: 2.0, dim: 0.78, haze: 0.62, tint: 0x767c88, cover: 1, wind: 2.4, fall: 'rain' },
   bellmist: { fogMul: 2.8, dim: 0.3, haze: 0.72, tint: 0xc8b49a, cover: 0.7, wind: 0.4, fall: 'motes' },
+  autumn: { fogMul: 1.4, dim: 0.08, haze: 0.4, tint: 0xd8aa7a, cover: 0.45, wind: 1.2, fall: 'leaves' },
+  glint: { fogMul: 1.3, dim: 0.05, haze: 0.45, tint: 0xc8bce0, cover: 0.3, wind: 0.9, fall: 'glints' },
 };
 
 const FALL = {
@@ -33,6 +35,8 @@ const FALL = {
   sand: { count: 900, speed: 0.4, size: 0.08, color: 0xf0d8a0, opacity: 0.55, sway: 2.6, streak: 0 },
   motes: { count: 800, speed: 0.12, size: 0.1, color: 0xffd890, opacity: 0.75, sway: 1.3, streak: 0 },
   sandstorm: { count: 2600, speed: 1.4, size: 0.14, color: 0xd8b070, opacity: 0.8, sway: 4.2, streak: 0 },
+  leaves: { count: 700, speed: 0.8, size: 0.2, color: 0xd87a30, opacity: 0.9, sway: 1.8, streak: 0 },
+  glints: { count: 900, speed: 0.1, size: 0.08, color: 0xe8f0ff, opacity: 0.85, sway: 0.9, streak: 0 },
 };
 const MAX = 2600;
 const tmpTint = new THREE.Color();

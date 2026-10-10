@@ -465,6 +465,80 @@ export const WEAPONS = {
       rolling: { stamina: 30, dmg: 42, poise: 42, windup: 0.34, active: 0.18, recover: 0.64, lunge: 3.0, reach: 3.0, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
     },
   },
+
+  hunters_hatchet: {
+    name: "Huntsman's Hatchet",
+    type: 'Axe',
+    hands: 1,
+    stance: 'blade',
+    scale: 0.95,
+    desc: "Edda's late husband's hatchet, left on the lodge's chopping block with the edge still keen. Quick and light; its art throws it spinning at your foe, and it always seems to come back to your hand.",
+    art: 'hatchet_throw',
+    riposte: { dmg: 25 },
+    guard: { name: 'blade', absorb: 0.55, cost: 1.6, parryWindow: 0.2, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 12, dmg: 18, poise: 15, windup: 0.14, active: 0.12, recover: 0.32, lunge: 2.4, reach: 2.1, arc: 0.95, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 12, dmg: 18, poise: 15, windup: 0.12, active: 0.12, recover: 0.32, lunge: 2.4, reach: 2.1, arc: 0.95, pose: 'slashL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 16, dmg: 25, poise: 24, windup: 0.22, active: 0.12, recover: 0.4, lunge: 3.0, reach: 2.3, arc: 0.6, pose: 'overhead', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 26, dmg: 44, poise: 46, windup: 0.46, active: 0.14, recover: 0.5, lunge: 3.0, reach: 2.4, arc: 0.6, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 12, dmg: 16, poise: 12, windup: 0.1, active: 0.12, recover: 0.34, lunge: 3.0, reach: 2.2, arc: 0.7, pose: 'slashR', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  kings_antler: {
+    name: "King's Antler",
+    type: 'Greatsword',
+    hands: 2,
+    stance: 'great',
+    scale: 1.5,
+    desc: "Hornwood's greatblade, carved from a single antler of the first stag of the wood and bound to a hilt of the old king's gold. Its art lowers your head like the king's and charges, and roots burst up behind you where you run.",
+    art: 'antler_rush',
+    riposte: { dmg: 34 },
+    guard: { name: 'greatblade', absorb: 0.72, cost: 1.2, parryWindow: 0.14, raiseTime: 0.14, arc: 1.75, speed: 2.0 },
+    moves: {
+      light1: { stamina: 24, dmg: 33, poise: 28, windup: 0.38, active: 0.2, recover: 0.55, lunge: 2.2, reach: 3.3, arc: 1.45, pose: 'gSweepR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 24, dmg: 33, poise: 28, windup: 0.34, active: 0.2, recover: 0.58, lunge: 2.2, reach: 3.3, arc: 1.45, pose: 'gSweepL', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 38, dmg: 66, poise: 60, windup: 0.78, active: 0.18, recover: 0.72, lunge: 3.0, reach: 3.5, arc: 0.6, pose: 'gOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 20, dmg: 28, poise: 24, windup: 0.18, active: 0.16, recover: 0.5, lunge: 3.4, reach: 3.2, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  prism_blade: {
+    name: 'Prism Blade',
+    type: 'Straight sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.05,
+    desc: 'A sword of clear crystal that grew around the steel of an older one, found stuck fast in a crystal on the Shardlands road. Light splits into colours along its edge. Its art throws a lance of hard light.',
+    art: 'prism_lance',
+    riposte: { dmg: 26 },
+    guard: { name: 'blade', absorb: 0.62, cost: 1.45, parryWindow: 0.2, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 14, dmg: 19, poise: 14, windup: 0.16, active: 0.14, recover: 0.36, lunge: 2.6, reach: 2.4, arc: 1.0, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 14, dmg: 19, poise: 14, windup: 0.14, active: 0.14, recover: 0.36, lunge: 2.6, reach: 2.4, arc: 1.0, pose: 'slashL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 18, dmg: 26, poise: 22, windup: 0.22, active: 0.12, recover: 0.44, lunge: 3.6, reach: 2.8, arc: 0.5, pose: 'thrust', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 30, dmg: 45, poise: 48, windup: 0.52, active: 0.15, recover: 0.52, lunge: 3.2, reach: 2.7, arc: 0.65, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 14, dmg: 17, poise: 10, windup: 0.1, active: 0.14, recover: 0.36, lunge: 3.0, reach: 2.5, arc: 0.6, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  colossus_shard: {
+    name: 'Colossus Shard',
+    type: 'Colossal sword',
+    hands: 2,
+    stance: 'great',
+    scale: 1.65,
+    desc: "A splinter of Corundel's arm as long as a person, still faintly lit from inside. Heavy as a gate, and it rings when it lands. Its art drives it into the ground and crystal erupts in a line ahead of you.",
+    art: 'crystal_rise',
+    riposte: { dmg: 38 },
+    guard: { name: 'greatblade', absorb: 0.76, cost: 1.15, parryWindow: 0.12, raiseTime: 0.12, arc: 1.75, speed: 1.9 },
+    moves: {
+      light1: { stamina: 30, dmg: 44, poise: 44, windup: 0.5, active: 0.2, recover: 0.66, lunge: 2.2, reach: 3.5, arc: 1.45, pose: 'gSweepR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 30, dmg: 44, poise: 44, windup: 0.46, active: 0.2, recover: 0.68, lunge: 2.2, reach: 3.5, arc: 1.45, pose: 'gSweepL', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 46, dmg: 88, poise: 80, windup: 0.95, active: 0.18, recover: 0.85, lunge: 3.0, reach: 3.7, arc: 0.6, pose: 'gOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 26, dmg: 36, poise: 34, windup: 0.24, active: 0.16, recover: 0.58, lunge: 3.4, reach: 3.4, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'heavySwing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.
@@ -494,6 +568,18 @@ export const SHIELDS = {
     type: 'Medium shield',
     desc: 'A kite shield grown, not made: a shell of hard grey cap-flesh bristling with violet thorns, found under a giant glowcap. Whatever strikes it too hard comes away poisoned.',
     guard: { name: 'shield', absorb: 0.92, cost: 0.85, parryWindow: 0.2, raiseTime: 0.08, arc: 1.8, thorns: 14 },
+  },
+  oakheart_shield: {
+    name: 'Oakheart Shield',
+    type: 'Medium shield',
+    desc: 'A round shield cut from the heart of a Barkhusk, still sweet with amber sap. It drinks blows like old wood drinks rain, and it barely tires the arm.',
+    guard: { name: 'shield', absorb: 0.9, cost: 0.7, parryWindow: 0.2, raiseTime: 0.08, arc: 1.8 },
+  },
+  glass_aegis: {
+    name: 'Glass Aegis',
+    type: 'Small shield',
+    desc: 'A disc of clear crystal ground smooth by Pell\'s crew. It catches the light, and the eye, and a blow timed just so slides off it as if it had never been aimed.',
+    guard: { name: 'buckler', absorb: 0.78, cost: 1.0, parryWindow: 0.3, raiseTime: 0.07, arc: 1.75 },
   },
   gatewarden_greatshield: {
     name: 'Gatewarden Greatshield',

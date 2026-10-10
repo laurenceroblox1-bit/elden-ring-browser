@@ -3,7 +3,7 @@
 // arena ring and Castle Dunmarrow. Live markers sit on top as DOM elements and are placed each
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
 import { WORLD, ZONES, ROADS, ARENA, LAKE, RIME } from '../data/world.js';
-import { LOBES, SEA, OASIS } from '../data/biomes.js';
+import { LOBES, SEA, OASIS, MERE } from '../data/biomes.js';
 
 // Metres from the centre to each edge of the map: far enough for every lobe of the play area.
 const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z, ...Object.values(LOBES).map((L) => Math.hypot(L.x, L.z) + L.r)) + 14;
@@ -256,6 +256,8 @@ export class MapScreen {
           if (SEA.level - h < 0.4) c = mix(c, [236, 228, 200], 0.5);
         } else if (Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.2 && h < w.oasisLevel) {
           c = [70, 150, 140]; // the oasis
+        } else if (Math.hypot(x - MERE.x, z - MERE.z) < MERE.r * 1.2 && h < w.mereLevel) {
+          c = [90, 110, 80]; // the mere
         } else if (B.cinder > 0.3 && w.isLava(x, z)) {
           c = [236, 104, 34]; // lava
         } else if (h < level && (lake || w.fenPoolDepth(x, z) > 0)) {
@@ -269,6 +271,8 @@ export class MapScreen {
           if (B.glow > 0) c = mix(c, [86, 64, 120], B.glow * 0.8); // violet moss
           if (B.dunes > 0) c = mix(c, [228, 178, 104], B.dunes * 0.8); // gold sand
           if (B.storm > 0) c = mix(c, [96, 100, 110], B.storm * 0.8); // grey crags
+          if (B.amber > 0) c = mix(c, [196, 112, 46], B.amber * 0.8); // autumn wood
+          if (B.shard > 0) c = mix(c, [186, 176, 214], B.shard * 0.8); // pale crystal steppe
           c = c.map((v) => v * (0.5 + shade * 0.72));
         }
         c = mix(c, tint, PARCHMENT[1]);

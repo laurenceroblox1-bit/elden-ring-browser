@@ -4,11 +4,14 @@
 //   The Drowned Coast: the sea, Saltmarrow's ruined houses and pier, the Broken Lighthouse, the
 //     Captain's Wreck and the masts of older wrecks offshore.
 //   The Glowcap Hollows: giant glowing mushrooms, the Myconid's Ring, the Heartcap Grove.
+//   The Amberwood: autumn oaks and birches, the Huntsman's Lodge, the Amber Mere, the Antlered Glade.
+//   The Shardlands: ridges of glowing crystal, the Glass Gate, Pell's Dig, the Singing Spires and the
+//     Heart of Glass.
 // buildBiomes(world) runs with World's other set pieces; biomeScenery(scenery) adds the batched
 // plants and rocks; updateBiomes(world, dt, time) animates lava, sea, glow, smoke and the lighthouse.
 import * as THREE from '../lib/three.js';
 import { mulberry32, smoothstep } from '../core/math.js';
-import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, BELLYARD, GREAT_ONES, BIOME_ZONES as Z } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, MERE, GLADE, HEART, BELLYARD, GREAT_ONES, BIOME_ZONES as Z } from '../data/biomes.js';
 import { WORLD } from '../data/world.js';
 import { mat, mesh, box, cyl, cone, glowSprite, glowTexture } from '../models/kit.js';
 import * as P from '../models/props.js';
@@ -182,6 +185,8 @@ export function buildBiomes(w) {
   dunes(w, B);
   storm(w, B);
   bell(w, B);
+  amber(w, B);
+  shard(w, B);
 }
 
 // ---------- the Hollow Bell ----------
@@ -706,6 +711,207 @@ function storm(w, B) {
   }
 }
 
+// ---------- the Amberwood ----------
+
+function amber(w, B) {
+  const rng = mulberry32(5150);
+  const BARK = 0x5a3e2a, DARK = 0x3e2a1e, LOG = 0x7a5838, RED = 0xa8442a;
+  // The Hunter's Gap: two carved posts either side of the pass, each crowned with a stag's antlers.
+  const L = LOBES.amber, gx = L.gate[0], gz = L.gate[1];
+  const into = Math.atan2(L.x - gx, L.z - gz);
+  for (const sd of [-1, 1]) {
+    const x = gx + Math.cos(into) * sd * 8, z = gz - Math.sin(into) * sd * 8, y = w.getHeight(x, z);
+    w.block(x, z, 1.2, 6, 1.2, into, { color: BARK });
+    for (let k = 0; k < 3; k++) w.block(x, z, 1.35, 0.25, 1.35, into, { y: y + 1 + k * 1.6, color: k % 2 ? RED : 0xd8a840, collide: false });
+    for (const s2 of [-1, 1]) {
+      w.block(x + Math.cos(into) * s2 * 0.5, z - Math.sin(into) * s2 * 0.5, 0.18, 1.6, 0.18, into, { y: y + 5.6, rz: s2 * 0.5, color: 0xe8dcc0, collide: false });
+      w.block(x + Math.cos(into) * s2 * 1.0, z - Math.sin(into) * s2 * 1.0, 0.14, 0.9, 0.14, into, { y: y + 6.6, rz: s2 * 0.2, color: 0xe8dcc0, collide: false });
+    }
+  }
+  // Leafwatch: log benches round the shrine.
+  const lw = Z.leafwatch;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 + 0.4;
+    w.block(lw.x + Math.sin(a) * 6.5, lw.z + Math.cos(a) * 6.5, 2.4, 0.6, 0.6, a + Math.PI / 2, { color: LOG });
+  }
+  // The Huntsman's Lodge: a log cabin with a steep roof, a drying rack of hides, a woodpile and a
+  // chopping block out front.
+  const lx = 357, lz = 476, ly = w.getHeight(lx, lz) - 0.3;
+  const wallLog = (x0, z0, x1, z1, door) => {
+    const len = Math.hypot(x1 - x0, z1 - z0), ry = -Math.atan2(z1 - z0, x1 - x0);
+    for (let k = 0; k < 6; k++) {
+      if (door && k < 4) {
+        // Leave a doorway in the middle of this wall.
+        const h = (len - 2.2) / 2;
+        for (const sd of [-1, 1]) {
+          const cx = (x0 + x1) / 2 + Math.cos(-ry) * sd * (1.1 + h / 2), cz = (z0 + z1) / 2 + Math.sin(-ry) * sd * (1.1 + h / 2);
+          w.block(cx, cz, h, 0.5, 0.55, ry, { y: ly + k * 0.5, color: k % 2 ? LOG : BARK, collide: k === 0 });
+        }
+        continue;
+      }
+      w.block((x0 + x1) / 2, (z0 + z1) / 2, len + 0.5, 0.5, 0.55, ry, { y: ly + k * 0.5, color: k % 2 ? LOG : BARK, collide: k === 0 });
+    }
+  };
+  wallLog(lx - 6, lz - 4.5, lx + 6, lz - 4.5, true);
+  wallLog(lx - 6, lz + 4.5, lx + 6, lz + 4.5);
+  wallLog(lx - 6, lz - 4.5, lx - 6, lz + 4.5);
+  wallLog(lx + 6, lz - 4.5, lx + 6, lz + 4.5);
+  for (const sd of [-1, 1]) w.block(lx, lz + sd * 2.7, 13.6, 0.3, 6.2, 0, { y: ly + 3.6 + 1.1, rx: sd * 0.62, color: 0x6a3a26, collide: false });
+  w.block(lx, lz, 13.4, 0.4, 0.4, 0, { y: ly + 5.6, color: DARK, collide: false });
+  w.block(lx + 4, lz + 1, 1.0, 7, 1.0, 0, { y: ly, color: 0x7a7470, collide: false }); // the chimney
+  // Drying rack with hides, the woodpile, the chopping block.
+  const rx = lx + 9.5, rz = lz - 2;
+  for (const sd of [-1, 1]) w.block(rx, rz + sd * 1.8, 0.2, 2.4, 0.2, 0, { color: DARK });
+  w.block(rx, rz, 0.15, 0.15, 3.8, 0, { y: w.getHeight(rx, rz) + 2.0, color: DARK, collide: false });
+  for (const [dz, c] of [[-1, 0x8a5a3a], [0.2, 0xb08050], [1.3, 0x6a4a30]]) w.block(rx, rz + dz, 0.05, 1.4, 0.9, 0, { y: w.getHeight(rx, rz) + 0.6, color: c, collide: false });
+  for (let k = 0; k < 9; k++) w.block(lx - 8.2, lz - 2 + (k % 3) * 0.55, 0.5, 0.5, 2.2, 0, { y: ly + 0.3 + Math.floor(k / 3) * 0.48, rz: Math.PI / 4, color: k % 2 ? LOG : 0x8a6a48, collide: k === 0 });
+  w.block(348, 466, 0.9, 0.7, 0.9, 0.3, { color: LOG });
+  // The Amber Mere: still, tea-coloured water under the trees, a little jetty on its east shore.
+  B.mere = new Water(w.scene, { x: MERE.x, z: MERE.z, r: MERE.r * 1.2 }, w.mereLevel, (x, z) => w.mereLevel - w.getHeight(x, z));
+  B.mere.uniforms.uShallow.value.setHex(0x8a7a40);
+  B.mere.uniforms.uDeep.value.setHex(0x2a3a2a);
+  B.mere.uniforms.uFoam.value.setHex(0xe8c890);
+  for (let k = 0; k < 6; k++) w.block(MERE.x + 20 - k * 1.6, MERE.z - 6, 1.5, 0.15, 2.0, 0.05 * (k % 2), { y: w.mereLevel + 0.35, color: k % 2 ? LOG : 0x8a6a48, collide: false });
+  for (let k = 0; k < 4; k++) for (const sd of [-1, 1]) w.block(MERE.x + 20 - k * 2.4, MERE.z - 6 + sd * 0.9, 0.18, 2.0, 0.18, 0, { y: w.mereLevel - 1.2, color: DARK, collide: false });
+  // The Antlered Glade: a ring of ancient trees open towards the road, a floor of fallen leaves, and
+  // at its back the king's throne of shed antlers.
+  const G = GLADE, gy = w.getHeight(G.x, G.z);
+  const open = Math.atan2(462 - G.x, 470 - G.z);
+  B.gladeTrees = [];
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - open), Math.cos(a - open))) < 0.45) continue;
+    const x = G.x + Math.sin(a) * (G.r + 3), z = G.z + Math.cos(a) * (G.r + 3);
+    w.block(x, z, 2.6, 12, 2.6, a, { y: w.getHeight(x, z) - 0.5, color: i % 2 ? BARK : DARK });
+    w.block(x, z, 4.0, 1.2, 4.0, a + 0.4, { y: w.getHeight(x, z) - 0.6, color: DARK, collide: false }); // roots
+    B.gladeTrees.push({ x, z, y: w.getHeight(x, z) + 11 });
+  }
+  const tx = G.x - Math.sin(open) * (G.r - 4), tz = G.z - Math.cos(open) * (G.r - 4);
+  w.block(tx, tz, 5, 1.2, 3, -open, { y: gy - 0.4, color: 0x6a5a48 });
+  w.block(tx - Math.sin(open) * 1.2, tz - Math.cos(open) * 1.2, 4, 3.4, 0.8, -open, { y: gy + 0.6, color: 0x5a4a3a });
+  for (let k = 0; k < 7; k++) {
+    const sd = k % 2 ? 1 : -1, off = (k - 3) * 0.6;
+    w.block(tx - Math.sin(open) * 1.4 + Math.cos(open) * off, tz - Math.cos(open) * 1.4 - Math.sin(open) * off, 0.18, 1.8 + (3 - Math.abs(k - 3)) * 0.5, 0.18, -open, { y: gy + 3.8, rz: sd * 0.4, color: 0xe8dcc0, collide: false });
+  }
+  for (let i = 0; i < 46; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (G.r - 2);
+    w.block(G.x + Math.sin(a) * d, G.z + Math.cos(a) * d, 1.2 + rng() * 1.6, 0.12, 1.2 + rng() * 1.6, rng() * 3, { y: gy - 0.12, color: [0xa8442a, 0xc8742e, 0xd8a840][Math.floor(rng() * 3)], collide: false });
+  }
+}
+
+// ---------- the Shardlands ----------
+
+// Crystals are one InstancedMesh of stretched octahedra (half sunk), lit from inside a little.
+function crystalMesh(w, list) {
+  const geo = new THREE.OctahedronGeometry(1, 0);
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x5a4a9a, emissiveIntensity: 0.35, roughness: 0.15, metalness: 0.1, flatShading: true });
+  const im = new THREE.InstancedMesh(geo, m, list.length);
+  const dummy = new THREE.Object3D(), col = new THREE.Color();
+  list.forEach((c, i) => {
+    dummy.position.set(c.x, (c.y ?? w.getHeight(c.x, c.z)) + c.h * 0.35, c.z);
+    dummy.rotation.set(c.rx ?? 0, c.ry ?? 0, c.rz ?? 0);
+    dummy.scale.set(c.r, c.h, c.r);
+    dummy.updateMatrix();
+    im.setMatrixAt(i, dummy.matrix);
+    im.setColorAt(i, col.setHex(c.hex));
+  });
+  im.castShadow = im.receiveShadow = true;
+  w.scene.add(im);
+  return { im, mat: m };
+}
+
+const CRYSTAL_HUES = [0x8ae8f0, 0xb89af0, 0xf0a8e0, 0xd8f4ff, 0x9ad0ff];
+
+function shard(w, B) {
+  const rng = mulberry32(7717);
+  const STONE = 0x8a8496, DARK = 0x5a5468, WOOD = 0x6a5038;
+  const list = [];
+  const hue = () => CRYSTAL_HUES[Math.floor(rng() * CRYSTAL_HUES.length)];
+  const cluster = (x, z, n, size, spread = 1.4, collide = true) => {
+    for (let i = 0; i < n; i++) {
+      const a = rng() * Math.PI * 2, d = i ? spread * (0.4 + rng()) : 0;
+      const h = size * (i ? 0.45 + rng() * 0.5 : 1), r = h * (0.16 + rng() * 0.06);
+      const px = x + Math.sin(a) * d, pz = z + Math.cos(a) * d;
+      list.push({ x: px, z: pz, h, r, rx: (rng() - 0.5) * (i ? 0.9 : 0.25), ry: rng() * 3, rz: (rng() - 0.5) * (i ? 0.9 : 0.25), hex: hue() });
+      if (collide && h > 2) w.addCircle(px, pz, r * 0.9);
+    }
+  };
+  // The Glass Gate: two great crystals leaning together over the pass.
+  const L = LOBES.shard, gx = L.gate[0], gz = L.gate[1];
+  const into = Math.atan2(L.x - gx, L.z - gz);
+  for (const sd of [-1, 1]) {
+    const x = gx + Math.cos(into) * sd * 8, z = gz - Math.sin(into) * sd * 8;
+    list.push({ x, z, h: 18, r: 2.2, rx: 0, ry: into, rz: sd * 0.32, hex: sd < 0 ? 0x8ae8f0 : 0xb89af0 });
+    w.addCircle(x, z, 2.0);
+    cluster(x + Math.cos(into) * sd * 2.5, z - Math.sin(into) * sd * 2.5, 4, 4, 1.2);
+  }
+  // Prismwatch: shards ringing the shrine.
+  const pw = Z.prismwatch;
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2 + 0.3;
+    if (Math.cos(a) < -0.5) continue;
+    cluster(pw.x + Math.sin(a) * 7.5, pw.z + Math.cos(a) * 7.5, 2, 2 + rng() * 2, 0.6);
+  }
+  // Pell's Dig: a timbered pit-head cut into a crystal seam, a tent, a cart and crates of cut glass.
+  const dx = -478, dz = 376, dy = w.getHeight(dx, dz) - 0.3;
+  for (const sd of [-1, 1]) w.block(dx + sd * 2.2, dz, 0.45, 3.6, 0.45, 0, { y: dy, color: WOOD });
+  w.block(dx, dz, 5.2, 0.45, 0.6, 0, { y: dy + 3.4, color: WOOD, collide: false });
+  w.block(dx, dz + 1.6, 6.5, 4.5, 3.2, 0, { y: dy - 0.4, color: DARK });
+  w.block(dx, dz + 0.1, 3.6, 3.2, 0.2, 0, { y: dy, color: 0x1a1820, collide: false }); // the dark of the shaft
+  cluster(dx + 4.5, dz + 2, 6, 5, 1.5);
+  cluster(dx - 4.6, dz + 1.4, 5, 4, 1.4);
+  w._static(P.buildTent(), -462, 360, 2.2);
+  w._static(P.buildCart(), -480, 364, 0.4);
+  w.addCircle(-480, 364, 1.4);
+  for (const [ox, oz, s] of [[-470, 378, 0.8], [-471, 377, 0.6], [-458, 376, 0.7]]) w.block(ox, oz, s, s, s, rng(), { color: 0x7a5a3a });
+  cluster(-470.2, 377.6, 3, 0.7, 0.3, false);
+  // The Singing Spires: a stand of tall crystals that hum in the wind.
+  const sp = Z.spires;
+  B.spires = [];
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 2 + rng() * 0.3, d = 6 + rng() * 12;
+    const x = sp.x + Math.sin(a) * d, z = sp.z + Math.cos(a) * d;
+    if (Math.hypot(x + 360, z - 484) < 4) continue; // keep the lamp's spot clear
+    const h = 12 + rng() * 14;
+    list.push({ x, z, h, r: h * 0.12, rx: (rng() - 0.5) * 0.2, ry: rng() * 3, rz: (rng() - 0.5) * 0.2, hex: hue() });
+    w.addCircle(x, z, h * 0.1);
+    B.spires.push({ x, z, y: w.getHeight(x, z) + h * 0.8 });
+  }
+  // The Heart of Glass: a crater ringed by crystal, a floor of glassy plates, a great geode at its back.
+  const H = HEART, hy = w.getHeight(H.x, H.z);
+  const open = Math.atan2(-462 - H.x, 470 - H.z);
+  for (let i = 0; i < 18; i++) {
+    const a = (i / 18) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - open), Math.cos(a - open))) < 0.42) continue;
+    const x = H.x + Math.sin(a) * (H.r + 2), z = H.z + Math.cos(a) * (H.r + 2);
+    const h = 7 + rng() * 9;
+    list.push({ x, z, h, r: h * 0.14, rx: Math.cos(a) * 0.25, ry: rng() * 3, rz: -Math.sin(a) * 0.25, hex: hue() });
+    w.addCircle(x, z, h * 0.12);
+  }
+  const bx = H.x - Math.sin(open) * (H.r + 10), bz = H.z - Math.cos(open) * (H.r + 10);
+  list.push({ x: bx, z: bz, h: 30, r: 5, ry: 0.4, hex: 0xd8c0ff });
+  B.geode = { x: bx, z: bz, y: w.getHeight(bx, bz) + 14 };
+  for (let i = 0; i < 50; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (H.r - 2);
+    w.block(H.x + Math.sin(a) * d, H.z + Math.cos(a) * d, 1.4 + rng() * 1.8, 0.14, 1.4 + rng() * 1.8, rng() * 3, { y: hy - 0.1, color: [0xb8b0d0, 0xa8d8e0, 0xc8b8e0][Math.floor(rng() * 3)], collide: false });
+  }
+  // Crystal ridges all over the steppe, kept off the roads and out of the named places.
+  for (let n = 0, tries = 0; n < 90 && tries < 3000; tries++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (L.r - 8);
+    const x = L.x + Math.sin(a) * d, z = L.z + Math.cos(a) * d;
+    if (w.roadDistance(x, z) < 8 || !w.inPlay(x, z, 4)) continue;
+    let ok = true;
+    for (const zn of Object.values(Z)) if (zn.flat != null && Math.hypot(x - zn.x, z - zn.z) < zn.flat + 8) ok = false;
+    if (Math.hypot(x - H.x, z - H.z) < H.r + 8 || Math.hypot(x - sp.x, z - sp.z) < 22) ok = false;
+    if (!ok) continue;
+    cluster(x, z, 2 + Math.floor(rng() * 5), 2 + Math.pow(rng(), 1.5) * 9, 1.6);
+    n++;
+  }
+  const cm = crystalMesh(w, list);
+  B.crystalMat = cm.mat;
+  B.crystals = list;
+}
+
 // ---------- scenery (batched by world/Scenery.js) ----------
 
 const sg = () => P.sceneryGeometries();
@@ -782,7 +988,7 @@ export function biomeScenery(sc) {
     if (w.biomeAt(x, z, -6) !== k || !w.inPlay(x, z, 4)) return false;
     if (w.roadDistance(x, z) < 5 + pad) return false;
     for (const zn of Object.values(Z)) if (zn.flat != null && Math.hypot(x - zn.x, z - zn.z) < zn.flat + 3 + pad) return false;
-    for (const a of [CALDERA, WRECK, GROVE]) if (Math.hypot(x - a.x, z - a.z) < a.r + 3 + pad) return false;
+    for (const a of [CALDERA, WRECK, GROVE, GLADE, HEART]) if (Math.hypot(x - a.x, z - a.z) < a.r + 3 + pad) return false;
     return sc.clearOfGear(x, z, 2) && sc.clearOfPois(x, z, 2.5);
   };
   const scatter = (k, n, tries, pad, fn, L = LOBES[k]) => {
@@ -954,6 +1160,74 @@ export function biomeScenery(sc) {
     const s = 0.6 + rng() * 0.6;
     sc._put(sc.small, P.tuftParts(rng, 0x9a9488), x, z, { s, sy: s * 0.7, sink: 0.05 });
   });
+  // The Amberwood: old oaks and birches in red and gold, thickets, fallen logs, toadstools, leaf drifts.
+  for (const t of B.gladeTrees ?? []) sc._put(sc.big, autumnOakParts(rng, 2.2), t.x, t.z, { y: t.y - 11 * 1.0, s: 1.0, sy: 1.0 });
+  scatter('amber', 260, 5000, 0, (x, z) => {
+    if (w.slopeAt(x, z) > 0.55 || Math.hypot(x - MERE.x, z - MERE.z) < MERE.r * 1.3) return false;
+    const birch = rng() < 0.3, s = 0.85 + rng() * 0.5;
+    sc._put(sc.big, birch ? birchParts(rng) : autumnOakParts(rng), x, z, { s });
+    w.addCircle(x, z, (birch ? 0.25 : 0.4) * s);
+    const t = { x, z, y: w.getHeight(x, z), s, type: 'broad' };
+    sc.trees.push(t);
+    sc.broadTrees.push(t);
+  });
+  scatter('amber', 260, 4000, -2, (x, z) => {
+    if (Math.hypot(x - MERE.x, z - MERE.z) < MERE.r * 1.1) return false;
+    sc._put(sc.big, autumnBushParts(rng), x, z, { s: 0.7 + rng() * 0.6, sink: 0.1 });
+  });
+  scatter('amber', 40, 2000, 0, (x, z) => {
+    if (w.slopeAt(x, z) > 0.3) return false;
+    sc._put(sc.big, P.logParts(rng, 3 + rng() * 3), x, z, { sink: 0.15 });
+    w.addCircle(x, z, 0.6);
+  });
+  scatter('amber', 300, 4000, -3, (x, z) => {
+    sc._put(sc.small, rng() < 0.5 ? P.mushroomParts(rng) : P.fernParts(rng), x, z, { s: 0.7 + rng() * 0.6, sink: 0.05 });
+  });
+  scatter('amber', 500, 4000, -3.5, (x, z) => {
+    if (w.slopeAt(x, z) > 0.5) return false;
+    sc._put(sc.small, leafPileParts(rng), x, z, { s: 0.6 + rng() * 0.9 });
+  });
+  scatter('amber', 1400, 6000, -3.5, (x, z) => {
+    if (w.slopeAt(x, z) > 0.5 || Math.hypot(x - MERE.x, z - MERE.z) < MERE.r) return false;
+    const s = 0.6 + rng() * 0.6;
+    sc._put(sc.small, P.tuftParts(rng, rng() < 0.5 ? 0xc8a050 : 0x9a8a40), x, z, { s, sy: s * 0.9, sink: 0.05 });
+  });
+  scatter('amber', 90, 2500, -2, (x, z) => {
+    const s = 0.4 + Math.pow(rng(), 2) * 2;
+    if (s > 0.9 && w.roadDistance(x, z) < 6) return false;
+    sc._put(sc.big, P.rockParts(rng, 0x7a6a5a), x, z, { rx: rng(), rz: rng(), sx: s * 1.2, sy: s * 0.7, sz: s });
+    if (s > 0.9) w.addCircle(x, z, s * 0.9);
+  });
+  for (let i = 0; i < 70; i++) {
+    const a = rng() * Math.PI * 2, d = MERE.r * (0.85 + rng() * 0.35);
+    sc._put(sc.small, P.reedParts(rng), MERE.x + Math.sin(a) * d, MERE.z + Math.cos(a) * d, { s: 0.8 + rng() * 0.4, sink: 0.1 });
+  }
+  for (let i = 0; i < 10; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * MERE.r * 0.7;
+    sc._put(sc.small, P.lilyParts(rng), MERE.x + Math.sin(a) * d, MERE.z + Math.cos(a) * d, { y: w.mereLevel + 0.02 });
+  }
+  // The Shardlands: little crystal clusters, pale rocks, salt crusts and wiry lilac grass.
+  scatter('shard', 500, 5000, -3, (x, z) => {
+    sc._put(sc.small, crystalParts(rng), x, z, { s: 0.5 + rng() * 0.8, sink: 0.05 });
+  });
+  scatter('shard', 160, 3000, -2, (x, z) => {
+    const s = 0.4 + Math.pow(rng(), 2) * 2.2;
+    if (s > 0.9 && w.roadDistance(x, z) < 6) return false;
+    sc._put(sc.big, P.rockParts(rng, rng() < 0.6 ? 0x9a94a8 : 0xb8b4c0), x, z, { rx: rng(), rz: rng(), sx: s * 1.3, sy: s * 0.6, sz: s });
+    if (s > 0.9) w.addCircle(x, z, s * 0.9);
+  });
+  scatter('shard', 220, 3000, -3, (x, z) => {
+    sc._put(sc.small, [{ geo: sg().disc, matrix: xform(0, -0.05, 0, 0, 0, 0, 1, 0.08, 0.7 + rng() * 0.6), color: tone(0xeeeaf2, rng) }], x, z, { s: 1 + rng() * 2 });
+  });
+  scatter('shard', 1200, 6000, -3.5, (x, z) => {
+    if (w.slopeAt(x, z) > 0.5) return false;
+    const s = 0.5 + rng() * 0.6;
+    sc._put(sc.small, P.tuftParts(rng, rng() < 0.5 ? 0xa898c0 : 0xc8c0a8), x, z, { s, sy: s * 0.8, sink: 0.05 });
+  });
+  scatter('shard', 30, 1500, 0, (x, z) => {
+    sc._put(sc.big, P.deadParts(rng), x, z, { s: 0.6 + rng() * 0.4 });
+    w.addCircle(x, z, 0.25);
+  });
   // The Heights: twisted wind-bent pines, boulders and lichen-grey grass.
   scatter('storm', 140, 3000, 0, (x, z) => {
     if (w.slopeAt(x, z) > 0.55) return false;
@@ -973,6 +1247,59 @@ export function biomeScenery(sc) {
     const s = 0.6 + rng() * 0.6;
     sc._put(sc.small, P.tuftParts(rng, rng() < 0.5 ? 0x8a8e6a : 0x6a7458), x, z, { s, sy: s * 0.8, sink: 0.05 });
   });
+}
+
+const AUTUMN = [0xb8442a, 0xc8642a, 0xd88a30, 0xd8a840, 0x9a3a2a];
+function autumnOakParts(rng, big = 1) {
+  const hue = () => AUTUMN[Math.floor(rng() * AUTUMN.length)];
+  const a = rng() * 6.28, h = 3.4 * big;
+  const parts = [
+    { geo: sg().trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 1.5 * big, h, 1.5 * big), color: tone(0x4a3626, rng), flex: P.TREE_FLEX },
+    { geo: sg().branch, matrix: xform(0, h * 0.7, 0, 0, a, 0.8, 1.6 * big, 1.6 * big, 1.6 * big), color: tone(0x4a3626, rng), flex: P.TREE_FLEX },
+    { geo: sg().crown, matrix: xform(0, h + 1.2 * big, 0, 0, a, 0, 3.0 * big, 2.3 * big, 3.0 * big), color: tone(hue(), rng), flex: P.TREE_FLEX },
+    { geo: sg().crown, matrix: xform(Math.sin(a) * 1.8 * big, h + 1.9 * big, Math.cos(a) * 1.8 * big, 0.4, a, 0, 1.9 * big, 1.5 * big, 1.9 * big), color: tone(hue(), rng), flex: P.TREE_FLEX },
+    { geo: sg().crown, matrix: xform(-Math.sin(a) * 1.5 * big, h + 0.6 * big, -Math.cos(a) * 1.5 * big, 0.2, a, 0, 1.7 * big, 1.3 * big, 1.7 * big), color: tone(hue(), rng), flex: P.TREE_FLEX },
+  ];
+  return parts;
+}
+
+function birchParts(rng) {
+  const h = 5 + rng() * 2;
+  const gold = rng() < 0.5 ? 0xe0b040 : 0xd89a30;
+  return [
+    { geo: sg().trunk, matrix: xform(0, -0.2, 0, 0, 0, 0, 0.7, h, 0.7), color: tone(0xe8e4dc, rng), flex: P.TREE_FLEX },
+    { geo: sg().box, matrix: xform(0, h * 0.3, 0.12, 0, 0, 0, 0.1, 0.12, 0.05), color: tone(0x2a2624, rng) },
+    { geo: sg().box, matrix: xform(0.1, h * 0.55, 0, 0, 0, 0, 0.05, 0.1, 0.1), color: tone(0x2a2624, rng) },
+    { geo: sg().crown, matrix: xform(0, h + 0.3, 0, 0, rng() * 6, 0, 1.4, 2.4, 1.4), color: tone(gold, rng), flex: P.TREE_FLEX * 1.4 },
+    { geo: sg().crown, matrix: xform(0.3, h - 1.2, 0.2, 0, rng() * 6, 0, 1.2, 1.6, 1.2), color: tone(gold, rng).offsetHSL(0, 0, -0.05), flex: P.TREE_FLEX * 1.4 },
+  ];
+}
+
+function autumnBushParts(rng) {
+  const hue = AUTUMN[Math.floor(rng() * AUTUMN.length)], parts = [];
+  for (let i = 0; i < 3; i++) {
+    const a = rng() * 6.28, d = i ? 0.4 + rng() * 0.4 : 0;
+    parts.push({ geo: sg().crown, matrix: xform(Math.sin(a) * d, 0.4, Math.cos(a) * d, 0, a, 0, 0.7 + rng() * 0.3, 0.55, 0.7 + rng() * 0.3), color: tone(hue, rng), flex: 0.05 });
+  }
+  return parts;
+}
+
+function leafPileParts(rng) {
+  const parts = [];
+  for (let i = 0; i < 3; i++) {
+    const a = rng() * 6.28, d = i ? 0.3 + rng() * 0.4 : 0;
+    parts.push({ geo: sg().lump, matrix: xform(Math.sin(a) * d, -0.05, Math.cos(a) * d, 0, a, 0, 0.6 + rng() * 0.3, 0.16, 0.5 + rng() * 0.3), color: tone(AUTUMN[Math.floor(rng() * AUTUMN.length)], rng) });
+  }
+  return parts;
+}
+
+function crystalParts(rng) {
+  const parts = [], n = 2 + Math.floor(rng() * 4);
+  for (let i = 0; i < n; i++) {
+    const a = rng() * 6.28, d = i ? 0.15 + rng() * 0.3 : 0, h = (i ? 0.3 + rng() * 0.4 : 0.8);
+    parts.push({ geo: sg().octa, matrix: xform(Math.sin(a) * d, h * 0.3, Math.cos(a) * d, (rng() - 0.5) * 0.8, a, (rng() - 0.5) * 0.8, h * 0.2, h, h * 0.2), color: tone(CRYSTAL_HUES[Math.floor(rng() * CRYSTAL_HUES.length)], rng) });
+  }
+  return parts;
 }
 
 function cactusParts(rng) {
@@ -1094,6 +1421,18 @@ export function updateBiomes(w, dt, time) {
     bg.wall.enabled = shut;
   }
   B.oasis.update(time, sky, w.weather.rain);
+  B.mere?.update(time, sky, w.weather.rain);
+  // The Shardlands' crystals gather light by day and give it back after dark, slowly pulsing.
+  if (B.crystalMat) B.crystalMat.emissiveIntensity = 0.3 + night * 0.9 + Math.sin(time * 0.7) * 0.08;
+  if (region === 'shard' && Math.random() < dt * 10) {
+    const x = cam.x + (Math.random() - 0.5) * 40, z = cam.z + (Math.random() - 0.5) * 40;
+    ps.emit({ x, y: w.getHeight(x, z) + 0.4 + Math.random() * 3, z, count: 1, speed: 0.1, up: 0.15, color: 0xe8f4ff, color2: 0xc0a0ff, life: [0.6, 1.4], size: [0.04, 0.08], drag: 0.2, jitter: 0.6 });
+  }
+  // Fireflies over the Amberwood after dusk.
+  if (region === 'amber' && night > 0.3 && Math.random() < dt * 12 * night) {
+    const x = cam.x + (Math.random() - 0.5) * 36, z = cam.z + (Math.random() - 0.5) * 36;
+    ps.emit({ x, y: w.getHeight(x, z) + 0.6 + Math.random() * 2.5, z, count: 1, speed: 0.25, up: 0.1, color: 0xf0ff80, color2: 0xffd040, life: [1.5, 3], size: [0.05, 0.09], drag: 0.3, jitter: 1.2 });
+  }
   if (region === 'dunes' && Math.random() < dt * 8) {
     const x = cam.x + (Math.random() - 0.5) * 40, z = cam.z + (Math.random() - 0.5) * 40;
     ps.emit({ x, y: w.getHeight(x, z) + 0.2, z, count: 2, speed: 0.4, up: 0.2, color: 0xe8c890, color2: 0xfff0c8, life: [1, 2], size: [0.05, 0.1], drag: 0.3, jitter: 0.4, dir: { x: 3, y: 0.2, z: 1 } });

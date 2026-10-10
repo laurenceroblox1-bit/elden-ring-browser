@@ -5,7 +5,7 @@
 // spawn(owner, o) options:
 //   kind      'bolt' (a ball of lantern fire), 'crescent' (a flat burning arc), 'arrow' (a bowman's
 //             shaft, nose along its flight), 'shard' (a spike of ice), 'boulder' (a lump of ice), 'fire',
-//             'magma' (a lobbed lump), 'spore' or 'water'; the look
+//             'magma' (a lobbed lump), 'spore', 'water', 'sand', 'spark', 'leaf' or 'crystal'; the look
 //   x, y, z   start point;  dirX, dirY, dirZ  direction (normalised here);  speed (m/s)
 //   radius    hit sphere radius (m);  life (s) before it fizzles
 //   hit       the hit object passed to Combat (dmg, poise, heavy, ...)
@@ -46,6 +46,9 @@ function looks() {
     spore: { geo: ico(0.2, 1), mat: additive(0xd0ffc0, 0.85), glow: glow(0x90e070, 0.8), glowSize: 1.6, color: 0x9ae070, color2: 0xe080ff, trail: 2 },
     water: { geo: ico(0.22, 1), mat: additive(0xd0f4ff, 0.8), glow: glow(0x60c0e0, 0.7), glowSize: 1.6, color: 0x9fe0ff, color2: 0xffffff, trail: 3 },
     sand: { geo: ico(0.2, 1), mat: additive(0xfff0c0, 0.7), glow: glow(0xd8a050, 0.7), glowSize: 1.5, color: 0xe8c080, color2: 0xfff0c8, trail: 3 },
+    // The Amberwood's razor leaves and the Shardlands' splinters of crystal.
+    leaf: { geo: new THREE.OctahedronGeometry(0.2, 0).scale(1.4, 0.25, 0.8), mat: additive(0xffb050, 0.95), glow: glow(0xff8a20, 0.6), glowSize: 1.2, color: 0xd8742e, color2: 0xffd060, trail: 2 },
+    crystal: { geo: new THREE.OctahedronGeometry(0.16, 0).scale(0.7, 0.7, 2.6), mat: new THREE.MeshStandardMaterial({ color: 0xe8e0ff, emissive: 0x9a70ff, emissiveIntensity: 1.4, roughness: 0.1, flatShading: true }), glow: glow(0xc0a0ff, 0.7), glowSize: 1.1, color: 0xd8c8ff, color2: 0x9ae8ff, aligned: true, trail: 1 },
     spark: { geo: new THREE.OctahedronGeometry(0.14, 0).scale(0.6, 0.6, 3), mat: additive(0xf0f8ff), glow: glow(0x70c0ff, 0.9), glowSize: 1.6, color: 0xbfe8ff, color2: 0xffffff, aligned: true, trail: 3 },
   };
   return LOOKS;

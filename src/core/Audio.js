@@ -46,7 +46,7 @@ export class AudioFx {
     this.rumble?.gain.setTargetAtTime(r === 'cinder' ? 0.5 : 0, t, 1.5);
     this.surf?.gain.setTargetAtTime(r === 'coast' ? 0.42 : 0, t, 1.5);
     this.rainBed?.gain.setTargetAtTime(r === 'storm' ? 0.3 : 0, t, 1.5);
-    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : r === 'dunes' ? 0.14 : r === 'storm' ? 0.12 : 0, t, 1.5);
+    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : r === 'dunes' ? 0.14 : r === 'storm' ? 0.12 : r === 'shard' ? 0.1 : 0, t, 1.5);
     clearInterval(this.croakTimer);
     if (r === 'fen') {
       this.croakTimer = setInterval(() => {
@@ -80,6 +80,25 @@ export class AudioFx {
         // The great bell, very far above: felt more than heard.
         this._bell(65, 0.08, 7, this.amb);
       }, 6000);
+    } else if (r === 'amber') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.35) return;
+        // Birdsong: a few quick rising chirps; now and then a woodpecker far off.
+        if (Math.random() < 0.2) {
+          for (let i = 0; i < 6; i++) this._noise({ dur: 0.02, type: 'bandpass', freq: 1400, q: 3, gain: 0.05, delay: i * 0.07, dest: this.amb });
+          return;
+        }
+        const f = 2200 + Math.random() * 1400;
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) this._tone({ freq: f, to: f * 1.3, type: 'sine', dur: 0.08, gain: 0.025, delay: i * 0.13, dest: this.amb });
+      }, 1700);
+    } else if (r === 'shard') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.4) return;
+        // The crystals singing in the wind: high glassy notes, never quite a tune.
+        const f = [1047, 1175, 1397, 1568, 1760][Math.floor(Math.random() * 5)];
+        this._bell(f, 0.018, 3.5, this.amb);
+        if (Math.random() < 0.4) this._bell(f * 1.5, 0.01, 3, this.amb);
+      }, 2200);
     } else if (r === 'glow') {
       this.croakTimer = setInterval(() => {
         if (this.muted || Math.random() < 0.3) return;
@@ -539,6 +558,17 @@ export class AudioFx {
         this._bell(196, 0.05, 4, this.music);
         this._bell(233, 0.035, 4, this.music);
       }, 3800],
+      hunt: [() => {
+        // A hunting horn over a heartbeat drum.
+        this._tone({ freq: 147, to: 147, type: 'sawtooth', dur: 1.4, gain: 0.07, attack: 0.25, dest: this.music });
+        this._tone({ freq: 220, to: 220, type: 'sawtooth', dur: 0.9, gain: 0.05, attack: 0.2, delay: 1.5, dest: this.music });
+        for (let i = 0; i < 4; i++) this._tone({ freq: 62, to: 40, type: 'sine', dur: 0.3, gain: 0.22, delay: i * 0.55, dest: this.music });
+      }, 4400],
+      glass: [() => {
+        const base = [659, 784, 880, 988][Math.floor(Math.random() * 4)];
+        for (let i = 0; i < 3; i++) this._bell(base * [1, 1.25, 1.5][i], 0.035, 4, this.music);
+        this._noise({ dur: 1.8, type: 'lowpass', freq: 120, to: 70, gain: 0.2, attack: 0.1, dest: this.music });
+      }, 3200],
       spore: [() => {
         const f = [523, 622, 784, 932][Math.floor(Math.random() * 4)];
         this._bell(f, 0.04, 5, this.music);

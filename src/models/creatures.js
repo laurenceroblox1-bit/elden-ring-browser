@@ -647,3 +647,323 @@ export function buildBellRinger() {
   mergeHumanoid(r, [glow]);
   return { ...r, light, glow };
 }
+
+// ---------- the Amberwood ----------
+
+// Rustback Boars: bristling red-brown boars as big as a pony, with yellowed tusks and a ridge of stiff
+// dark bristles. The hound's joint layout, so the hound's gaits drive them.
+export function buildBoar() {
+  const hide = mat(0x7a4a2e, { roughness: 0.95 }), dark = mat(0x4a2e1e, { roughness: 0.95 }), tusk = mat(0xe8dcb0);
+  const eye = mat(0xffd070, { emissive: 0xff9a20, emissiveIntensity: 1.4 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.66 });
+  root.add(body);
+  body.add(mesh(box(0.5, 0.5, 0.56), hide, { z: 0.2, y: 0.04 }));
+  body.add(mesh(box(0.44, 0.44, 0.5), hide, { z: -0.3, y: 0.02 }));
+  body.add(mesh(box(0.46, 0.3, 0.4), dark, { z: -0.02, y: -0.12 }));
+  for (let i = 0; i < 6; i++) body.add(mesh(box(0.06, 0.14, 0.14), dark, { z: 0.42 - i * 0.16, y: 0.3 - Math.abs(i - 1.5) * 0.015 }));
+  const neck = group({ y: 0.02, z: 0.46, rx: -0.2 });
+  body.add(neck);
+  neck.add(mesh(box(0.36, 0.36, 0.26), hide, { z: 0.08 }));
+  const head = group({ z: 0.22, rx: 0.3 });
+  neck.add(head);
+  head.add(mesh(box(0.3, 0.28, 0.3), hide));
+  head.add(mesh(box(0.2, 0.18, 0.26), dark, { z: 0.24, y: -0.04 }));
+  head.add(mesh(box(0.16, 0.12, 0.04), mat(0x3a2a24), { z: 0.38, y: -0.04 })); // snout
+  for (const x of [-0.1, 0.1]) {
+    head.add(mesh(box(0.04, 0.03, 0.03), eye, { x, y: 0.06, z: 0.15, shadow: false }));
+    head.add(mesh(box(0.08, 0.1, 0.03), dark, { x: x * 1.3, y: 0.18, z: -0.04, rz: x * 3 })); // ears
+  }
+  const jaw = group({ y: -0.12, z: 0.1 });
+  head.add(jaw);
+  jaw.add(mesh(box(0.16, 0.06, 0.26), dark, { z: 0.14 }));
+  for (const x of [-0.08, 0.08]) jaw.add(mesh(cone(0.03, 0.2, 4), tusk, { x, y: 0.08, z: 0.28, rx: -0.5, rz: x * -3 }));
+  const tail = group({ y: 0.12, z: -0.56, rx: -0.9 });
+  body.add(tail);
+  tail.add(mesh(box(0.04, 0.04, 0.22), dark, { z: -0.1 }));
+  const legs = [];
+  const mkLeg = (x, z, front) => {
+    const hip = group({ x, y: -0.12, z });
+    body.add(hip);
+    hip.add(mesh(box(0.14, 0.28, 0.16), front ? hide : dark, { y: -0.12 }));
+    const knee = group({ y: -0.26 });
+    hip.add(knee);
+    knee.add(mesh(box(0.09, 0.28, 0.1), dark, { y: -0.13 }));
+    knee.add(mesh(box(0.1, 0.05, 0.12), mat(0x2a2220), { y: -0.27, z: 0.02 }));
+    legs.push({ hip, knee, front, side: Math.sign(x) });
+  };
+  mkLeg(0.17, 0.3, true); mkLeg(-0.17, 0.3, true); mkLeg(0.16, -0.38, false); mkLeg(-0.16, -0.38, false);
+  mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
+  return { root, body, neck, head, jaw, tail, legs, materials: { ember: eye } };
+}
+
+// Amberwood Poachers: hooded woodsmen in leaf-brown leathers who took the old lodge's hunting grounds
+// for their own. A bearded hatchet and no shield; fast, mean, and fond of a backhand.
+export function buildPoacher() {
+  const leather = mat(0x6a4a2e), cloth = mat(0x8a5a2a, { side: THREE.DoubleSide }), hood = mat(0x4a5a2a, { side: THREE.DoubleSide });
+  const r = buildHumanoid({ skin: mat(0xc49a78), body: leather, arms: cloth, legs: mat(0x4a3a2a), boots: mat(0x2e2420), hands: mat(0x5a3a22) }, { chestW: 0.5, waistW: 0.42 });
+  r.head.add(mesh(cone(0.22, 0.34, 6), hood, { y: 0.26, z: -0.04, rx: -0.25 }));
+  r.head.add(mesh(box(0.27, 0.12, 0.26), hood, { y: 0.24 }));
+  r.head.add(mesh(box(0.2, 0.08, 0.04), mat(0x3a2a20), { y: 0.03, z: 0.13 })); // a mask of cloth
+  r.torso.add(mesh(box(0.52, 0.05, 0.31), mat(0x3a2a1e), { y: 0.1 }));
+  r.torso.add(mesh(box(0.06, 0.6, 0.06), mat(0x3a2a1e), { y: 0.36, z: 0.0, rz: 0.7 })); // a strap
+  const quiver = group({ y: 0.4, z: -0.18, rz: 0.4 });
+  quiver.add(mesh(cyl(0.06, 0.06, 0.5, 6), mat(0x5a3a22)));
+  for (let i = 0; i < 3; i++) quiver.add(mesh(box(0.02, 0.2, 0.02), mat(0xd8d0c0), { x: (i - 1) * 0.03, y: 0.32 }));
+  r.torso.add(quiver);
+  r.hips.add(mesh(box(0.42, 0.34, 0.02), cloth, { y: -0.18, z: 0.15 }));
+  const axe = group();
+  axe.add(mesh(box(0.04, 0.04, 0.62), mat(0x5a3e28), { z: 0.2 }));
+  axe.add(mesh(box(0.025, 0.24, 0.18), mat(0x9a9890, { metalness: 0.6, roughness: 0.4 }), { z: 0.48, y: 0.08 }));
+  r.armR.hand.add(axe);
+  const mid = group({ z: 0.3 }), tip = group({ z: 0.55 });
+  r.armR.hand.add(mid, tip);
+  mergeHumanoid(r);
+  return { ...r, markers: { mid, tip } };
+}
+
+// Barkhusks: old oaks that got up and walked when the king's wood went wrong. A body of grey-brown bark
+// with amber sap glowing in the cracks, arms like boughs ending in knotted root-fists, a crown of
+// red leaves. Built at person size and scaled up.
+export function buildBarkhusk() {
+  const bark = mat(0x5a4636, { roughness: 0.95 }), bark2 = mat(0x6e5a44, { roughness: 0.95 });
+  const sap = mat(0xffc860, { unique: true, emissive: 0xff8a20, emissiveIntensity: 1.4 });
+  const leaf = mat(0xb8442a), leaf2 = mat(0xd8862e);
+  const r = buildHumanoid({ skin: bark2, body: bark, arms: bark2, legs: bark, boots: bark2, hands: bark },
+    { chestW: 0.7, chestD: 0.44, waistW: 0.5, shoulderW: 0.44, armW: 0.19, legW: 0.22, headW: 0.3, headH: 0.3 });
+  r.torso.add(mesh(box(0.06, 0.4, 0.04), sap, { x: -0.1, y: 0.36, z: 0.23, rz: 0.2, shadow: false }));
+  r.torso.add(mesh(box(0.3, 0.05, 0.04), sap, { x: 0.08, y: 0.48, z: 0.23, rz: -0.2, shadow: false }));
+  for (const x of [-0.07, 0.07]) r.head.add(mesh(box(0.06, 0.04, 0.03), sap, { x, y: 0.17, z: 0.16, shadow: false }));
+  r.head.add(mesh(box(0.12, 0.05, 0.03), mat(0x2a1e16), { y: 0.06, z: 0.16 }));
+  // A crown of red leaves and broken branches.
+  r.head.add(mesh(ico(0.3, 0), leaf, { y: 0.44, x: 0.05 }));
+  r.head.add(mesh(ico(0.22, 0), leaf2, { y: 0.5, x: -0.18, z: -0.06 }));
+  r.head.add(mesh(box(0.05, 0.4, 0.05), bark, { x: 0.18, y: 0.5, rz: -0.6 }));
+  r.torso.add(mesh(ico(0.3, 0), leaf2, { y: 0.66, x: 0.3, z: -0.1 }));
+  r.torso.add(mesh(ico(0.26, 0), leaf, { y: 0.62, x: -0.3, z: -0.12 }));
+  for (const arm of [r.armR, r.armL]) {
+    arm.hand.add(mesh(ico(0.18, 0), bark2, { y: -0.04 }));
+    for (let i = 0; i < 3; i++) arm.hand.add(mesh(box(0.05, 0.22, 0.05), bark, { x: (i - 1) * 0.07, y: -0.16, rz: (i - 1) * 0.3 }));
+    arm.shoulder.add(mesh(box(0.05, 0.3, 0.05), bark2, { y: 0.2, x: 0.08, rz: -0.5 }));
+  }
+  mergeHumanoid(r);
+  return { ...r, magma: sap };
+}
+
+// Hornwood, the Antlered King: the old king of the wood, who made a pact with it and was crowned with
+// a stag's antlers that grew through his helm. Tall and gaunt, a cloak of red and gold leaves, a
+// stag's skull for a face with amber eyes, and a long greatblade carved from a single antler.
+export function buildAntlerKing() {
+  const cloak = mat(0x8a3a24, { side: THREE.DoubleSide }), cloak2 = mat(0xc8742e, { side: THREE.DoubleSide });
+  const bone = mat(0xe8dcc0), wood = mat(0x4a3626), gold = mat(0xc8a040, { metalness: 0.6, roughness: 0.4 });
+  const eye = mat(0xffd060, { unique: true, emissive: 0xffa020, emissiveIntensity: 2.0 });
+  const r = buildHumanoid({ skin: bone, body: mat(0x5a3e2a), arms: wood, legs: mat(0x3a2a1e), boots: wood, hands: wood },
+    { chestW: 0.56, waistW: 0.42, shoulderW: 0.38, armW: 0.13, headW: 0.22, headH: 0.3 });
+  // The stag-skull face, and antlers branching high above.
+  r.head.add(mesh(box(0.16, 0.12, 0.22), bone, { y: 0.08, z: 0.12 }));
+  for (const x of [-0.06, 0.06]) r.head.add(mesh(box(0.045, 0.03, 0.02), eye, { x, y: 0.2, z: 0.13, shadow: false }));
+  r.head.add(mesh(cyl(0.15, 0.16, 0.06, 8), gold, { y: 0.32 })); // the old crown, sunk into the bone
+  const antlers = group({ y: 0.34 });
+  for (const s of [-1, 1]) {
+    const beam = group({ x: s * 0.09, rz: -s * 0.6 });
+    beam.add(mesh(box(0.05, 0.7, 0.05), bone, { y: 0.35 }));
+    for (let i = 0; i < 4; i++) beam.add(mesh(box(0.035, 0.28 - i * 0.04, 0.035), bone, { y: 0.15 + i * 0.16, x: -s * 0.08, rz: s * 0.9, rx: (i % 2 ? 0.3 : -0.3) }));
+    const top = group({ y: 0.68, rz: s * 0.5 });
+    top.add(mesh(box(0.04, 0.4, 0.04), bone, { y: 0.2 }));
+    top.add(mesh(box(0.03, 0.22, 0.03), bone, { y: 0.24, x: s * 0.08, rz: -s * 0.8 }));
+    beam.add(top);
+    antlers.add(beam);
+  }
+  r.head.add(antlers);
+  // The leaf cloak: layered mantle and a long skirt of leaves.
+  r.torso.add(mesh(box(0.66, 0.14, 0.38), cloak, { y: 0.58 }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI - Math.PI / 2;
+    r.torso.add(mesh(box(0.14, 0.4, 0.03), i % 2 ? cloak : cloak2, { x: Math.sin(a) * 0.3, y: 0.38, z: -0.16 - Math.cos(a) * 0.05, rx: 0.15 }));
+  }
+  for (let i = 0; i < 3; i++) r.hips.add(mesh(cyl(0.26 + i * 0.07, 0.38 + i * 0.08, 0.36, 8, true), i % 2 ? cloak2 : cloak, { y: -0.14 - i * 0.28 }));
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.24, 0.12, 0.28), cloak2, { y: 0.04 }));
+  // The antler greatblade.
+  const blade = group();
+  blade.add(mesh(cyl(0.03, 0.035, 0.5, 6), wood, { rx: Math.PI / 2, z: 0.05 }));
+  blade.add(mesh(box(0.22, 0.05, 0.06), gold, { z: 0.3 }));
+  blade.add(mesh(box(0.08, 0.04, 1.3), bone, { z: 0.98 }));
+  for (let i = 0; i < 3; i++) blade.add(mesh(box(0.03, 0.03, 0.26), bone, { z: 0.7 + i * 0.32, x: 0.08, ry: -0.6 }));
+  blade.add(mesh(box(0.012, 0.02, 1.2), eye, { z: 0.98, y: 0.025, shadow: false }));
+  r.armR.hand.add(blade);
+  const glow = glowSprite(0xffb040, 1.4, 0.55);
+  glow.position.set(0, 0.2, 0.14);
+  r.head.add(glow);
+  mergeHumanoid(r, [antlers, blade, glow]);
+  return { ...r, eye, glow };
+}
+
+// Edda, the lodge's last huntress: grey braid, a green hood, a longbow on her back.
+export function buildEdda() {
+  const hood = mat(0x4a6a3a, { side: THREE.DoubleSide }), leather = mat(0x7a5a3a);
+  const r = buildHumanoid({ skin: mat(0xc8a084), body: leather, arms: hood, legs: mat(0x4a3a2a), boots: mat(0x3a2a1e) }, { chestW: 0.48, waistW: 0.4 });
+  r.head.add(mesh(box(0.27, 0.12, 0.27), hood, { y: 0.26 }));
+  r.head.add(mesh(box(0.08, 0.36, 0.06), mat(0xb8b4ac), { y: 0.0, z: -0.15 })); // the braid
+  r.hips.add(mesh(box(0.42, 0.34, 0.02), hood, { y: -0.18, z: 0.15 }));
+  const bow = group({ y: 0.36, z: -0.2, rz: 0.5 });
+  bow.add(mesh(box(0.04, 1.3, 0.04), mat(0x6a4a2a)));
+  bow.add(mesh(box(0.01, 1.24, 0.01), mat(0xe8e0d0), { z: -0.06 }));
+  r.torso.add(bow);
+  mergeHumanoid(r);
+  return r;
+}
+
+// ---------- the Shardlands ----------
+
+// Shardback Lizards: long, low lizards of the steppe with a ridge of crystal growing from their backs,
+// pale lilac scales and eyes like chips of glass. The hound's layout once more.
+export function buildShardback() {
+  const scale = mat(0x8a82a0, { roughness: 0.8 }), belly = mat(0xc8c0d4, { roughness: 0.8 });
+  const glass = mat(0xd0f0ff, { emissive: 0x6a50d0, emissiveIntensity: 0.9, roughness: 0.15, flatShading: true });
+  const eye = mat(0xe0f8ff, { emissive: 0x60e0ff, emissiveIntensity: 2.0 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.42 });
+  root.add(body);
+  body.add(mesh(box(0.42, 0.24, 0.9), scale, { z: 0.0 }));
+  body.add(mesh(box(0.36, 0.08, 0.86), belly, { y: -0.12 }));
+  for (let i = 0; i < 5; i++) body.add(mesh(ico(0.08 + (i % 2) * 0.04, 0), glass, { y: 0.16 + (i % 2) * 0.05, z: 0.34 - i * 0.18, x: (i % 2 ? 0.05 : -0.05), shadow: false }));
+  const neck = group({ y: 0.02, z: 0.46, rx: -0.15 });
+  body.add(neck);
+  neck.add(mesh(box(0.24, 0.18, 0.26), scale, { z: 0.1 }));
+  const head = group({ z: 0.24, rx: 0.15 });
+  neck.add(head);
+  head.add(mesh(box(0.26, 0.14, 0.32), scale, { z: 0.08 }));
+  for (const x of [-0.1, 0.1]) head.add(mesh(box(0.05, 0.04, 0.04), eye, { x, y: 0.06, z: 0.12, shadow: false }));
+  head.add(mesh(ico(0.06, 0), glass, { y: 0.1, z: -0.02, shadow: false }));
+  const jaw = group({ y: -0.06, z: 0.04 });
+  head.add(jaw);
+  jaw.add(mesh(box(0.22, 0.04, 0.3), belly, { z: 0.12 }));
+  const tail = group({ y: 0.0, z: -0.46, rx: 0.15 });
+  body.add(tail);
+  tail.add(mesh(box(0.2, 0.14, 0.5), scale, { z: -0.24 }));
+  tail.add(mesh(box(0.1, 0.08, 0.5), scale, { z: -0.7 }));
+  tail.add(mesh(ico(0.07, 0), glass, { z: -0.95, shadow: false }));
+  const legs = [];
+  const mkLeg = (x, z, front) => {
+    const hip = group({ x, y: -0.04, z, rz: -Math.sign(x) * 0.9 });
+    body.add(hip);
+    hip.add(mesh(box(0.1, 0.24, 0.1), scale, { y: -0.1 }));
+    const knee = group({ y: -0.22, rz: Math.sign(x) * 0.9 });
+    hip.add(knee);
+    knee.add(mesh(box(0.07, 0.22, 0.07), scale, { y: -0.1 }));
+    knee.add(mesh(box(0.12, 0.04, 0.14), belly, { y: -0.21, z: 0.03 }));
+    legs.push({ hip, knee, front, side: Math.sign(x) });
+  };
+  mkLeg(0.22, 0.3, true); mkLeg(-0.22, 0.3, true); mkLeg(0.22, -0.3, false); mkLeg(-0.22, -0.3, false);
+  mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
+  return { root, body, neck, head, jaw, tail, legs, materials: { ember: eye } };
+}
+
+// Glass-Mad Miners: Pell's old crew, who dug too deep and came up with crystal growing out of them.
+// Grimy leathers, a lamp on the brow gone violet, shards jutting from their shoulders, a pick.
+export function buildGlassMiner() {
+  const leather = mat(0x5a4a3e), cloth = mat(0x6a6070), glass = mat(0xd0f0ff, { emissive: 0x7a50d0, emissiveIntensity: 0.9, roughness: 0.15, flatShading: true });
+  const r = buildHumanoid({ skin: mat(0xa8a0b0), body: leather, arms: cloth, legs: mat(0x3e3a40), boots: mat(0x2a2628), hands: mat(0x4a4040) }, { chestW: 0.52, waistW: 0.44 });
+  r.head.add(mesh(cyl(0.15, 0.17, 0.12, 8), mat(0x6a5a3a, { metalness: 0.4 }), { y: 0.3 }));
+  r.head.add(mesh(box(0.08, 0.06, 0.04), mat(0xe0d0ff, { emissive: 0xa070ff, emissiveIntensity: 2 }), { y: 0.3, z: 0.16, shadow: false }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.035, 0.025, 0.02), mat(0xe0f8ff, { emissive: 0x80c0ff, emissiveIntensity: 2 }), { x, y: 0.15, z: 0.135, shadow: false }));
+  for (const s of [-1, 1]) {
+    const sh = (s < 0 ? r.armR : r.armL).shoulder;
+    sh.add(mesh(ico(0.08, 0), glass, { y: 0.14, x: s * -0.04, shadow: false }));
+    sh.add(mesh(cone(0.05, 0.26, 4), glass, { y: 0.2, rz: s * 0.4, shadow: false }));
+  }
+  r.torso.add(mesh(cone(0.07, 0.3, 4), glass, { y: 0.56, z: -0.16, rx: -0.6, shadow: false }));
+  r.hips.add(mesh(box(0.46, 0.12, 0.3), mat(0x3a2e24), { y: 0.0 }));
+  const pick = group();
+  pick.add(mesh(box(0.04, 0.04, 0.8), mat(0x5a3e28), { z: 0.26 }));
+  pick.add(mesh(box(0.04, 0.5, 0.05), mat(0x8a8890, { metalness: 0.6, roughness: 0.4 }), { z: 0.62, rx: 0.15 }));
+  pick.add(mesh(cone(0.03, 0.12, 4), glass, { z: 0.62, y: 0.3, shadow: false }));
+  r.armR.hand.add(pick);
+  const mid = group({ z: 0.4 }), tip = group({ z: 0.7 });
+  r.armR.hand.add(mid, tip);
+  mergeHumanoid(r);
+  return { ...r, markers: { mid, tip } };
+}
+
+// Prism Wraiths: shapes of folded light that drift over the steppe, throwing splinters of crystal.
+export function buildPrismWraith() {
+  const robe = mat(0xd8d0f0, { roughness: 0.4, emissive: 0x6a4ab0, emissiveIntensity: 0.55, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+  const shroud = mat(0xa8a0d0, { roughness: 0.4, emissive: 0x4a3a90, emissiveIntensity: 0.5, side: THREE.DoubleSide });
+  const glass = mat(0xe8f8ff, { emissive: 0x70d0ff, emissiveIntensity: 1.2, roughness: 0.1, flatShading: true });
+  const eye = mat(0xffffff, { emissive: 0xc090ff, emissiveIntensity: 3 });
+  const r = buildHumanoid({ skin: shroud, body: robe, arms: robe, legs: robe, boots: robe, hands: glass }, { chestW: 0.44, waistW: 0.34 });
+  for (const leg of [r.legR, r.legL]) for (const g of [leg.hip, leg.knee]) for (const c of [...g.children]) if (c.isMesh) g.remove(c);
+  r.head.add(mesh(cone(0.24, 0.5, 4), shroud, { y: 0.2, z: -0.05, ry: Math.PI / 4 }));
+  r.head.add(mesh(box(0.2, 0.18, 0.06), mat(0x14102a), { y: 0.06, z: 0.12 }));
+  for (const x of [-0.05, 0.05]) r.head.add(mesh(box(0.035, 0.025, 0.02), eye, { x, y: 0.08, z: 0.155, shadow: false }));
+  r.hips.add(mesh(cyl(0.2, 0.42, 1.0, 6, true), robe, { y: -0.5 }));
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    r.hips.add(mesh(cone(0.06, 0.4, 4), glass, { x: Math.sin(a) * 0.38, y: -1.0, z: Math.cos(a) * 0.38, rx: Math.PI, shadow: false }));
+  }
+  r.torso.add(mesh(ico(0.12, 0), glass, { y: 0.44, z: 0.16, shadow: false }));
+  for (const arm of [r.armR, r.armL]) for (let i = 0; i < 3; i++) arm.hand.add(mesh(cone(0.02, 0.2, 4), glass, { x: (i - 1) * 0.035, y: -0.12, rx: Math.PI }));
+  mergeHumanoid(r);
+  return r;
+}
+
+// Prism Golems: the Shardlands' elites, boulders of pale stone with crystal growing through them like
+// bones, a geode of a head that glows from inside.
+export function buildPrismGolem() {
+  const rock = mat(0x8a8496, { roughness: 0.9 }), rock2 = mat(0x6e687c, { roughness: 0.9 });
+  const glow = mat(0xe0f0ff, { unique: true, emissive: 0x8a60ff, emissiveIntensity: 1.6, roughness: 0.15, flatShading: true });
+  const glass = mat(0xd0f0ff, { emissive: 0x5a9ad0, emissiveIntensity: 0.8, roughness: 0.15, flatShading: true });
+  const r = buildHumanoid({ skin: rock2, body: rock, arms: rock2, legs: rock, boots: rock2, hands: rock },
+    { chestW: 0.72, chestD: 0.44, waistW: 0.5, shoulderW: 0.46, armW: 0.2, legW: 0.22, headW: 0.32, headH: 0.26 });
+  r.head.add(mesh(ico(0.12, 0), glow, { y: 0.16, z: 0.12, shadow: false }));
+  r.torso.add(mesh(box(0.84, 0.36, 0.5), rock2, { y: 0.5 }));
+  for (const [x, y, rz, h] of [[0.28, 0.82, -0.3, 0.5], [-0.24, 0.86, 0.35, 0.6], [0.02, 0.9, 0.05, 0.42], [-0.4, 0.7, 0.8, 0.34]]) r.torso.add(mesh(cone(0.1, h, 4), glass, { x, y, z: -0.12, rz, shadow: false }));
+  r.torso.add(mesh(ico(0.14, 0), glow, { y: 0.36, z: 0.22, shadow: false })); // the heart-stone
+  for (const arm of [r.armR, r.armL]) {
+    arm.hand.add(mesh(ico(0.2, 0), rock2, { y: -0.04 }));
+    arm.elbow.add(mesh(cone(0.06, 0.3, 4), glass, { y: -0.1, x: 0.12, rz: -1.0, shadow: false }));
+  }
+  mergeHumanoid(r);
+  return { ...r, magma: glow };
+}
+
+// Corundel, the Glass Colossus: the Heart of Glass given a body. A giant of clear and violet crystal
+// grown around a core of white light, shoulders of jagged shards, a faceted head with no face at all.
+export function buildColossus() {
+  const clear = mat(0xd8ecf8, { roughness: 0.12, metalness: 0.15, emissive: 0x3a5a9a, emissiveIntensity: 0.5, flatShading: true });
+  const violet = mat(0xb898e8, { roughness: 0.15, metalness: 0.1, emissive: 0x5a3a9a, emissiveIntensity: 0.6, flatShading: true });
+  const stone = mat(0x6e687c, { roughness: 0.9 });
+  const core = mat(0xffffff, { unique: true, emissive: 0xd0c0ff, emissiveIntensity: 2.2 });
+  const r = buildHumanoid({ skin: clear, body: violet, arms: clear, legs: stone, boots: violet, hands: clear },
+    { chestW: 0.7, chestD: 0.42, waistW: 0.46, shoulderW: 0.44, armW: 0.17, legW: 0.2, headW: 0.26, headH: 0.32 });
+  r.head.add(mesh(ico(0.2, 0), clear, { y: 0.2 }));
+  r.head.add(mesh(cone(0.08, 0.3, 4), violet, { y: 0.42, shadow: false }));
+  r.torso.add(mesh(ico(0.16, 0), core, { y: 0.42, z: 0.14, shadow: false }));
+  for (const s of [-1, 1]) {
+    const sh = (s < 0 ? r.armR : r.armL).shoulder;
+    for (let i = 0; i < 3; i++) sh.add(mesh(cone(0.07, 0.36 - i * 0.06, 4), i % 2 ? violet : clear, { y: 0.16, x: s * -0.02 + (i - 1) * 0.06, rz: s * (0.2 + i * 0.35), shadow: false }));
+  }
+  for (const [x, rz] of [[0.18, -0.3], [-0.16, 0.3], [0, 0]]) r.torso.add(mesh(cone(0.09, 0.5, 4), violet, { x, y: 0.72, z: -0.16, rz, rx: -0.3, shadow: false }));
+  for (const arm of [r.armR, r.armL]) {
+    arm.hand.add(mesh(ico(0.17, 0), violet, { y: -0.06 }));
+    for (let i = 0; i < 3; i++) arm.hand.add(mesh(cone(0.03, 0.2, 4), clear, { x: (i - 1) * 0.06, y: -0.2, rx: Math.PI }));
+  }
+  const glow = glowSprite(0xc0a8ff, 1.8, 0.6);
+  glow.position.set(0, 0.42, 0.18);
+  r.torso.add(glow);
+  mergeHumanoid(r, [glow]);
+  return { ...r, core, glow };
+}
+
+// Pell, the glass-cutter: a stout old miner with goggles pushed up, a leather apron full of tools.
+export function buildPell() {
+  const apron = mat(0x6a4a2e), shirt = mat(0x8a7a6a);
+  const r = buildHumanoid({ skin: mat(0xd0a888), body: shirt, arms: shirt, legs: mat(0x4a4038), boots: mat(0x2e2620) }, { chestW: 0.56, waistW: 0.52 });
+  r.head.add(mesh(box(0.25, 0.06, 0.04), mat(0x3a3a3a), { y: 0.3, z: 0.12 }));
+  for (const x of [-0.06, 0.06]) r.head.add(mesh(cyl(0.04, 0.04, 0.03, 8), mat(0xc8e8ff, { emissive: 0x4080c0, emissiveIntensity: 0.6 }), { x, y: 0.3, z: 0.14, rx: Math.PI / 2 }));
+  r.head.add(mesh(box(0.2, 0.1, 0.06), mat(0xd8d0c8), { y: 0.02, z: 0.12 })); // a white beard
+  r.torso.add(mesh(box(0.5, 0.56, 0.04), apron, { y: 0.26, z: 0.16 }));
+  r.torso.add(mesh(box(0.12, 0.1, 0.03), mat(0x8a8890, { metalness: 0.6 }), { x: 0.12, y: 0.2, z: 0.19 }));
+  mergeHumanoid(r);
+  return r;
+}

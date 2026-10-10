@@ -36,7 +36,7 @@ import { STONES, GREAT_ONES, LOBES } from '../data/biomes.js';
 import { MAX_LEVEL, upgradeCost, levelName } from '../data/smithing.js';
 
 // The weather each region brings with it; the Vale and the fen keep whatever the Vale has.
-const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm', bell: 'bellmist' };
+const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm', bell: 'bellmist', amber: 'autumn', shard: 'glint' };
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';

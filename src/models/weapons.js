@@ -41,6 +41,11 @@ const M = {
   copper: () => mat(0x5aa08a, { metalness: 0.6, roughness: 0.4 }),
   spark: () => mat(0xe0f4ff, { emissive: 0x70c0ff, emissiveIntensity: 1.8 }),
   frostRim: () => mat(0xe8f4fa, { roughness: 0.6 }),
+  antler: () => mat(0xe8dcc0),
+  amber: () => mat(0xffc860, { emissive: 0xff8a20, emissiveIntensity: 1.2 }),
+  oak: () => mat(0x8a5a32),
+  glass: () => mat(0xd8ecf8, { roughness: 0.12, metalness: 0.15, emissive: 0x3a5a9a, emissiveIntensity: 0.6 }),
+  violet: () => mat(0xb898e8, { roughness: 0.15, metalness: 0.1, emissive: 0x6a40c0, emissiveIntensity: 0.9 }),
 };
 
 // ---------- weapon models ----------
@@ -305,6 +310,43 @@ const BUILD = {
     g.add(mesh(box(0.03, 0.22, 0.08), M.spark(), { z: 1.7, y: 0.1, rx: 0.6, shadow: false }));
     return { right: g };
   },
+  // Huntsman's Hatchet: a short ash haft and a bearded head.
+  hunters_hatchet() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.62), M.wood(), { z: 0.2 }));
+    g.add(mesh(box(0.05, 0.05, 0.1), M.leather(), { z: -0.06 }));
+    g.add(mesh(box(0.025, 0.2, 0.16), M.steel(), { z: 0.46, y: 0.08 }));
+    g.add(mesh(box(0.025, 0.08, 0.12), M.steel(), { z: 0.5, y: -0.02 }));
+    return { right: g };
+  },
+  // King's Antler: a long antler blade on a hilt of the old king's gold.
+  kings_antler() {
+    const g = group();
+    g.add(mesh(box(0.05, 0.05, 0.36), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.3, 0.06, 0.07), M.trim(), { z: 0.2 }));
+    g.add(mesh(box(0.09, 0.045, 1.35), M.antler(), { z: 0.9 }));
+    for (let i = 0; i < 3; i++) g.add(mesh(box(0.035, 0.035, 0.26), M.antler(), { z: 0.6 + i * 0.32, x: 0.08, ry: -0.6 }));
+    g.add(mesh(box(0.012, 0.02, 1.2), M.amber(), { z: 0.9, y: 0.03, shadow: false }));
+    return { right: g };
+  },
+  // Prism Blade: a straight sword of clear crystal.
+  prism_blade() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.22), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.24, 0.04, 0.05), M.silver(), { z: 0.1 }));
+    g.add(mesh(box(0.07, 0.024, 1.0), M.glass(), { z: 0.62 }));
+    g.add(mesh(box(0.02, 0.03, 0.9), M.violet(), { z: 0.6, shadow: false }));
+    return { right: g };
+  },
+  // Colossus Shard: a slab of crystal with a stone grip.
+  colossus_shard() {
+    const g = group();
+    g.add(mesh(box(0.06, 0.06, 0.4), M.basalt(), { z: -0.04 }));
+    g.add(mesh(box(0.34, 0.1, 0.12), M.violet(), { z: 0.22 }));
+    g.add(mesh(box(0.16, 0.06, 1.5), M.glass(), { z: 1.0 }));
+    g.add(mesh(box(0.08, 0.07, 0.4), M.violet(), { z: 1.6, x: 0.04 }));
+    return { right: g };
+  },
   // Ringer's Hammer: an iron haft with a bronze bell for its head.
   ringers_hammer() {
     const g = group();
@@ -325,6 +367,21 @@ const BUILD_SHIELD = {
     g.add(mesh(cyl(0.34, 0.34, 0.04, 14), M.sunBronze(), { rz: Math.PI / 2 }));
     g.add(mesh(cyl(0.16, 0.16, 0.05, 10), M.lapis(), { rz: Math.PI / 2, x: 0.01 }));
     g.add(mesh(cone(0.06, 0.08, 8), M.sunBronze(), { rz: -Math.PI / 2, x: 0.05 }));
+    return g;
+  },
+  // Oakheart Shield: a round of heartwood with an amber boss.
+  oakheart_shield() {
+    const g = group({ x: 0.08, y: -0.17 });
+    g.add(mesh(cyl(0.34, 0.34, 0.06, 12), M.oak(), { rz: Math.PI / 2 }));
+    g.add(mesh(cyl(0.36, 0.36, 0.03, 12), M.wood(), { rz: Math.PI / 2, x: -0.01 }));
+    g.add(mesh(cone(0.08, 0.08, 8), M.amber(), { rz: -Math.PI / 2, x: 0.06 }));
+    return g;
+  },
+  // Glass Aegis: a small disc of clear crystal.
+  glass_aegis() {
+    const g = group({ x: 0.08, y: -0.17 });
+    g.add(mesh(cyl(0.26, 0.26, 0.04, 8), M.glass(), { rz: Math.PI / 2 }));
+    g.add(mesh(cyl(0.1, 0.1, 0.05, 6), M.violet(), { rz: Math.PI / 2, x: 0.01 }));
     return g;
   },
   // Thornguard: a kite shield of grey cap-flesh bristling with violet thorns.

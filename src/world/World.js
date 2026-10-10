@@ -9,7 +9,7 @@ import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
 import { Ambient } from './Ambient.js';
 import { WIND } from './Wind.js';
-import { LOBES, SEA, LAVA, VOLCANO, OASIS, SPIRE_AT } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, OASIS, MERE, SPIRE_AT } from '../data/biomes.js';
 import { buildBiomes, updateBiomes } from './Biomes.js';
 
 const SIZE = WORLD.size;
@@ -45,6 +45,12 @@ const COL = {
   oasisGrass: C(0x6e9a3a), duneRoad: C(0xc8a070),
   // The Hollow Bell.
   bellAsh: C(0x8a8490), bellAsh2: C(0x6e6878), bronze: C(0x8a6a3c),
+  // The Amberwood.
+  leafRed: C(0xa8442a), leafOrange: C(0xc8742e), leafGold: C(0xd8a840), woodSoil: C(0x5a4030), woodMoss: C(0x6a7a3a),
+  woodRock: C(0x7a6a5a), woodRoad: C(0x8a6a48),
+  // The Shardlands.
+  shardStone: C(0xa8a0b4), shardLit: C(0xcac4d4), shardDark: C(0x6e6680), shardSalt: C(0xe4e0ea), shardCyan: C(0x6ad0d8),
+  shardViolet: C(0x9a6ad0), shardRoad: C(0x9890a0),
   // The Stormspire Heights.
   slate: C(0x5c6068), slateDark: C(0x3c4048), stormMoss: C(0x4e5e48), stormLichen: C(0x8a8e6a), stormRoad: C(0x6e6a64),
 };
@@ -94,6 +100,7 @@ export class World {
     this.fenLevel = this.fenFloor - 0.35;
     // Each lava pool's surface sits a little under the ash around it.
     this.oasisLevel = this._raw(OASIS.x, OASIS.z).big - 1.2;
+    this.mereLevel = this._raw(MERE.x, MERE.z).big - 1.0;
     this.lavaPools = LAVA.pools.map((p) => ({ ...p, level: this._raw(p.x, p.z).big - 1.0 }));
     this.flatZones = Object.values(ZONES).filter((z) => z.flat != null).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
 
@@ -200,6 +207,17 @@ export class World {
       // A high, barren shelf under the spire.
       big = lerp(big, 34 + fbm(this.noise2, x * 0.02 - 3, z * 0.02 + 51, 2) * 3, B.bell);
     }
+    if (B.amber > 0) {
+      // Low, rolling woodland hills with soft hollows between them.
+      const n = fbm(this.noise2, x * 0.008 + 61, z * 0.008 - 17, 3);
+      big = lerp(big, 6 + n * 12 + Math.sin(x * 0.03) * Math.cos(z * 0.027) * 2.5, B.amber);
+    }
+    if (B.shard > 0) {
+      // A pale stone steppe, broken by long sharp ridges where the crystal has pushed up through it.
+      const rn = 1 - Math.abs(fbm(this.noise, x * 0.007 - 51, z * 0.007 + 33, 2));
+      const flat = fbm(this.noise2, x * 0.004 + 3, z * 0.004 - 9, 2) * 6;
+      big = lerp(big, 8 + flat + smoothstep(0.72, 0.95, rn) * 14, B.shard);
+    }
     if (B.storm > 0) {
       // A high, broken plateau of crags: ridged noise, sharp and grey.
       const rn = 1 - Math.abs(fbm(this.noise2, x * 0.009 + 77, z * 0.009 - 21, 3));
@@ -294,6 +312,9 @@ export class World {
     // The oasis pool, sunk into the dunes.
     const od = Math.hypot(x - OASIS.x, z - OASIS.z);
     if (od < OASIS.r * 1.6) h = lerp(h, this.oasisLevel - 2.4, 1 - smoothstep(OASIS.r * 0.5, OASIS.r * 1.05 + this.noise(x * 0.1, z * 0.1) * 2, od));
+    // The Amber Mere, in a hollow of the wood.
+    const md = Math.hypot(x - MERE.x, z - MERE.z);
+    if (md < MERE.r * 1.6) h = lerp(h, this.mereLevel - 2.6, 1 - smoothstep(MERE.r * 0.5, MERE.r * 1.05 + this.noise(x * 0.1 + 4, z * 0.1) * 2.5, md));
     // Lava basins and the lava river's channel, sunk below the ash.
     const lava = this.lavaDepth(x, z);
     if (lava > 0) h = lerp(h, this.lavaLevelAt(x, z) - 1.6, lava);
@@ -448,6 +469,28 @@ export class World {
           tmpC.lerp(COL.stormRoad, rw * 0.8);
           c.lerp(tmpC, B.storm);
         }
+        if (B.amber > 0) {
+          // Leaf litter in red, orange and gold over dark soil, moss in the hollows, the mere's muddy rim.
+          const lf = (this.noise(x * 0.09 + 13, z * 0.09 - 2) + 1) / 2;
+          tmpC.copy(COL.leafOrange).lerp(COL.leafRed, smoothstep(0.55, 0.85, lf)).lerp(COL.leafGold, smoothstep(0.45, 0.15, lf) * 0.8);
+          tmpC.lerp(COL.woodSoil, smoothstep(0.35, 0.05, t) * 0.5);
+          tmpC.lerp(COL.woodMoss, smoothstep(0.3, 0.75, macro) * 0.35);
+          tmpC.lerp(COL.woodRock, smoothstep(0.45, 0.8, slope));
+          tmpC.lerp(COL.woodRoad, rw * 0.85);
+          const mdd = Math.hypot(x - MERE.x, z - MERE.z);
+          tmpC.lerp(COL.mud, (1 - smoothstep(MERE.r * 0.9, MERE.r * 1.25 + nz * 3, mdd)) * 0.8);
+          c.lerp(tmpC, B.amber);
+        }
+        if (B.shard > 0) {
+          // Pale lilac stone and white salt pans, stains of cyan and violet where crystal runs under it.
+          tmpC.copy(COL.shardStone).lerp(COL.shardLit, smoothstep(0.2, 0.8, t));
+          tmpC.lerp(COL.shardSalt, smoothstep(0.55, 0.85, macro) * 0.6);
+          const vein = (this.noise(x * 0.05 - 7, z * 0.05 + 21) + 1) / 2;
+          tmpC.lerp(macro > 0 ? COL.shardCyan : COL.shardViolet, smoothstep(0.8, 0.92, vein) * 0.55);
+          tmpC.lerp(COL.shardDark, smoothstep(0.4, 0.8, slope));
+          tmpC.lerp(COL.shardRoad, rw * 0.8);
+          c.lerp(tmpC, B.shard);
+        }
         if (B.bell > 0) {
           // Pale ash with a violet cast, and a green-bronze crust where old bells have rotted into it.
           tmpC.copy(COL.bellAsh2).lerp(COL.bellAsh, smoothstep(0.2, 0.7, t));
@@ -553,6 +596,7 @@ export class World {
     if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return this.getHeight(x, z) < this.waterLevel - 0.3;
     if (x < SEA.shoreX + 30 && this.lobeDist(LOBES.coast, x, z) < LOBES.coast.r + 10) return this.getHeight(x, z) < SEA.level - 0.3;
     if (Math.hypot(x - OASIS.x, z - OASIS.z) < OASIS.r * 1.2) return this.getHeight(x, z) < this.oasisLevel - 0.3;
+    if (Math.hypot(x - MERE.x, z - MERE.z) < MERE.r * 1.2) return this.getHeight(x, z) < this.mereLevel - 0.3;
     return this.fenPoolDepth(x, z) > 0 && this.getHeight(x, z) < this.fenLevel - 0.3;
   }
 

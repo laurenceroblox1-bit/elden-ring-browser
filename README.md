@@ -10,9 +10,10 @@ Bell-Warden**. Out east, past the Watch Ruins, the road sinks into the Ashen Fen
 Mother of the Mire** sleeps in a ring of standing stones. Beat the Warden and the gates of Castle
 Dunmarrow open onto the **Rimewold**, a frozen highland where a troll owns the Howling Field and
 **Saelith, the Winter Lantern** keeps the flame that holds the land in winter. Past the mountains
-around the Vale lie five more regions, each with its own weather, enemies, people and boss: the
-volcanic **Cinderfall Wastes**, the **Drowned Coast**, the **Glowcap Hollows**, the **Gilded Dunes**
-and the **Stormspire Heights** (see *The outer regions*). Fell all five of their great ones and the
+around the Vale lie seven more regions, each with its own weather, enemies, people and boss: the
+volcanic **Cinderfall Wastes**, the **Drowned Coast**, the **Glowcap Hollows**, the **Gilded Dunes**,
+the **Stormspire Heights**, the autumn **Amberwood** and the crystal **Shardlands** (see *The outer
+regions*). Fell all five of their great ones and the
 mist lifts from the **Hollow Bell**, where the **Bell-Ringer** waits under the last spire. Play
 alone, or with friends in a shared Vale (see *Multiplayer*).
 
@@ -190,6 +191,8 @@ comes through (`data/biomes.js` holds all their layout; `world/Biomes.js` builds
 | **The Drowned Coast** | West, along the Salt Road | Dunes and the open sea, wrecks, the ruined village of Saltmarrow, the Broken Lighthouse (its lamp turns at night). Drowned Sailors with harpoons, Tidecrabs (their shells turn ordinary blows). Old Wenna. Boss: **Captain Morrow, the Drowned**, by his wreck: an anchor on a chain, rings of surf, and his crew climbing out of the shallows. |
 | **The Glowcap Hollows** | North-west, off the moor road | A violet hollow of giant glowing mushrooms in spore-mist. Sporelings that burst into poison clouds (even when killed), Glowcap Stalkers. Murk the Myconid. Boss: **Sylvara, the Bloom Witch**, under the Heartcap: thorny roots, spore volleys and clouds, petal blinks, a brood of sporelings. |
 | **The Gilded Dunes** | East, past the Ashen Fen | Golden dune ridges and sandstone mesas, the Oasis of Seven Palms, the Lost Caravan, the Sanctum of the Sun. Dune Scorpions (poison stings), Sand Revenants, Sand Wraiths. Tamsin the trader. Boss: **Solkar, the Sun Scarab**: charges, burrows up under you, a beam of sunfire, a sandstorm. |
+| **The Amberwood** | South-east, off the Cinder road through the Hunter's Gap | An old forest stuck in autumn: red and gold oaks, birches, leaf drifts, fireflies after dark. The Huntsman's Lodge, the Amber Mere. Rustback Boars (in pairs), Amberwood Poachers with hatchets, archers, and Barkhusks (walking oaks: roots burst up round their slams and in lines at you; fire hurts them). Edda the huntress. Boss: **Hornwood, the Antlered King**, in the Antlered Glade: antler-greatblade sweeps, a charge you can't turn aside, lines of roots, a fan of razor leaves, and at half health the Wild Hunt (boars come out of the trees). |
+| **The Shardlands** | South-west, from Brannoc's camp through the Glass Gate | A pale stone steppe split by ridges of glowing crystal that sing in the wind. Pell's Dig, the Singing Spires. Shardback Lizards (they shatter when they die), Glass-Mad Miners, Prism Wraiths, Prism Golems. Pell the glass-cutter. Boss: **Corundel, the Glass Colossus**, in the Heart of Glass: crystal slams, lines of crystal through the ground, crystal erupting under you, and a beam of hard light from its core (three beams at half health). |
 | **The Stormspire Heights** | North-east, up the Thunder Stair | Grey crags and needle spires in a thunderstorm whose bolts strike near you after a crackling warning (roll out of the circle). The Broken Monastery. Spire Knights, Thunder Wolves, Spire Gargoyles. Brother Aldous. Boss: **Vaelor, the Storm Herald**: a glaive of captured lightning, thrown bolts, lightning called down on and around you. |
 
 - **Burning and poison** work like frostbite: hits fill a meter (under your stamina bar, and on
@@ -199,6 +202,9 @@ comes through (`data/biomes.js` holds all their layout; `world/Biomes.js` builds
 - **Smithing**: smithing stones lie in the outer regions and the Vale's far corners. Lay your
   weapon on Hessa's anvil in the Sunken Forge with stones and ash to raise it a level, up to +5
   (9% more damage per level).
+- **New gear out there**: the Huntsman's Hatchet (thrown art), the King's Antler (a charge that
+  leaves roots behind you), the Prism Blade (a lance of light), the Colossus Shard (crystal erupts in a
+  line), the Oakheart and Glass Aegis shields, and the Bramble Snare and Shard Volley rites.
 - **Tamsin's wares**: once you've spoken to her at the oasis, her crates sell smithing stones, flask
   seeds (one more flask each) and the Sunsteel Shield (which turns fire aside).
 - **The Hollow Bell**: east of the Vale, between the Dunes and the Heights (a branch off the Dunes
@@ -210,7 +216,7 @@ comes through (`data/biomes.js` holds all their layout; `world/Biomes.js` builds
 - **Spirit summons**: the Spirit Wolves rite (the hounds quest's reward) and the Spirit Knight rite
   (found in the Vale) call spectral allies with blue health bars that fight beside you, follow you,
   and fade after a while or when you rest.
-- **Elites**: the Cinder Golems and Spire Gargoyles fight with a boss's moveset but are ordinary
+- **Elites**: the Cinder Golems, Spire Gargoyles, Barkhusks and Prism Golems fight with a boss's moveset but are ordinary
   foes: leashed to their posts and back on their feet after you rest.
 
 ## Guarding
@@ -379,6 +385,7 @@ src/entities/Drake.js      Ashmaw (and Scarab.js, Solkar): four-legged bosses on
 src/data/biomes.js         the outer regions' layout: lobes, zones, roads, shrines, spawns, loot, stones
 src/data/smithing.js       weapon levels and their costs
 src/entities/BellRinger.js the Hollow Bell's boss
+src/entities/AntlerKing.js, Colossus.js  the Amberwood's and the Shardlands' bosses
 src/world/Biomes.js        the outer regions' set pieces, lava, sea, oasis, glowcaps, storms, scenery
 src/models/creatures.js    the outer regions' creatures, bosses and traders
 src/ui/ShopPanel.js        Tamsin's wares

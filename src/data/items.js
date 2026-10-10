@@ -33,6 +33,10 @@ export const ITEMS = {
     name: 'Heartcap Spore',
     desc: 'A spore the size of a plum that glows from inside, taken from the Heartcap. Murk says it will grow into something better, given time and a little gratitude.',
   },
+  prism_lamp: {
+    name: "Pell's Prism-Lamp",
+    desc: 'A miner\'s lamp with a cut crystal in place of glass. Lit, it throws every colour there is across the walls. Pell\'s crew carried it up to the Singing Spires and left it there.',
+  },
   sun_disc: {
     name: 'Caravan Sun-Disc',
     desc: 'A hand-sized disc of beaten gold with a sun stamped on it: the token the caravan carried to show it traded under the Sanctum\'s protection. Tamsin\'s family\'s mark is scratched on the back.',

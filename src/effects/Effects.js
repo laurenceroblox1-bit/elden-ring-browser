@@ -15,6 +15,14 @@ function fxMaterial(color, opacity) {
   });
 }
 
+// Looks for iceSpike: ice (the default), the Bloom Witch's thorns, the Amberwood's roots, crystal.
+const SPIKE_LOOKS = {
+  ice: { ring: 0xbfe8ff, disc: 0x7cc8ff, color: 0xcfefff, emissive: 0x3a90d8, ei: 0.8, rough: 0.15, sound: 'frostbite', p1: 0xdff4ff, p2: 0x7cc8ff },
+  thorn: { ring: 0xf080e0, disc: 0x9a3a8a, color: 0x4a3a58, emissive: 0x7a2a8a, ei: 0.6, rough: 0.8, sound: 'spore', p1: 0x9ae070, p2: 0xd070f0 },
+  root: { ring: 0xffb050, disc: 0x8a4a1a, color: 0x5a3e28, emissive: 0x8a4a10, ei: 0.4, rough: 0.9, sound: 'slam', p1: 0xc8742e, p2: 0x6a4a2a },
+  crystal: { ring: 0xd8c0ff, disc: 0x8a60e0, color: 0xe0d8ff, emissive: 0x7a50e0, ei: 1.0, rough: 0.1, sound: 'crack', p1: 0xe8f4ff, p2: 0xb890ff },
+};
+
 export class Effects {
   constructor(game) {
     this.game = game;
@@ -81,17 +89,15 @@ export class Effects {
     game.net?.coop.fx('spike', owner, o, { x, z, delay });
     const R = o.radius ?? 2.2;
     const y = game.world.getHeight(x, z);
-    // o.look 'thorn': the Bloom Witch's roots instead of ice.
-    const thorn = o.look === 'thorn';
-    const ring = new THREE.Mesh(ringGeo, fxMaterial(thorn ? 0xf080e0 : 0xbfe8ff, 0));
+    // o.look 'thorn': the Bloom Witch's roots; 'root': the Amberwood's; 'crystal': the Shardlands'.
+    const L = SPIKE_LOOKS[o.look] ?? SPIKE_LOOKS.ice;
+    const ring = new THREE.Mesh(ringGeo, fxMaterial(L.ring, 0));
     ring.position.set(x, y + 0.12, z);
     ring.scale.set(R, 1, R);
-    const disc = new THREE.Mesh(discGeo, fxMaterial(thorn ? 0x9a3a8a : 0x7cc8ff, 0));
+    const disc = new THREE.Mesh(discGeo, fxMaterial(L.disc, 0));
     disc.position.set(x, y + 0.1, z);
     disc.scale.set(0.01, 1, 0.01);
-    const spikeMat = thorn
-      ? new THREE.MeshStandardMaterial({ color: 0x4a3a58, emissive: 0x7a2a8a, emissiveIntensity: 0.6, roughness: 0.8, flatShading: true, transparent: true, opacity: 0.98 })
-      : new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x3a90d8, emissiveIntensity: 0.8, roughness: 0.15, flatShading: true, transparent: true, opacity: 0.95 });
+    const spikeMat = new THREE.MeshStandardMaterial({ color: L.color, emissive: L.emissive, emissiveIntensity: L.ei, roughness: L.rough, flatShading: true, transparent: true, opacity: 0.97 });
     const spikes = new THREE.Group();
     const n = o.count ?? 7;
     for (let i = 0; i < n; i++) {
@@ -122,8 +128,8 @@ export class Effects {
             burst = true;
             spikes.visible = true;
             if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 0.8, z), R, o.hit, hitSet);
-            game.audio.playAt(thorn ? 'spore' : 'frostbite', { x, z });
-            game.particles.emit({ x, y: y + 0.5, z, count: 30, speed: 6, up: 4, color: thorn ? 0x9ae070 : 0xdff4ff, color2: thorn ? 0xd070f0 : 0x7cc8ff, life: [0.4, 0.9], size: [0.1, 0.22], drag: 2.5, gravity: 4 });
+            game.audio.playAt(L.sound, { x, z });
+            game.particles.emit({ x, y: y + 0.5, z, count: 30, speed: 6, up: 4, color: L.p1, color2: L.p2, life: [0.4, 0.9], size: [0.1, 0.22], drag: 2.5, gravity: 4 });
           }
           return true;
         }
