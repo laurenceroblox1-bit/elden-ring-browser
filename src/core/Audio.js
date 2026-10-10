@@ -74,6 +74,12 @@ export class AudioFx {
         // Sand hissing over the ridges.
         this._noise({ dur: 1.6, type: 'bandpass', freq: 3500, to: 2200, q: 0.8, gain: 0.05, attack: 0.6, dest: this.amb });
       }, 2400);
+    } else if (r === 'bell') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.35) return;
+        // The great bell, very far above: felt more than heard.
+        this._bell(65, 0.08, 7, this.amb);
+      }, 6000);
     } else if (r === 'glow') {
       this.croakTimer = setInterval(() => {
         if (this.muted || Math.random() < 0.3) return;

@@ -9,7 +9,7 @@ import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
 import { Ambient } from './Ambient.js';
 import { WIND } from './Wind.js';
-import { LOBES, SEA, LAVA, VOLCANO, OASIS } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, OASIS, SPIRE_AT } from '../data/biomes.js';
 import { buildBiomes, updateBiomes } from './Biomes.js';
 
 const SIZE = WORLD.size;
@@ -43,6 +43,8 @@ const COL = {
   // The Gilded Dunes.
   dune: C(0xe2b46a), duneLit: C(0xf0cc84), duneShade: C(0xc08e4e), sandstone: C(0xb4683e), sandstoneDark: C(0x8e4e30),
   oasisGrass: C(0x6e9a3a), duneRoad: C(0xc8a070),
+  // The Hollow Bell.
+  bellAsh: C(0x8a8490), bellAsh2: C(0x6e6878), bronze: C(0x8a6a3c),
   // The Stormspire Heights.
   slate: C(0x5c6068), slateDark: C(0x3c4048), stormMoss: C(0x4e5e48), stormLichen: C(0x8a8e6a), stormRoad: C(0x6e6a64),
 };
@@ -193,6 +195,10 @@ export class World {
       const ridge = Math.sin((x * 0.75 + z * 0.66) * 0.045 + n * 3) * 4.5 + Math.sin((x * 0.4 - z * 0.9) * 0.09 + n * 5) * 1.4;
       const mesa = smoothstep(0.42, 0.5, fbm(this.noise, x * 0.011 + 31, z * 0.011 - 8, 2)) * 14;
       big = lerp(big, 6 + ridge + n * 8 + mesa, B.dunes);
+    }
+    if (B.bell > 0) {
+      // A high, barren shelf under the spire.
+      big = lerp(big, 34 + fbm(this.noise2, x * 0.02 - 3, z * 0.02 + 51, 2) * 3, B.bell);
     }
     if (B.storm > 0) {
       // A high, broken plateau of crags: ridged noise, sharp and grey.
@@ -442,6 +448,14 @@ export class World {
           tmpC.lerp(COL.stormRoad, rw * 0.8);
           c.lerp(tmpC, B.storm);
         }
+        if (B.bell > 0) {
+          // Pale ash with a violet cast, and a green-bronze crust where old bells have rotted into it.
+          tmpC.copy(COL.bellAsh2).lerp(COL.bellAsh, smoothstep(0.2, 0.7, t));
+          tmpC.lerp(COL.bronze, smoothstep(0.75, 0.92, (this.noise(x * 0.08 + 7, z * 0.08) + 1) / 2) * 0.6);
+          tmpC.lerp(COL.slateDark, smoothstep(0.45, 0.8, slope));
+          tmpC.lerp(COL.road, rw * 0.5);
+          c.lerp(tmpC, B.bell);
+        }
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
         const snowLine = h + nz * 7;
@@ -684,7 +698,8 @@ export class World {
 
     // The Hollow Bell on the eastern peaks.
     const spire = P.buildSpire();
-    spire.group.position.set(330, this.getHeight(330, -400) - 10, -400); // on the far peaks, past the fen
+    spire.group.position.set(SPIRE_AT.x, this.getHeight(SPIRE_AT.x, SPIRE_AT.z) - 10, SPIRE_AT.z); // over the Hollow Bell's yard
+    this.addCircle(SPIRE_AT.x, SPIRE_AT.z, 16.5);
     this.scene.add(spire.group);
     this.statics.push(spire.group);
 

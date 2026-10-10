@@ -253,4 +253,16 @@ export const QUESTS = {
     reward: { ash: 1800, flask: 1 },
     doneText: 'For the first time in years the sun came out over the Stormspire. Aldous sat in it all afternoon.',
   },
+  hollowbell: {
+    title: 'The Hollow Bell',
+    main: true,
+    giver: 'The great ones, one by one',
+    summary: "Each of the great ones of the outer regions died with the same sound in the air: a bell, very far off. It comes from the spire on the eastern peaks, where a mist hangs across the only way up. The mist will not lift while any of the five still lives.",
+    stages: [
+      { text: 'Slay the five great ones of the outer regions: Ashmaw, Morrow, Sylvara, Solkar and Vaelor.', on: { type: 'talk', id: 'greatones' }, marker: [440, -124] },
+      { text: "Pass through the Bell's mist and silence what waits under the spire.", on: { type: 'boss', id: 'bellringer' }, marker: [488, -168] },
+    ],
+    reward: { ash: 5000, flask: 1 },
+    doneText: 'The Hollow Bell is silent. For the first time in an age, nothing in the Vale is keeping anything asleep.',
+  },
 };

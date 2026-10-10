@@ -12,6 +12,9 @@
 //           Oasis of Seven Palms, and the Sanctum of the Sun where the Sun Scarab sleeps under the sand.
 //   storm   The Stormspire Heights (north-east): grey crags and needle spires under a sky that never
 //           stops thundering, a ruined watch-monastery, and the summit where the Storm Herald waits.
+//   bell    The Hollow Bell (east, high on the peaks between the Dunes and the Heights): a barren shelf
+//           of cracked bronze and fallen bells under the great spire. Its mist only lifts once the five
+//           great ones of the outer regions are dead; the Bell-Ringer waits beyond it.
 
 // Play-area lobes (the Rimewold's is in world.js as RIME). Each is a circle; a ridge of peaks follows
 // its rim where it overlaps the Vale, broken only by a pass at `gate` (the road through), so the way
@@ -22,6 +25,7 @@ export const LOBES = {
   glow: { x: -390, z: -410, r: 160, gate: [-297, -280], gap: 10 },
   dunes: { x: 590, z: 80, r: 160, gate: [431, 63], gap: 11 },
   storm: { x: 390, z: -400, r: 150, gate: [347, -257], gap: 10 },
+  bell: { x: 500, z: -170, r: 75, gate: [440, -124], gap: 7 },
 };
 
 // The coast: the sea's surface level, and how far west you can wade before the water is too deep.
@@ -49,6 +53,13 @@ export const WRECK = { x: -560, z: -46, r: 28, trigger: 18, leash: 46 };
 export const GROVE = { x: -455, z: -482, r: 30, trigger: 21, leash: 46 };
 export const SANCTUM = { x: 650, z: 120, r: 32, trigger: 22, leash: 50 };
 export const SUMMIT = { x: 420, z: -470, r: 28, trigger: 19, leash: 44 };
+export const BELLYARD = { x: 488, z: -168, r: 30, trigger: 20, leash: 46 };
+export const SPIRE_AT = { x: 528, z: -204 };
+// The five great ones whose deaths lift the Bell's mist: [flag, name].
+export const GREAT_ONES = [
+  ['ashmawDead', 'Ashmaw, the Cinder Drake'], ['morrowDead', 'Captain Morrow, the Drowned'], ['sylvaraDead', 'Sylvara, the Bloom Witch'],
+  ['solkarDead', 'Solkar, the Sun Scarab'], ['vaelorDead', 'Vaelor, the Storm Herald'],
+];
 // The oasis pool (a little Water surface on a carved hollow).
 export const OASIS = { x: 560, z: 20, r: 16 };
 
@@ -86,6 +97,10 @@ export const BIOME_ZONES = {
   heights: { name: 'The Stormspire Heights', x: 380, z: -380, r: 50, flat: null },
   monastery: { name: 'The Broken Monastery', x: 320, z: -410, r: 22, flat: 22 },
   summit: { name: "The Herald's Summit", x: SUMMIT.x, z: SUMMIT.z, r: 30, flat: 36 },
+  // The Hollow Bell
+  bellmist: { name: "The Bell's Mist", x: 440, z: -124, r: 14, flat: null },
+  bellfoot: { name: 'Bellfoot Shrine', x: 432, z: -104, r: 12, flat: 10 },
+  bellyard: { name: 'The Hollow Bell', x: BELLYARD.x, z: BELLYARD.z, r: 34, flat: 40 },
 };
 
 export const BIOME_ROADS = [
@@ -105,6 +120,8 @@ export const BIOME_ROADS = [
   // North from the fen road, west of the Mother's Hollow, up the Thunder Stair to the summit.
   [[248, 54], [262, -10], [285, -90], [320, -170], [347, -257], [360, -300], [372, -350], [390, -400], [410, -440]],
   [[372, -350], [340, -390], [322, -405]],
+  // North-east from the dunes road up to the Bell's mist and the yard beyond.
+  [[360, 66], [400, 0], [422, -70], [432, -104], [440, -124], [462, -146]],
 ];
 
 export const BIOME_SHRINES = [
@@ -114,6 +131,7 @@ export const BIOME_SHRINES = [
   { id: 'mossdeep', name: 'Mossdeep Shrine', x: -328, z: -334 },
   { id: 'sunrest', name: 'Sunrest Shrine', x: 470, z: 52 },
   { id: 'stormgate', name: 'Stormgate Shrine', x: 360, z: -300 },
+  { id: 'bellfoot', name: 'Bellfoot Shrine', x: 432, z: -100 },
 ];
 
 export const BIOME_NPCS = [
@@ -183,6 +201,8 @@ export const BIOME_SPAWNS = [
   { kind: 'gargoyle', x: 386, z: -410, yaw: 2.4 },
   { kind: 'gargoyle', x: 300, z: -420, yaw: 1.4 },
   { kind: 'herald', x: SUMMIT.x + 4, z: SUMMIT.z - 6, yaw: 2.6 },
+  // The Hollow Bell
+  { kind: 'bellringer', x: BELLYARD.x + 8, z: BELLYARD.z - 8, yaw: -2.4 },
 ];
 
 export const BIOME_PICKUPS = [

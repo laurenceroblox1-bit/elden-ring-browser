@@ -614,3 +614,36 @@ export function buildAldous() {
   mergeHumanoid(r);
   return r;
 }
+
+// ---------- the Hollow Bell ----------
+
+// The Bell-Ringer: the thing the Hollow Bell was cast to keep asleep. A hollow giant in a mantle of
+// tarnished bronze plates, a bell for a head with a glowing clapper for a face, chains hanging from
+// its arms, and the great bell-hammer that rings the spire. Built at person size; the entity scales it.
+export function buildBellRinger() {
+  const bronze = mat(0x8a6a3c, { metalness: 0.6, roughness: 0.45 }), verd = mat(0x4f7a6a, { metalness: 0.4, roughness: 0.6 });
+  const cloth = mat(0x2e2a34, { side: THREE.DoubleSide }), iron = mat(0x3a3836, { metalness: 0.55, roughness: 0.5 });
+  const light = mat(0xffe2a8, { unique: true, emissive: 0xffb050, emissiveIntensity: 2.0 });
+  const r = buildHumanoid({ skin: iron, body: bronze, arms: cloth, legs: cloth, boots: iron, hands: iron },
+    { chestW: 0.66, chestD: 0.38, waistW: 0.5, shoulderW: 0.42, armW: 0.16 });
+  // The bell head: a flared bronze bell, its clapper glowing where a face should be.
+  r.head.add(mesh(cyl(0.16, 0.3, 0.42, 10), bronze, { y: 0.24 }));
+  r.head.add(mesh(cyl(0.31, 0.31, 0.05, 10), verd, { y: 0.04 }));
+  r.head.add(mesh(box(0.12, 0.06, 0.12), bronze, { y: 0.48 }));
+  r.head.add(mesh(ico(0.08, 0), light, { y: 0.06, z: 0.05, shadow: false }));
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.3, 0.16, 0.34), bronze, { y: 0.04 }));
+  for (let i = 0; i < 3; i++) r.torso.add(mesh(box(0.7, 0.05, 0.4), verd, { y: 0.15 + i * 0.16 }));
+  r.hips.add(mesh(cyl(0.3, 0.5, 0.9, 9, true), cloth, { y: -0.42 }));
+  for (const arm of [r.armR, r.armL]) for (let i = 0; i < 4; i++) arm.elbow.add(mesh(box(0.05, 0.08, 0.05), iron, { y: -0.3 - i * 0.09, x: 0.09 })); // trailing chain
+  // The bell-hammer: a long haft with a bell for its head.
+  const hammer = group();
+  hammer.add(mesh(cyl(0.04, 0.045, 1.8, 6), iron, { rx: Math.PI / 2, z: 0.55 }));
+  hammer.add(mesh(cyl(0.16, 0.3, 0.42, 9), bronze, { rz: Math.PI / 2, z: 1.4 }));
+  hammer.add(mesh(cyl(0.31, 0.31, 0.04, 9), verd, { rz: Math.PI / 2, z: 1.4, x: -0.2 }));
+  r.armR.hand.add(hammer);
+  const glow = glowSprite(0xffc070, 1.4, 0.6);
+  glow.position.set(0, 0.1, 0.1);
+  r.head.add(glow);
+  mergeHumanoid(r, [glow]);
+  return { ...r, light, glow };
+}

@@ -465,3 +465,15 @@ kbd {
 .shop-head span { color: var(--muted); font-size: 0.85em; }
 .shop-desc { grid-column: 1; font-size: 0.85em; color: var(--muted); }
 .shop-item .btn { grid-column: 2; grid-row: 1 / span 2; }
+
+/* ---------- the journey's end ---------- */
+.ending-screen { z-index: 30; }
+.ending-panel { width: min(620px, 92vw); text-align: center; display: grid; gap: 0.8rem; }
+.ending-panel h2 { font-size: 2rem; color: var(--gold-hi); }
+.ending-panel p { margin: 0; color: var(--muted); line-height: 1.5; }
+.ending-stats { list-style: none; margin: 0.4rem 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.6rem; }
+.ending-stats li { display: grid; gap: 0.2rem; padding: 0.5rem; border: 1px solid var(--panel-edge); }
+.ending-stats b { font: 1.6rem/1 var(--font-display); color: var(--gold-hi); }
+.ending-stats span { font-size: 0.8rem; color: var(--muted); }
+.ending-panel .test-btns { justify-content: center; }
+@media (max-width: 520px) { .ending-stats { grid-template-columns: repeat(2, 1fr); } }

@@ -8,7 +8,7 @@
 // plants and rocks; updateBiomes(world, dt, time) animates lava, sea, glow, smoke and the lighthouse.
 import * as THREE from '../lib/three.js';
 import { mulberry32, smoothstep } from '../core/math.js';
-import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, BIOME_ZONES as Z } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, BELLYARD, GREAT_ONES, BIOME_ZONES as Z } from '../data/biomes.js';
 import { WORLD } from '../data/world.js';
 import { mat, mesh, box, cyl, cone, glowSprite, glowTexture } from '../models/kit.js';
 import * as P from '../models/props.js';
@@ -181,6 +181,51 @@ export function buildBiomes(w) {
   glowcap(w, B);
   dunes(w, B);
   storm(w, B);
+  bell(w, B);
+}
+
+// ---------- the Hollow Bell ----------
+
+function bell(w, B) {
+  const rng = mulberry32(4404);
+  const STONE = 0x6a6660, BRONZE = 0x7a6a40, DARK = 0x4a4650;
+  // The mist across the pass: like the arena's, but it holds until the five great ones are dead.
+  const L = LOBES.bell, gx = L.gate[0], gz = L.gate[1];
+  const into = Math.atan2(L.x - gx, L.z - gz);
+  const fog = w._buildFogGate(gx, gz);
+  fog.mesh.rotation.y = into;
+  fog.mesh.scale.x = 2.4;
+  fog.glow.scale.multiplyScalar(1.8);
+  fog.collider.enabled = false;
+  fog.wall = w.addBox(gx, gz, 7, 0.8, -into + Math.PI / 2, true);
+  B.bellGate = fog;
+  for (const sd of [-1, 1]) {
+    const x = gx + Math.cos(into) * sd * 8, z = gz - Math.sin(into) * sd * 8;
+    w.block(x, z, 2.4, 12, 2.4, into, { color: STONE });
+    w.block(x, z, 3.0, 1.0, 3.0, into, { y: w.getHeight(x, z) + 11.4, color: BRONZE, collide: false });
+  }
+  // The yard: bell-frames standing round it, open towards the pass, and fallen bells everywhere.
+  const Y = BELLYARD, yy = w.getHeight(Y.x, Y.z);
+  const open = Math.atan2(gx - Y.x, gz - Y.z);
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - open), Math.cos(a - open))) < 0.4) continue;
+    const x = Y.x + Math.sin(a) * (Y.r + 2), z = Y.z + Math.cos(a) * (Y.r + 2);
+    const cs = Math.cos(a), sn = Math.sin(a);
+    for (const sd of [-1, 1]) w.block(x + cs * sd * 2, z - sn * sd * 2, 0.8, 7, 0.8, a, { y: yy - 0.4, color: DARK });
+    w.block(x, z, 5, 0.8, 0.8, a, { y: yy + 6.4, color: DARK, collide: false });
+    B.yardBells = B.yardBells ?? [];
+    B.yardBells.push({ x, z, y: yy + 3.6, ry: a });
+  }
+  for (let i = 0; i < 40; i++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * (Y.r - 3);
+    w.block(Y.x + Math.sin(a) * d, Y.z + Math.cos(a) * d, 1.6 + rng() * 1.6, 0.16, 1.6 + rng() * 1.6, rng() * 3, { y: yy - 0.1, color: 0x7a7480, collide: false });
+  }
+}
+
+// The Bell's mist lifts once every great one is dead; it shimmers until then.
+export function bellGateOpen(flags) {
+  return GREAT_ONES.every(([f]) => flags?.[f]);
 }
 
 // The storm itself is a combatant of sorts: its bolts strike players and beasts alike.
@@ -895,6 +940,20 @@ export function biomeScenery(sc) {
     sc._put(sc.big, P.deadParts(rng), x, z, { s: 0.6 + rng() * 0.4 });
     w.addCircle(x, z, 0.25);
   });
+  // The Hollow Bell: bells hanging dead in their frames, cracked bells half-sunk in the ash, dead trees.
+  for (const b of B.yardBells ?? []) sc._put(sc.big, P.fallenBellParts(rng), b.x, b.z, { y: b.y - 1.4, ry: b.ry, rz: 0, s: 1.1 });
+  scatter('bell', 22, 1500, 0, (x, z) => {
+    sc._put(sc.big, P.fallenBellParts(rng), x, z, { ry: rng() * 6, s: 0.8 + rng() * 1.2, sink: 0.4 });
+    w.addCircle(x, z, 1.2);
+  });
+  scatter('bell', 40, 1500, 0, (x, z) => {
+    sc._put(sc.big, P.deadParts(rng), x, z, { s: 0.8 + rng() * 0.5 });
+    w.addCircle(x, z, 0.3);
+  });
+  scatter('bell', 600, 3000, -3, (x, z) => {
+    const s = 0.6 + rng() * 0.6;
+    sc._put(sc.small, P.tuftParts(rng, 0x9a9488), x, z, { s, sy: s * 0.7, sink: 0.05 });
+  });
   // The Heights: twisted wind-bent pines, boulders and lichen-grey grass.
   scatter('storm', 140, 3000, 0, (x, z) => {
     if (w.slopeAt(x, z) > 0.55) return false;
@@ -1026,6 +1085,14 @@ export function updateBiomes(w, dt, time) {
     }
   }
   if (B.sunDisc) B.sunDisc.rotation.z = time * 0.1;
+  // The Bell's mist.
+  const bg = B.bellGate;
+  if (bg) {
+    const shut = !bellGateOpen(flags);
+    bg.uniforms.uTime.value = time;
+    bg.mesh.visible = bg.glow.visible = shut;
+    bg.wall.enabled = shut;
+  }
   B.oasis.update(time, sky, w.weather.rain);
   if (region === 'dunes' && Math.random() < dt * 8) {
     const x = cam.x + (Math.random() - 0.5) * 40, z = cam.z + (Math.random() - 0.5) * 40;

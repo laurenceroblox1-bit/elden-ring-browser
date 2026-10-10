@@ -32,11 +32,11 @@ import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
 import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL, FEN } from '../data/world.js';
-import { STONES } from '../data/biomes.js';
+import { STONES, GREAT_ONES, LOBES } from '../data/biomes.js';
 import { MAX_LEVEL, upgradeCost, levelName } from '../data/smithing.js';
 
 // The weather each region brings with it; the Vale and the fen keep whatever the Vale has.
-const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm' };
+const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm', bell: 'bellmist' };
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -101,6 +101,11 @@ export class Game {
     this.world = new World(this);
     this.combat = new Combat(this);
     this.quests = new Quests(this, QUESTS);
+    // The Hollow Bell: each great one's death is a step towards it; the last fight ends the journey.
+    this.events.on('bossDefeated', (id) => {
+      this._checkBell();
+      if (id === 'bellringer') this.after(9, () => this.showEnding());
+    });
     this.interactions = new Interactions(this);
     this.player = new Player(this);
     this.horse = new Horse(this);
@@ -145,6 +150,12 @@ export class Game {
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
     const cd = this.world.castleDoor;
     I.add({ x: cd.x, z: cd.z, radius: 4, enabled: () => !this.state.flags.wardenDead, label: () => 'Examine the doors', action: () => this.talk('castle') });
+    // The Bell's mist: it tells you who still lives.
+    const bg = LOBES.bell.gate;
+    I.add({ x: bg[0] - 3, z: bg[1] + 3, radius: 4, enabled: () => !GREAT_ONES.every(([k]) => this.state.flags[k]), label: () => "Examine the Bell's mist", action: () => {
+      const left = GREAT_ONES.filter(([k]) => !this.state.flags[k]).map(([, n]) => n);
+      this.hud.toast(`The mist will not part while ${left.length > 1 ? 'these still live' : 'this one still lives'}: ${left.join('; ')}.`);
+    } });
     // Tamsin's crates at the oasis: her shop, once you've spoken with her.
     I.add({ x: 551, z: 36, radius: 2.4, enabled: () => !!this.state.flags.metTamsin, label: () => "Trade with Tamsin", action: () => this.openMenu('shop') });
     // Hessa's anvil in the Sunken Forge: smithing (data/smithing.js).
@@ -241,6 +252,46 @@ export class Game {
     this.hud.banner(s?.name ?? 'Ashen Vale', '', 'area');
   }
 
+  // Starts the Hollow Bell quest once a great one has fallen, and moves it on once all five have.
+  _checkBell(quiet = false) {
+    const f = this.state.flags, q = this.quests;
+    const dead = GREAT_ONES.filter(([flag]) => f[flag]).length;
+    if (!dead) return;
+    if (q.status('hollowbell') === 'inactive') q.start('hollowbell', quiet);
+    if (dead === GREAT_ONES.length && q.status('hollowbell') === 'active' && q.state.hollowbell.stage === 0) {
+      q.advance('hollowbell');
+      if (!quiet) this.after(4, () => this.hud.banner('The Mist Lifts', 'The Hollow Bell waits on the eastern peaks', 'kindle', 5000));
+    }
+  }
+
+  // The end of the journey: a card over the world, then back to exploring.
+  showEnding() {
+    if (this.endingShown) return;
+    this.endingShown = true;
+    const st = this.state, f = st.flags;
+    const bosses = ['wardenDead', 'motherDead', 'trollDead', 'saelithDead', ...GREAT_ONES.map(([k]) => k), 'bellDead'].filter((k) => f[k]).length;
+    const el = document.createElement('section');
+    el.className = 'screen ending-screen';
+    el.innerHTML = `
+      <div class="panel ending-panel" role="dialog" aria-label="The journey's end">
+        <h2>The Bell Is Silent</h2>
+        <p>The Bell-Ringer lies broken under the spire, and the Hollow Bell will never toll again. The Warden's gate stands open, the Rimewold thaws, the Old Fire is out, the tide runs clean, the Hollows grow back, the dunes are quiet and the storm has broken.</p>
+        <p>The Vale is free. Thank you for playing.</p>
+        <ul class="ending-stats">
+          <li><b>${bosses}</b><span>great foes felled</span></li>
+          <li><b>${levelOf(st.stats)}</b><span>level</span></li>
+          <li><b>${st.gear.owned.length}</b><span>pieces of gear</span></li>
+          <li><b>${st.discovered.length}</b><span>places found</span></li>
+        </ul>
+        <div class="test-btns"><button class="btn primary ending-go">Keep exploring</button></div>
+      </div>`;
+    this.hud.root.appendChild(el);
+    this.input.exitLock?.();
+    const close = () => { el.remove(); if (this.mode === 'playing' && !this.input.usingPad) this.input.requestLock?.(); };
+    el.querySelector('.ending-go').addEventListener('click', close);
+    this.audio.play('victory');
+  }
+
   _enterWorld() {
     const st = this.state;
     this.audio.init();
@@ -254,6 +305,7 @@ export class Game {
     this._clearPickups();
     for (const p of PICKUPS) if (!this.hasItem(p.item) && (!p.quest || this.quests.status(p.quest) !== 'done')) this.spawnPickup(p.item, p.x, p.z);
     for (const l of LOOT) if (!this.hasGear(l.gear)) this.spawnPickup(l.gear, l.x, l.z);
+    this._checkBell(true);
     // Smithing stones: each one is picked up once per journey.
     const taken = (this.state.stonesTaken ??= []);
     STONES.forEach((st, i) => {
@@ -1166,7 +1218,7 @@ export class Game {
       // A region's boss beaten changes its sky: the snow stops once the Winter Lantern is out, the
       // storm breaks over the Stormspire, the spores settle in the Hollows, the sea mist lifts.
       const f = this.state.flags;
-      const after = { rime: f.saelithDead && 'clear', storm: f.vaelorDead && 'clear', glow: f.sylvaraDead && 'mist', coast: f.morrowDead && 'clear', cinder: f.ashmawDead && 'ashfall' };
+      const after = { rime: f.saelithDead && 'clear', storm: f.vaelorDead && 'clear', glow: f.sylvaraDead && 'mist', coast: f.morrowDead && 'clear', cinder: f.ashmawDead && 'ashfall', bell: f.bellDead && 'clear' };
       this.world.setWeather(after[region] || own, instant);
     } else if (was === null || REGION_WEATHER[was]) {
       this.world.setWeather(this.valeWeather ?? 'clear', instant);

@@ -447,6 +447,24 @@ export const WEAPONS = {
       rolling: { stamina: 18, dmg: 25, poise: 18, windup: 0.16, active: 0.14, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
     },
   },
+
+  ringers_hammer: {
+    name: "Ringer's Hammer",
+    type: 'Colossal hammer',
+    hands: 2,
+    stance: 'maul',
+    scale: 1.65,
+    desc: 'The bell-hammer that rang the Hollow Bell, cut down to a size a person can swing (just). Every blow lands like a toll; its art brings the spectral bells down around you.',
+    art: 'bell_toll',
+    riposte: { dmg: 42 },
+    guard: { name: 'club', absorb: 0.76, cost: 1.2, parryWindow: 0.1, raiseTime: 0.12, arc: 1.75, speed: 1.8 },
+    moves: {
+      light1: { stamina: 34, dmg: 56, poise: 60, windup: 0.66, active: 0.18, recover: 0.72, lunge: 2.4, reach: 3.2, arc: 1.3, pose: 'mSwing', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 34, dmg: 54, poise: 58, windup: 0.62, active: 0.16, recover: 0.74, lunge: 2.4, reach: 3.1, arc: 0.75, pose: 'mOverhead', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 50, dmg: 100, poise: 95, windup: 1.05, active: 0.18, recover: 0.92, lunge: 2.6, reach: 3.2, arc: 0.6, pose: 'mOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 30, dmg: 42, poise: 42, windup: 0.34, active: 0.18, recover: 0.64, lunge: 3.0, reach: 3.0, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.

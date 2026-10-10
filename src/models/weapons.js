@@ -305,6 +305,17 @@ const BUILD = {
     g.add(mesh(box(0.03, 0.22, 0.08), M.spark(), { z: 1.7, y: 0.1, rx: 0.6, shadow: false }));
     return { right: g };
   },
+  // Ringer's Hammer: an iron haft with a bronze bell for its head.
+  ringers_hammer() {
+    const g = group();
+    g.add(mesh(cyl(0.035, 0.04, 1.6, 6), M.iron(), { rx: Math.PI / 2, z: 0.45 }));
+    g.add(mesh(cyl(0.046, 0.046, 0.3, 6), M.leather(), { rx: Math.PI / 2, z: -0.05 }));
+    const head = group({ z: 1.28 });
+    head.add(mesh(cyl(0.13, 0.26, 0.36, 9), M.bronze(), { rz: Math.PI / 2 }));
+    head.add(mesh(cyl(0.27, 0.27, 0.04, 9), M.verdigris(), { rz: Math.PI / 2, x: -0.19 }));
+    g.add(head);
+    return { right: g };
+  },
 };
 
 const BUILD_SHIELD = {

@@ -25,6 +25,7 @@ import { Scarab } from './Scarab.js';
 import { ThunderWolf } from './ThunderWolf.js';
 import { Gargoyle } from './Gargoyle.js';
 import { Herald } from './Herald.js';
+import { BellRinger } from './BellRinger.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -61,6 +62,8 @@ const KINDS = {
   thunderwolf: ThunderWolf,
   gargoyle: Gargoyle, // an elite, like the Cinder Golems
   herald: Herald, // Vaelor, the Heights' boss, on the summit
+  // The Hollow Bell.
+  bellringer: BellRinger, // the last fight: waits beyond the Bell's mist until the five great ones fall
 };
 
 export function createEnemy(game, spawn) {

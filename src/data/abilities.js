@@ -335,6 +335,26 @@ export const ARTS = {
     ],
   },
 
+  // Ringer's Hammer: strike the ground and the spectral bells fall in a ring around you.
+  bell_toll: {
+    name: 'Toll of Bells',
+    desc: 'Strike the ground with the bell-hammer: it tolls, and a ring of spectral bells falls from the sky around you a moment later.',
+    focus: 28, stamina: 26, cooldown: 7,
+    time: 1.35, track: 0.6, cancel: 1.0,
+    keys: [[0, 'rest'], [0.4, 'quakeRaise'], [0.62, 'quakeRaise'], [0.74, 'quakeSlam'], [1.08, 'quakeSlam'], [1.35, 'rest']],
+    events: [
+      [0.74, (p) => {
+        const g = p.game;
+        g.audio.play('bell');
+        g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.8, maxR: 6, speed: 12, color: 0xffd9a0, hit: { dmg: 20 * p.dmgMult, poise: 40 } });
+        for (let i = 0; i < 6; i++) {
+          const a = p.yaw + (i / 6) * Math.PI * 2;
+          g.effects.bellDrop(p, p.pos.x + Math.sin(a) * 5, p.pos.z + Math.cos(a) * 5, 0.7 + i * 0.1, { radius: 2.4, hit: { dmg: 38 * p.dmgMult, poise: 50, heavy: true } });
+        }
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',

@@ -20,6 +20,7 @@ export const WEATHER = {
   dunesun: { fogMul: 1.25, dim: 0, haze: 0.42, tint: 0xe8c890, cover: 0.2, wind: 1.8, fall: 'sand' },
   sandstorm: { fogMul: 4.2, dim: 0.35, haze: 0.85, tint: 0xd8a868, cover: 0.8, wind: 3.4, fall: 'sandstorm' },
   storm: { fogMul: 2.0, dim: 0.78, haze: 0.62, tint: 0x767c88, cover: 1, wind: 2.4, fall: 'rain' },
+  bellmist: { fogMul: 2.8, dim: 0.3, haze: 0.72, tint: 0xc8b49a, cover: 0.7, wind: 0.4, fall: 'motes' },
 };
 
 const FALL = {
@@ -30,6 +31,7 @@ const FALL = {
   cinders: { count: 1800, speed: 0.7, size: 0.13, color: 0xffa266, opacity: 0.85, sway: 0.9, streak: 0 },
   spores: { count: 1600, speed: 0.22, size: 0.15, color: 0x8ff0dc, opacity: 0.7, sway: 1.5, streak: 0 },
   sand: { count: 900, speed: 0.4, size: 0.08, color: 0xf0d8a0, opacity: 0.55, sway: 2.6, streak: 0 },
+  motes: { count: 800, speed: 0.12, size: 0.1, color: 0xffd890, opacity: 0.75, sway: 1.3, streak: 0 },
   sandstorm: { count: 2600, speed: 1.4, size: 0.14, color: 0xd8b070, opacity: 0.8, sway: 4.2, streak: 0 },
 };
 const MAX = 2600;
