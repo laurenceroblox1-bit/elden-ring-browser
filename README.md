@@ -9,8 +9,11 @@ call your spectral mare Wisp, and pass through the mist at the Shattered Gate to
 Bell-Warden**. Out east, past the Watch Ruins, the road sinks into the Ashen Fen, where **Vharra,
 Mother of the Mire** sleeps in a ring of standing stones. Beat the Warden and the gates of Castle
 Dunmarrow open onto the **Rimewold**, a frozen highland where a troll owns the Howling Field and
-**Saelith, the Winter Lantern** keeps the flame that holds the land in winter. Play alone, or with
-friends in a shared Vale (see *Multiplayer*).
+**Saelith, the Winter Lantern** keeps the flame that holds the land in winter. Past the mountains
+around the Vale lie five more regions, each with its own weather, enemies, people and boss: the
+volcanic **Cinderfall Wastes**, the **Drowned Coast**, the **Glowcap Hollows**, the **Gilded Dunes**
+and the **Stormspire Heights** (see *The outer regions*). Play alone, or with friends in a shared
+Vale (see *Multiplayer*).
 
 ## Run it
 
@@ -34,6 +37,7 @@ Google Fonts fall back to system serif faces when offline.
 | Mouse (click the game to capture it) | Look. Arrow keys also turn the camera |
 | Shift | Sprint; gallop when riding |
 | Space | Roll (with a direction), backstep (without), jump on horseback |
+| G | Jump. Attack in the air for a plunging blow (A while sprinting on a gamepad) |
 | Left click | Light attack; press again to chain (2 to 4 hits, by weapon). Riposte a reeling foe |
 | Hold right click | Guard. Raise it just as a blow lands to parry |
 | F | Heavy attack |
@@ -173,6 +177,31 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
 - **Presentation**: golden-hour sky with sun and fog, a sky-baked environment map, shadows,
   particles, a HUD (bars with damage lag, compass, boss bar, toasts, banners), and synthesized
   WebAudio sound effects plus a drone for the boss fight.
+
+## The outer regions
+
+Each region sits behind the Vale's ring of mountains, behind a ridge with one pass where its road
+comes through (`data/biomes.js` holds all their layout; `world/Biomes.js` builds them).
+
+| Region | Where | What's there |
+| --- | --- | --- |
+| **The Cinderfall Wastes** | South, through the Cinder Pass | Black ash mesas, lava pools and a lava river (wading in it burns), the Obsidian Field, the smoking volcano. Cinder Imps, Ember Hounds, Cinder Golems. Hessa's **Sunken Forge**. Boss: **Ashmaw, the Cinder Drake**, asleep in the caldera: fire breath, tail spins, wing buffets, fireballs, and flights that end in a dive. |
+| **The Drowned Coast** | West, along the Salt Road | Dunes and the open sea, wrecks, the ruined village of Saltmarrow, the Broken Lighthouse (its lamp turns at night). Drowned Sailors with harpoons, Tidecrabs (their shells turn ordinary blows). Old Wenna. Boss: **Captain Morrow, the Drowned**, by his wreck: an anchor on a chain, rings of surf, and his crew climbing out of the shallows. |
+| **The Glowcap Hollows** | North-west, off the moor road | A violet hollow of giant glowing mushrooms in spore-mist. Sporelings that burst into poison clouds (even when killed), Glowcap Stalkers. Murk the Myconid. Boss: **Sylvara, the Bloom Witch**, under the Heartcap: thorny roots, spore volleys and clouds, petal blinks, a brood of sporelings. |
+| **The Gilded Dunes** | East, past the Ashen Fen | Golden dune ridges and sandstone mesas, the Oasis of Seven Palms, the Lost Caravan, the Sanctum of the Sun. Dune Scorpions (poison stings), Sand Revenants, Sand Wraiths. Tamsin the trader. Boss: **Solkar, the Sun Scarab**: charges, burrows up under you, a beam of sunfire, a sandstorm. |
+| **The Stormspire Heights** | North-east, up the Thunder Stair | Grey crags and needle spires in a thunderstorm whose bolts strike near you after a crackling warning (roll out of the circle). The Broken Monastery. Spire Knights, Thunder Wolves, Spire Gargoyles. Brother Aldous. Boss: **Vaelor, the Storm Herald**: a glaive of captured lightning, thrown bolts, lightning called down on and around you. |
+
+- **Burning and poison** work like frostbite: hits fill a meter (under your stamina bar, and on
+  enemies' bars). Burning bursts and then burns for five seconds; poison has no burst but eats at
+  you for fourteen. Each region has its own sky (falling cinders, sea mist, drifting spores, desert
+  sun, thunderstorms), its own ambience and its own boss music.
+- **Smithing**: smithing stones lie in the outer regions and the Vale's far corners. Lay your
+  weapon on Hessa's anvil in the Sunken Forge with stones and ash to raise it a level, up to +5
+  (9% more damage per level).
+- **Tamsin's wares**: once you've spoken to her at the oasis, her crates sell smithing stones, flask
+  seeds (one more flask each) and the Sunsteel Shield (which turns fire aside).
+- **Elites**: the Cinder Golems and Spire Gargoyles fight with a boss's moveset but are ordinary
+  foes: leashed to their posts and back on their feet after you rest.
 
 ## Guarding
 
@@ -331,7 +360,14 @@ src/ui/NetPanel.js         the multiplayer screen (N) and the chat bar
 src/ui/EnemyBars.js        floating enemy health bars and damage numbers
 src/ui/DebugViews.js       hitbox, collider and free-camera views for the test menu
 src/net/                   Net (multiplayer client) and Ghost (another player's knight)
-src/entities/BigFoe.js     base for humanoid bosses that run their own fights (Troll, Saelith)
+src/entities/BigFoe.js     base for humanoid bosses that run their own fights (Troll, Saelith, Morrow,
+                           Sylvara, Vaelor) and for elites (Golem, Gargoyle)
+src/entities/Drake.js      Ashmaw (and Scarab.js, Solkar): four-legged bosses on the hound's gait code
+src/data/biomes.js         the outer regions' layout: lobes, zones, roads, shrines, spawns, loot, stones
+src/data/smithing.js       weapon levels and their costs
+src/world/Biomes.js        the outer regions' set pieces, lava, sea, oasis, glowcaps, storms, scenery
+src/models/creatures.js    the outer regions' creatures, bosses and traders
+src/ui/ShopPanel.js        Tamsin's wares
 src/core/Cutscene.js       boss opening cutscenes (letterbox, camera shots, name card)
 src/core/PostFX.js         bloom, colour grade and vignette on High graphics
 server.js                  static server + multiplayer relay (Node, no dependencies)
@@ -444,17 +480,18 @@ position; the test menu toggles it any time), plus these keys:
 
 ## Known gaps and next steps
 
-- **Combat depth**: weapon upgrades, backstabs on ordinary attacks (only Ghoststep has one today),
-  jump attacks. Enemies don't use projectiles yet, though the system supports it. Ripostes use the
-  sword's animation for every weapon.
+- **Combat depth**: backstabs on ordinary attacks (only Ghoststep has one today). Ripostes use the
+  sword's animation for every weapon. Smithing raises damage only, not scaling.
 - **Camera**: it avoids terrain and stays inside the arena, but it can still clip through ruins and
   castle walls.
 - **Performance**: characters are merged into a few skinned meshes and distant things are culled
   (about 150 to 250 draw calls in open areas). Vegetation has no level of detail (LOD).
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
 - **Map**: fixed scale with no zoom or pan, and no custom waypoints.
-- **World**: the castle keep's interior and the Hollow Bell spire are hooks for later regions.
-- **Multiplayer**: enemies are host-run, so other players see them with a little delay (about a
+- **World**: the castle keep's interior and the Hollow Bell spire are hooks for later regions. The
+  outer regions' bosses don't yet change their land when they fall (the Rimewold's thaw does).
+- **Multiplayer**: other players show on the compass and the map, and the Multiplayer panel's
+  *Go to them* button takes you to their side. Enemies are host-run, so other players see them with a little delay (about a
   tenth of a second), and blows that land at the edge of reach can be judged differently. Loot
   and the Warden aren't shared yet. Player-versus-player is not in.
 - **Audio**: everything is synthesized. Recorded sounds and a real boss score would lift it a lot.
