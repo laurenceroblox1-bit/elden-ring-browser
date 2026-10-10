@@ -2,7 +2,6 @@
 // backstep, flask, guard / parry / riposte, lock-on strafing, and riding. Gear comes from data:
 // the weapon (data/weapons.js) sets the moveset, stance, damage scaling and weapon art; a shield sets
 // the guard; the rite (data/abilities.js) is the spell on V. Arts and rites spend focus.
-import { upgradeMult } from '../data/smithing.js';
 import * as THREE from '../lib/three.js';
 import { Actor } from './Actor.js';
 import { buildPlayer } from '../models/characters.js';
@@ -10,6 +9,7 @@ import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../mo
 import { STANCES, MOVE_POSES, SHIELD_GUARD, SHIELD_HIT, ARM_L, overlay, guardHitOf, equipModel } from '../models/weapons.js';
 import { WEAPONS, SHIELDS, MOUNTED, STARTING_WEAPON } from '../data/weapons.js';
 import { ARTS, RITES } from '../data/abilities.js';
+import { upgradeMult } from '../data/smithing.js';
 import { clamp, damp, dampK, dampAngle, yawTo, angleDiff, easeOut, easeInOut } from '../core/math.js';
 
 // The starting sword's moves, kept under the old name for tools and tests that read them.
@@ -236,9 +236,11 @@ export class Player extends Actor {
 
   _readBuffer(dt) {
     const input = this.game.input;
-    for (const a of ['roll', 'light', 'heavy', 'flask', 'art', 'rite']) {
+    for (const a of ['roll', 'light', 'heavy', 'flask', 'art', 'rite', 'jump']) {
       if (input.pressed(a)) this.buffer = { a, t: a === 'flask' ? 0.2 : 0.38 };
     }
+    // On a gamepad, A while sprinting jumps instead of rolling.
+    if (this.buffer?.a === 'roll' && input.usingPad && this.sprinting && this.state === 'move') this.buffer.a = 'jump';
     if (this.buffer && (this.buffer.t -= dt) <= 0) this.buffer = null;
   }
 
@@ -288,6 +290,64 @@ export class Player extends Actor {
     }
     this.game.audio.play('roll');
     return true;
+  }
+
+  // A jump: carries your running speed; an attack pressed in the air becomes a plunging blow that
+  // comes straight down and lands in a small shockwave (heavy weapons hit harder and wider).
+  startJump(mi) {
+    if (this.stamina <= 0 || !this.onGround || this.mounted) return false;
+    this.stamina = Math.max(0, this.stamina - 14);
+    this.staminaDelay = 0.6;
+    this.state = 'jump';
+    this.t = 0;
+    this.plunge = false;
+    this.vy = 8.2;
+    this.onGround = false;
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (mi.mag > 0 && sp < 3) { this.vel.x = mi.x * 3; this.vel.z = mi.z * 3; }
+    this.game.audio.play('roll');
+    return true;
+  }
+
+  _jump(dt, mi) {
+    // A little air control, no more.
+    if (mi.mag > 0) {
+      this.vel.x += mi.x * 4 * dt;
+      this.vel.z += mi.z * 4 * dt;
+      this.yaw = dampAngle(this.yaw, Math.atan2(mi.x, mi.z), 4, dt);
+    }
+    if (!this.plunge && (this._take('light') || this._take('heavy')) && this.stamina > 0) {
+      this.plunge = true;
+      this.plungeT = this.t;
+      this.vy = Math.min(this.vy, -4);
+      this.stamina = Math.max(0, this.stamina - 16);
+      this.game.audio.play('heavySwing');
+    }
+    if (this.plunge) this.vy = Math.min(this.vy, -18);
+    if (this.t > 0.08 && this.onGround) {
+      if (this.plunge) {
+        const g = this.game, w = this.weapon;
+        const big = (w.hands ?? 1) > 1;
+        const f = { x: this.pos.x + this.forwardX * 1.2, y: this.pos.y + 0.8, z: this.pos.z + this.forwardZ * 1.2 };
+        const hit = { dmg: w.moves.heavy.dmg * 1.15 * this.dmgMult, poise: w.moves.heavy.poise * 1.2, heavy: true, frost: w.frost, burn: w.burn, poison: w.poison };
+        g.combat.sphere(this, f, big ? 2.6 : 1.9, hit, new Set());
+        g.effects.shockwave(this, f.x, f.z, { start: 0.5, maxR: big ? 6 : 4, speed: 12, color: 0xffd9a0, hit: { dmg: 14 * this.dmgMult, poise: 30 } });
+        g.audio.play('slam');
+        g.cameraShake(0.3);
+        g.particles.emit({ x: f.x, y: f.y - 0.6, z: f.z, count: 30, speed: 5, up: 2, color: 0x9a8d78, color2: 0xd0c4a8, life: [0.4, 0.9], size: [0.15, 0.3], gravity: 3, drag: 2.5, jitter: 0.6 });
+        this.state = 'attack';
+        this.atk = { ...w.moves.heavy, windup: 0, active: 0.05, recover: 0.5, lunge: 0, pose: w.moves.heavy.pose };
+        this.atkT = 0;
+        this.t = 0.06; // straight into the recovery of the heavy swing
+        this.swung = true;
+        this.hit = null;
+        this.hitSet = new Set();
+        this.vel.set(0, 0, 0);
+      } else {
+        this.state = 'move';
+        this.vel.multiplyScalar(0.6);
+      }
+    }
   }
 
   // Light attack button: a riposte if an opened foe is in front of us, otherwise the given swing.
@@ -507,6 +567,10 @@ export class Player extends Actor {
       this.state = 'hurt';
       this.t = 0;
       this.hurtDur = hit.heavy ? 0.85 : 0.45;
+      // Which way the blow pushed, in the body's own frame (the hurt pose reels away from it).
+      const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
+      this.hurtFwd = (hit.dirX ?? 0) * fx + (hit.dirZ ?? 0) * fz;
+      this.hurtSide = (hit.dirX ?? 0) * fz - (hit.dirZ ?? 0) * fx;
       const k = hit.knock ?? (hit.heavy ? 7 : 3.5);
       this.vel.set(hit.dirX * k, 0, hit.dirZ * k);
       this.atk = null;
@@ -575,6 +639,7 @@ export class Player extends Actor {
     switch (this.state) {
       case 'move': this._move(dt, mi, lock); break;
       case 'roll': this._roll(dt, mi); break;
+      case 'jump': this._jump(dt, mi); break;
       case 'backstep': this._backstep(dt); break;
       case 'attack': this._attack(dt, mi, lock); break;
       case 'heal': this._heal(dt, mi); break;
@@ -652,6 +717,7 @@ export class Player extends Actor {
 
   _move(dt, mi, lock) {
     const input = this.game.input;
+    if (this._take('jump') && this.startJump(mi)) return;
     if (this._take('roll') && this.startRoll(mi)) return;
     if (this._take('light') && this._light(mi)) return;
     if (this._take('heavy') && this.startAttack('heavy', mi)) return;
@@ -891,6 +957,62 @@ export class Player extends Actor {
     this.lastStep = step;
   }
 
+  // Small things layered on whatever the body is doing, so it never stands like a statue: breathing
+  // (panting when winded), weight shifting from foot to foot and a glance around when idle, leaning
+  // into turns, squashing on a hard landing, hunching when badly hurt.
+  _layers(p, dt, speed) {
+    const st = this.state, time = this.game.time;
+    const upright = st === 'move' || st === 'guard';
+    // Turning: lean into it, head first.
+    const rate = angleDiff(this.lastYaw ?? this.yaw, this.yaw) / Math.max(dt, 1e-4);
+    this.lastYaw = this.yaw;
+    this.turnLean = damp(this.turnLean ?? 0, clamp(rate * speed * 0.014, -0.24, 0.24), 8, dt);
+    if (upright || st === 'attack') {
+      p.torsoZ -= this.turnLean;
+      p.hipsZ -= this.turnLean * 0.4;
+      p.headY += clamp(rate * 0.05, -0.3, 0.3);
+    }
+    if (upright) {
+      const still = 1 - clamp(speed / 1.2, 0, 1);
+      this.pant = damp(this.pant ?? 0, this.winded || this.stamina < this.maxStamina * 0.25 ? 1 : 0, 1.5, dt);
+      this.breath = (this.breath ?? 0) + dt * (1.6 + this.pant * 2.8);
+      const b = Math.sin(this.breath);
+      p.torsoX += b * (0.016 + this.pant * 0.035) + this.pant * 0.14 * still;
+      p.headX -= b * 0.012 + this.pant * 0.06 * still;
+      p.sRz -= b * 0.02 * still;
+      p.sLz += b * 0.02 * still;
+      if (st === 'move' && still > 0.3) {
+        // Weight from one foot to the other, and now and then a look around.
+        const w = Math.sin(time * 0.42 + 1.3) * still;
+        p.hipsZ += w * 0.045;
+        p.kR += Math.max(0, w) * 0.16;
+        p.kL += Math.max(0, -w) * 0.16;
+        const glance = clamp((Math.sin(time * 0.17) - 0.55) * 3, 0, 1);
+        p.headY += Math.sin(time * 0.6) * 0.45 * glance * still;
+      }
+      // Badly hurt: a hunch, and the off arm held in.
+      const low = clamp(1 - this.hp / (this.maxHp * 0.3), 0, 1);
+      if (low > 0) {
+        p.torsoX += low * 0.16;
+        p.headX += low * 0.04;
+        if (!this.shield) { p.sLx -= low * 0.3; p.eL -= low * 0.6; }
+      }
+      // Poisoned: a sick sway. Burning: beating at the flames.
+      if (this.poisoned > 0) p.torsoZ += Math.sin(time * 1.7) * 0.06;
+      if (this.burning > 0 && st === 'move') { p.sLx -= 0.4 + Math.abs(Math.sin(time * 11)) * 0.5; p.eL -= 0.8; }
+    }
+    // A hard landing: knees give and the body drops, then springs back.
+    if (this.landAt && time - this.landAt < 0.4 && this.landV > 5) {
+      const u = 1 - (time - this.landAt) / 0.4, k = clamp((this.landV - 5) / 10, 0.25, 1) * u * u;
+      p.hipsH -= 0.16 * k;
+      p.kR += 0.7 * k;
+      p.kL += 0.7 * k;
+      p.lRx -= 0.35 * k;
+      p.lLx -= 0.35 * k;
+      p.torsoX += 0.25 * k;
+    }
+  }
+
   _animate(dt, speed) {
     const r = this.model;
     const p = this.poseBuf;
@@ -932,6 +1054,24 @@ export class Player extends Actor {
         k = dampK(24, dt);
         break;
       }
+      case 'jump': {
+        // Knees up at the top of the jump, legs reaching for the ground on the way down; a plunge
+        // holds the weapon high to drive it down.
+        if (this.plunge) {
+          const [wind] = MOVE_POSES[this.weapon.moves.heavy.pose];
+          copyPose(p, wind);
+          p.lRx -= 0.5; p.kR += 0.8; p.lLx -= 0.3; p.kL += 0.6;
+        } else {
+          copyPose(p, this.stance.rest);
+          const up = clamp(this.vy / 8, -1, 1);
+          p.lRx -= 0.7 + up * 0.3; p.kR += 1.1 + up * 0.3;
+          p.lLx -= 0.2; p.kL += 0.5 + up * 0.4;
+          p.sLx -= 0.5; p.sLz += 0.4; p.eL -= 0.3;
+          p.torsoX += 0.15 - up * 0.1;
+        }
+        k = dampK(16, dt);
+        break;
+      }
       case 'backstep':
         copyPose(p, POSES.backstep);
         p.hipsH = Math.sin(clamp(this.t / BACKSTEP_TIME, 0, 1) * Math.PI) * 0.12;
@@ -968,10 +1108,23 @@ export class Player extends Actor {
         k = dampK(14, dt);
         break;
       case 'heal': copyPose(p, POSES.heal); break;
-      case 'hurt': copyPose(p, POSES.hurt); k = dampK(20, dt); break;
+      case 'hurt': {
+        copyPose(p, POSES.hurt);
+        // Reel away from the blow: thrown back by one from the front, pitched forward by one from
+        // behind, twisted by one from the side. Heavier blows hit harder and settle slower.
+        const f = this.hurtFwd ?? -1, sd = this.hurtSide ?? 0, u = Math.max(0, 1 - this.t / (this.hurtDur ?? 0.45));
+        p.torsoX += f * 0.35 * u + (f > 0 ? 0.25 : 0);
+        p.torsoZ += sd * 0.35 * u;
+        p.torsoY += sd * 0.3 * u;
+        p.headX += f * 0.25 * u;
+        p.hipsH -= 0.08 * u;
+        k = dampK(this.t < 0.08 ? 34 : 14, dt);
+        break;
+      }
       case 'fog': copyPose(p, POSES.fog); addGait(p, (this.gait += dt * 5), 0.35); break;
       case 'dead': copyPose(p, POSES.dead); k = dampK(5, dt); break;
     }
+    this._layers(p, dt, speed);
     applyPose(r, p, k);
     if (pivotOverride) {
       r.pivot.rotation.x = pivotOverride.x;

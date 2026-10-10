@@ -64,8 +64,6 @@ export class Sporeling extends Foe {
         break;
       case 'swell':
         this.vel.multiplyScalar(Math.exp(-8 * dt));
-        this.model.capG.scale.setScalar(1 + (this.t / SWELL) * 0.8);
-        this.model.cap.emissiveIntensity = 0.8 + Math.sin(this.t * (8 + this.t * 20)) * 0.8 + this.t * 2;
         if (this.t >= SWELL) this._burst(1);
         return false;
     }
@@ -99,6 +97,10 @@ export class Sporeling extends Foe {
   }
 
   _animate(dt) {
+    // The cap swells and flashes before it bursts (drawn here so other players' puppets show it too).
+    const sw = this.state === 'swell' ? Math.min(1, this.t / SWELL) : 0;
+    this.model.capG.scale.setScalar(1 + sw * 0.8);
+    this.model.cap.emissiveIntensity = 0.8 + (sw ? Math.sin(this.t * (8 + this.t * 20)) * 0.8 + this.t * 2 : 0);
     const p = this.poseBuf;
     let k = dampK(12, dt);
     if (this.state === 'dead') { copyPose(p, DEAD); k = dampK(8, dt); }

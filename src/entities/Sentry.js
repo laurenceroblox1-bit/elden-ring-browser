@@ -163,6 +163,7 @@ export class Sentry extends Actor {
     const front = Math.abs(angleDiff(this.yaw, Math.atan2(-hit.dirX, -hit.dirZ))) < 1.75;
     if (this.state === 'guard' && this.t >= 0.1 && front && !hit.unblockable && !hit.riposte) return this._shieldBlock(hit);
     this.hp -= hit.dmg;
+    this.flinch = 0.25;
     if (this.hp <= 0) return this._die(hit);
     if (hit.riposte) {
       this.state = 'knockdown';
@@ -196,6 +197,7 @@ export class Sentry extends Actor {
     if ((this.poiseTimer -= dt) <= 0) this.poise = this.maxPoise;
     if (this.openT > 0) this.openT -= dt;
     this.tickFrost(dt);
+    if (this.flinch > 0) this.flinch -= dt;
     if (this.shieldHit > 0) this.shieldHit -= dt;
     if (this.state !== 'guard') this.guardHp = Math.min(this.guardMax, this.guardHp + 15 * dt);
     let want = { x: 0, z: 0 };
@@ -365,6 +367,7 @@ export class Sentry extends Actor {
         p.torsoX += Math.sin(this.game.time * 1.7 + this.spawn.x) * 0.03;
       }
     }
+    if (this.flinch > 0 && this.alive) { p.torsoX -= this.flinch * 0.9; p.headX -= this.flinch * 0.8; k = Math.max(k, 0.5); }
     applyPose(this.model, p, k);
     this._sync();
   }

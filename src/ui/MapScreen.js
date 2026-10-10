@@ -130,6 +130,12 @@ export class MapScreen {
     for (const s of lit) {
       parts.push(`<button class="mk shrine" style="${at(s.x, s.z)}" data-shrine="${s.id}" title="Travel to ${esc(s.name)}" aria-label="Travel to ${esc(s.name)}"${blocked ? ' aria-disabled="true"' : ''}></button>`);
     }
+    // Other players, by name.
+    for (const gh of g.net?.ghosts.values() ?? []) {
+      if (!gh.model.root.visible) continue;
+      const q = gh.model.root.position;
+      parts.push(`<span class="mk friend" style="${at(q.x, q.z)};background:#${gh.cloak.toString(16).padStart(6, '0')}" title="${esc(gh.name)}"><i>${esc(gh.name)}</i></span>`);
+    }
     // The player last, on top: an arrow along their facing (map up is north, -Z).
     parts.push(`<span class="mk player" style="${at(p.pos.x, p.pos.z)};transform:translate(-50%,-50%) rotate(${(Math.PI - p.yaw).toFixed(3)}rad)" title="You"></span>`);
     this.marks.innerHTML = parts.join('');

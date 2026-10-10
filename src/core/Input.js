@@ -10,6 +10,7 @@ export const BINDINGS = {
   right: ['KeyD'],
   sprint: ['ShiftLeft', 'ShiftRight', 'PadSprint'],
   roll: ['Space', 'Pad0'], // A
+  jump: ['KeyG'], // on a gamepad: A while sprinting
   light: ['Mouse0', 'Pad5'], // RB
   heavy: ['KeyF', 'Pad7'], // RT
   guard: ['Mouse2', 'Pad4'], // LB. Hold to guard; a fresh press opens a short parry window

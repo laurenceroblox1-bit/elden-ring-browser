@@ -250,6 +250,8 @@ export class BigFoe extends Foe {
         p.torsoX += Math.sin(this.game.time * 1.3 + this.spawn.x) * 0.03;
       }
     }
+    // A blow that lands snaps the head and shoulders back for a moment.
+    if (this.flinch > 0 && this.alive) { p.torsoX -= this.flinch * 0.9; p.headX -= this.flinch * 0.8; k = Math.max(k, 0.5); }
     applyPose(this.model, p, k);
   }
 }

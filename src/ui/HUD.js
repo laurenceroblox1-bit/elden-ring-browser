@@ -13,6 +13,7 @@ export const CONTROLS = [
   ['Mouse', 'Look (arrow keys also work)'],
   ['Shift', 'Sprint, or gallop on Wisp'],
   ['Space', 'Roll · backstep (no direction) · horse jump'],
+  ['G', 'Jump · attack in the air for a plunging blow'],
   ['Left click', 'Light attack, press again to chain · riposte a reeling foe'],
   ['Hold right click', 'Guard · raise it just as a blow lands to parry'],
   ['F', 'Heavy attack'],
@@ -35,7 +36,7 @@ export const CONTROLS = [
 export const PAD_CONTROLS = [
   ['Left stick', 'Move (tilt to walk) · click L3 to sprint or gallop'],
   ['Right stick', 'Look · click R3 to lock on'],
-  ['A', 'Roll · backstep · horse jump · next line'],
+  ['A', 'Roll · backstep · horse jump · next line · jump while sprinting'],
   ['B', 'Talk, pick up, rest · back out of menus'],
   ['RB', 'Light attack · riposte'],
   ['RT', 'Heavy attack'],
@@ -674,6 +675,10 @@ export class HUD {
     const p = g.player.pos;
     const marks = g.quests.markers();
     for (const s of g.world.shrines.values()) if (s.lit) marks.push({ x: s.x, z: s.z, shrine: true, label: s.name });
+    // Other players, in their own cloak colour.
+    for (const gh of g.net?.ghosts.values() ?? []) {
+      if (gh.model.root.visible) marks.push({ x: gh.model.root.position.x, z: gh.model.root.position.z, friend: gh.cloak, label: gh.name });
+    }
     while (this.pins.length < marks.length) {
       const e = document.createElement('span');
       this.el.compass.appendChild(e);
@@ -682,7 +687,8 @@ export class HUD {
     this.pins.forEach((e, i) => {
       const m = marks[i];
       if (!m) { e.style.opacity = '0'; return; }
-      e.className = 'pin' + (m.main ? ' main' : '') + (m.shrine ? ' shrine' : '');
+      e.className = 'pin' + (m.main ? ' main' : '') + (m.shrine ? ' shrine' : '') + (m.friend !== undefined ? ' friend' : '');
+      e.style.background = m.friend !== undefined ? `#${m.friend.toString(16).padStart(6, '0')}` : '';
       e.title = m.label;
       const d = Math.hypot(m.x - p.x, m.z - p.z);
       e.dataset.dist = d < 15 ? '' : `${Math.round(d)}m`;

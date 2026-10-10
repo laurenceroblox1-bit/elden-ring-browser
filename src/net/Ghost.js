@@ -54,7 +54,8 @@ export class Ghost {
     this.id = id;
     this.name = name;
     this.model = buildPlayer();
-    this._tint(CLOAKS[id % CLOAKS.length]);
+    this.cloak = CLOAKS[id % CLOAKS.length];
+    this._tint(this.cloak);
     this.joints = playerJoints(this.model);
     this.tag = nameTag(name);
     this.tag.position.y = 2.35;

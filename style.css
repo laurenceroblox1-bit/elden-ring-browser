@@ -70,6 +70,8 @@ kbd {
 .pin.shrine { background: #ffb560; border-radius: 50%; transform: translateX(-50%); width: 7px; height: 7px; top: 10px; }
 .pin::after { content: attr(data-dist); position: absolute; top: 12px; left: 50%; transform: translateX(-50%) rotate(-45deg); font: 0.62rem/1 var(--font-body); color: var(--muted); }
 .pin.shrine::after { transform: translateX(-50%); }
+.pin.friend { border-radius: 50%; transform: translateX(-50%); width: 10px; height: 10px; top: 8px; border: 2px solid #efe2c0; box-shadow: 0 0 6px rgba(239, 226, 192, 0.8); }
+.pin.friend::after { transform: translateX(-50%); }
 
 /* ---------- objectives ---------- */
 .tracker { position: absolute; top: calc(64px + env(safe-area-inset-top, 0px)); right: var(--gutter); width: min(300px, 40vw); display: grid; gap: 10px; text-align: right; }
@@ -345,6 +347,9 @@ kbd {
 .mk.quest { width: 11px; height: 11px; transform: translate(-50%, -50%) rotate(45deg); background: var(--gold); border: 1px solid #3a2f22; box-shadow: 0 0 6px rgba(242, 213, 143, 0.8); }
 .mk.quest.main { width: 13px; height: 13px; background: var(--gold-hi); }
 .mk.gate { width: 16px; height: 6px; border-radius: 3px; background: #f2e2b8; box-shadow: 0 0 10px #f2e2b8; }
+.mk.friend { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #efe2c0; box-shadow: 0 0 8px rgba(239, 226, 192, 0.9); z-index: 2; }
+.mk.friend i { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); font: 600 0.7rem/1 var(--font-body); font-style: normal; color: #efe2c0; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+.net-who .net-go-to { margin-left: 0.6em; padding: 0.1em 0.6em; font-size: 0.8em; }
 .mk.remnant { width: 10px; height: 10px; border-radius: 50%; background: #c8e6a0; box-shadow: 0 0 8px #c8e6a0; }
 .map-side { display: grid; gap: 10px; align-content: start; min-width: 0; max-height: calc(100vh - 56px); overflow-y: auto; }
 .map-side h2 { font-size: 1.5rem; }

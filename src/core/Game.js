@@ -1186,6 +1186,26 @@ export class Game {
     return null;
   }
 
+  // Multiplayer: travel to another player's side (the lanterns carry you to them). Same limits as fast
+  // travel. Returns a reason it can't happen, or null.
+  travelToFriend(key) {
+    const gh = this.net?.ghosts.get(key);
+    if (!gh?.target || !gh.model.root.visible) return 'They are not out in the world right now.';
+    if (this.bossFight) return 'The mist holds you here until the fight is done.';
+    if (this.fieldBoss && this._nearFieldBoss()) return 'Not in the middle of a fight like this.';
+    if (!this.player.alive) return 'You cannot travel while fallen.';
+    if (this.player.state === 'fog') return 'Not while passing through the mist.';
+    if (this.player.mounted) this.horse.dismount(true);
+    const at = gh.model.root.position, yaw = gh.model.root.rotation.y;
+    // Just behind and beside them, wherever there is ground.
+    let x = at.x - Math.sin(yaw) * 2.2 + Math.cos(yaw) * 1.2, z = at.z - Math.cos(yaw) * 2.2 - Math.sin(yaw) * 1.2;
+    if (!this.world.inPlay(x, z, 1)) { x = at.x; z = at.z; }
+    this.teleport(x, z, yaw, { banner: true });
+    this.hud.banner(gh.name, 'You arrive at their side', 'kindle', 3000);
+    this.audio.play('mist');
+    return null;
+  }
+
   // Spawns an enemy of `kind` a few metres in front of the player, facing them.
   spawnEnemy(kind, dist = 5) {
     const p = this.player;

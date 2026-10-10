@@ -81,5 +81,11 @@ export function addGait(p, phase, amp, armSwing = 0.5) {
   p.sLx += -s * armSwing * amp;
   p.hipsH += (Math.cos(phase * 2) - 1) * 0.035 * amp;
   p.torsoY += s * 0.08 * amp;
+  // The hips twist against the shoulders and roll over each planted foot; the head stays level; a
+  // fast stride leans forward into it.
+  p.hipsY -= s * 0.09 * amp;
+  p.hipsZ += Math.cos(phase) * 0.035 * amp;
+  p.headY -= s * 0.05 * amp;
+  p.torsoX += 0.07 * amp * amp;
   return p;
 }

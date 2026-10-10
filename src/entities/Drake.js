@@ -296,21 +296,10 @@ export class Drake extends Hound {
         if (t < M.windup) {
           this.turnTo(c.toP, 3, dt);
           // The tell: its throat swells with light and it rears back, sucking in air.
-          this.model.throat.material.opacity = t / M.windup;
-          this.model.throat.scale.setScalar(0.6 + t / M.windup * 1.4);
-          this.breathYaw = -M.sweep * this.strafe * (t / M.windup);
           if (!this.fired && t > M.windup - 0.3) { this.fired = true; g.audio.playAt('breath', this.pos, 80); }
         } else if (t < M.windup + M.active) {
-          // The river of fire sweeps across in front of it.
-          const u = (t - M.windup) / M.active;
-          this.breathYaw = M.sweep * this.strafe * (2 * u - 1);
-          this.model.throat.material.opacity = 1;
-          const mo = this._mouth();
-          const dir = mo.a;
-          for (let i = 0; i < 5; i++) {
-            const sp = 14 + Math.random() * 6;
-            g.particles.emit({ x: mo.x, y: mo.y, z: mo.z, count: 1, speed: 1.2, up: -0.5, color: 0xff5a10, color2: 0xffe080, life: [0.45, 0.75], size: [0.35, 0.7], drag: 0.6, jitter: 0.3, dir: { x: Math.sin(dir) * sp, y: -1.6, z: Math.cos(dir) * sp } });
-          }
+          // The river of fire sweeps across in front of it (drawn in _animate, so other players see it).
+          const dir = this.yaw + this.breathYaw;
           if ((this.tick -= dt) <= 0) {
             this.tick = 0.22;
             g.combat.melee(this, { dmg: M.dmg, poise: 6, reach: M.reach, arc: M.arc, height: 6, burn: M.burn, yawOffset: this.breathYaw, knock: 1.5, parryable: false }, new Set());
@@ -321,8 +310,6 @@ export class Drake extends Hound {
             g.effects.hazard(this, this.pos.x + Math.sin(dir) * d, this.pos.z + Math.cos(dir) * d, { radius: 2.2, life: 4, look: 'fire', hit: { dmg: 4, poise: 0, burn: 14, unblockable: true } });
           }
         } else {
-          this.model.throat.material.opacity = Math.max(0, 1 - (t - M.windup - M.active) * 3);
-          this.breathYaw *= Math.exp(-6 * dt);
           if (t >= M.windup + M.active + M.recover) {
             if (this.phase === 2 && !this.chained && Math.random() < 0.35) {
               this.chained = true;
@@ -515,10 +502,6 @@ export class Drake extends Hound {
       this.game.audio.play('roarBig');
       this.game.audio.play('breath');
     }
-    if (this.roared && this.t < roar + 1.5) {
-      const mo = this._mouth();
-      for (let i = 0; i < 3; i++) this.game.particles.emit({ x: mo.x, y: mo.y + 1, z: mo.z, count: 1, speed: 1, color: 0xff5a10, color2: 0xffe080, life: [0.5, 0.9], size: [0.3, 0.6], drag: 0.5, jitter: 0.3, dir: { x: 0, y: 14, z: 0 } });
-    }
     if (this.t >= L) {
       this._engage();
       this.cooldown = 0.8;
@@ -649,7 +632,45 @@ export class Drake extends Hound {
     super._pose(T, o, dt);
   }
 
+  // The breath's look, from the move's clock alone (so a puppet in someone else's game draws it too):
+  // the throat swelling in the wind-up, the stream sweeping across, the glow fading after.
+  _breathFx(dt) {
+    const M = MOVES.breath, t = this.t, m = this.model, g = this.game;
+    if (this.state !== 'breath') {
+      if (this.state === 'wake' && this.introLen) {
+        // The intro's roar of fire into the sky.
+        const roar = this.introLen > 4 ? 4.4 : 1.0;
+        if (t > roar && t < roar + 1.5) {
+          const mo = this._mouth();
+          for (let i = 0; i < 3; i++) g.particles.emit({ x: mo.x, y: mo.y + 1, z: mo.z, count: 1, speed: 1, color: 0xff5a10, color2: 0xffe080, life: [0.5, 0.9], size: [0.3, 0.6], drag: 0.5, jitter: 0.3, dir: { x: 0, y: 14, z: 0 } });
+        }
+      }
+      if (this.state !== 'spit' && this.state !== 'fly') m.throat.material.opacity = Math.max(0, m.throat.material.opacity - dt * 3);
+      this.breathYaw *= Math.exp(-6 * dt);
+      return;
+    }
+    const side = this.strafe || 1;
+    if (t < M.windup) {
+      m.throat.material.opacity = t / M.windup;
+      m.throat.scale.setScalar(0.6 + (t / M.windup) * 1.4);
+      this.breathYaw = -M.sweep * side * (t / M.windup);
+    } else if (t < M.windup + M.active) {
+      const u = (t - M.windup) / M.active;
+      this.breathYaw = M.sweep * side * (2 * u - 1);
+      m.throat.material.opacity = 1;
+      const mo = this._mouth();
+      for (let i = 0; i < 5; i++) {
+        const sp = 14 + Math.random() * 6;
+        g.particles.emit({ x: mo.x, y: mo.y, z: mo.z, count: 1, speed: 1.2, up: -0.5, color: 0xff5a10, color2: 0xffe080, life: [0.45, 0.75], size: [0.35, 0.7], drag: 0.6, jitter: 0.3, dir: { x: Math.sin(mo.a) * sp, y: -1.6, z: Math.cos(mo.a) * sp } });
+      }
+    } else {
+      m.throat.material.opacity = Math.max(0, 1 - (t - M.windup - M.active) * 3);
+      this.breathYaw *= Math.exp(-6 * dt);
+    }
+  }
+
   _animate(dt) {
+    this._breathFx(dt);
     super._animate(dt);
     const m = this.model;
     m.neck.rotation.y += (this.breathYaw * 0.7 - m.neck.rotation.y) * dampK(10, dt);

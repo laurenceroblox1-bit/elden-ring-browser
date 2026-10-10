@@ -156,6 +156,8 @@ export class Actor {
       this.pos.y += this.vy * dt;
       if (this.pos.y <= ground) {
         this.pos.y = ground;
+        this.landV = -this.vy; // how hard it came down (the player's landing squash reads this)
+        this.landAt = this.game.time;
         this.vy = 0;
         this.onGround = true;
       } else {

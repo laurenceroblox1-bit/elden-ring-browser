@@ -57,6 +57,15 @@ export class NetPanel {
       catch { window.prompt('Copy this invite link:', link); }
     });
     this.$('.net-re').addEventListener('click', () => { game.audio.play('ui'); net.reconnect(); });
+    // "Go to them": travel to another player's side.
+    this.$('.net-who').addEventListener('click', (e) => {
+      const b = e.target.closest('.net-go-to');
+      if (!b) return;
+      game.audio.play('ui');
+      const why = game.travelToFriend(b.dataset.key);
+      if (why) game.hud.toast(why);
+      else if (game.modal === 'multiplayer') game.closeModal();
+    });
     net.onChange = () => { if (!this.root.hidden) this.render(); };
 
     // The chat bar lives in the HUD whether or not this panel is open.
@@ -160,7 +169,7 @@ export class NetPanel {
   }
 
   _lists(net) {
-    const who = [...net.ghosts.values()].map((g) => `<li>${esc(g.name)}</li>`);
+    const who = [...net.ghosts.entries()].map(([key, g]) => `<li>${esc(g.name)}${g.model.root.visible ? ` <button class="btn net-go-to" data-key="${esc(key)}">Go to them</button>` : ''}</li>`);
     if (net.online) who.unshift(`<li class="self">${esc(net.name)} (you)</li>`);
     this.$('.net-who').innerHTML = who.join('') || '<li class="none">Nobody</li>';
     this.$('.net-log').innerHTML = net.chatLog.slice(-12).map((l) => `<div class="${l.self ? 'self' : ''}"><b>${esc(l.name)}</b> ${esc(l.text)}</div>`).join('') || '<div class="none">No messages yet.</div>';
