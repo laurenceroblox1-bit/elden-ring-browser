@@ -78,6 +78,7 @@ export class EnemyBars {
       b.lag.style.transform = `scaleX(${Math.max(f, b.lagV)})`;
       b.name.textContent = locked ? e.name ?? '' : '';
       b.el.classList.toggle('open', !!e.isOpen?.());
+      b.el.classList.toggle('ally', !!e.ally); // spirit allies: a pale blue bar
       const fr = e.frostbite > 0 ? e.frostbite / 6 : (e.frost ?? 0) / 100;
       if (b.frost.hidden !== !(fr > 0.01)) b.frost.hidden = !(fr > 0.01);
       if (fr > 0.01) {

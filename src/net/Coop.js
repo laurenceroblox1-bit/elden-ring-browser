@@ -118,7 +118,7 @@ export class Coop {
     const players = [g.player.pos, ...[...this.net.ghosts.values()].filter((gh) => gh.actor?.alive).map((gh) => gh.actor.pos)];
     const list = [];
     for (const e of g.enemies) {
-      if (e.netRemote) continue;
+      if (e.netRemote || e.ally) continue; // spirit allies are each player's own
       let d = Infinity;
       for (const q of players) d = Math.min(d, Math.hypot(q.x - e.pos.x, q.z - e.pos.z));
       if (d > SNAP_RANGE) continue;

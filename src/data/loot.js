@@ -29,6 +29,8 @@ export const LOOT = [
   { gear: 'rimeguard_greatshield', x: 140, z: -470 },
   // Propped against the Gatehouse Shrine, for whoever means to face the Warden.
   { gear: 'gatewarden_greatshield', x: 20.5, z: -190 },
+  // In Castle Dunmarrow's courtyard, at the foot of the tall tower.
+  { gear: 'spirit_knight', x: 23, z: -346 },
   // The outer regions (data/biomes.js).
   ...BIOME_LOOT,
 ];

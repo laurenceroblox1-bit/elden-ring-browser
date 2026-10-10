@@ -83,6 +83,7 @@ export class Game {
     this.timeScale = 1; // test menu: scales the simulation step
     this.cheats = { stamina: false, focus: false, freeze: false, oneHit: false, flasks: false };
     this.extras = new Set(); // enemies spawned from the test menu; removed on rest, death and respawn-all
+    this.allies = new Set(); // spirit allies (summonAllies)
 
     this.events = new Events();
     this.input = new Input(this.canvas);
@@ -567,8 +568,100 @@ export class Game {
   }
 
   // The player an enemy goes after: you, or in multiplayer whoever is nearest (net/Coop.js).
+  // Spirit allies (see summonAllies) fight whoever is near you; enemies go for whichever of you, the
+  // other players and your allies is nearest.
   targetFor(e) {
-    return this.net ? this.net.coop.targetFor(e) : this.player;
+    if (e.ally) return this._allyTarget(e);
+    const t = this.net ? this.net.coop.targetFor(e) : this.player;
+    if (!this.allies.size) return t;
+    let best = t, bd = t.alive ? Math.hypot(t.pos.x - e.pos.x, t.pos.z - e.pos.z) : Infinity;
+    for (const a of this.allies) {
+      if (!a.alive) continue;
+      const d = Math.hypot(a.pos.x - e.pos.x, a.pos.z - e.pos.z);
+      if (d < bd - 2) { best = a; bd = d; }
+    }
+    return best;
+  }
+
+  // An ally's target: the nearest foe that's awake and near you (or near it), else nobody (a
+  // stand-in at your side that isn't "alive", so it walks back to you).
+  _allyTarget(a) {
+    const p = this.player.pos;
+    let best = null, bd = Infinity;
+    for (const e of this.enemies) {
+      if (!e.alive || e.ally || e.team !== 'enemy' || e.invuln && e.state === 'idle') continue;
+      const dp = Math.hypot(e.pos.x - p.x, e.pos.z - p.z), da = Math.hypot(e.pos.x - a.pos.x, e.pos.z - a.pos.z);
+      if (dp > 20 && da > 10) continue;
+      if (e.state === 'idle' && dp > 9 && da > 6) continue; // let sleeping things lie, unless you're on top of them
+      if (da < bd) { best = e; bd = da; }
+    }
+    return best ?? (this.allyLeader ??= { pos: this.player.pos, vel: this.player.vel, alive: false, yaw: 0, team: 'player', radius: 0.4 });
+  }
+
+  // Calls `n` spectral allies of `kind` around you for `life` seconds (rites; data/abilities.js).
+  // Any you already have fade first.
+  summonAllies(kind, n, life) {
+    this.dismissAllies();
+    const p = this.player;
+    for (let i = 0; i < n; i++) {
+      const a = p.yaw + Math.PI + (i - (n - 1) / 2) * 0.9;
+      const x = p.pos.x + Math.sin(a) * 2.5, z = p.pos.z + Math.cos(a) * 2.5;
+      const e = this.summonEnemy(kind, x, z, p.yaw, {});
+      e.ally = true;
+      e.team = 'player';
+      e.lockable = false;
+      e.ash = 0;
+      e.allyT = life;
+      e.allyOff = { a: (i - (n - 1) / 2) * 1.2 + Math.PI, d: 2.5 };
+      e.leash = 24;
+      e.returnSpeed = 7;
+      spectral(e.model.root);
+      this.allies.add(e);
+      this.particles.emit({ x, y: e.pos.y + 1, z, count: 30, speed: 2.5, up: 2, color: 0xbfe0ff, color2: 0xffffff, life: [0.5, 1.1], size: [0.1, 0.22], jitter: 0.6 });
+    }
+    this.audio.play('blink');
+  }
+
+  dismissAllies() {
+    for (const a of this.allies) this.particles.emit({ x: a.pos.x, y: a.pos.y + 1, z: a.pos.z, count: 24, speed: 2, up: 2, color: 0xbfe0ff, color2: 0xffffff, life: [0.4, 0.9], size: [0.1, 0.2], jitter: 0.6 });
+    const gone = this.allies;
+    this.allies = new Set();
+    this.despawnExtras((e) => gone.has(e));
+  }
+
+  // Allies keep their "post" at your side, and fade when their time is up or a while after they fall.
+  _updateAllies(dt) {
+    if (!this.allies.size) return;
+    const p = this.player;
+    for (const a of [...this.allies]) {
+      a.spawn.x = p.pos.x + Math.sin(p.yaw + a.allyOff.a) * a.allyOff.d;
+      a.spawn.z = p.pos.z + Math.cos(p.yaw + a.allyOff.a) * a.allyOff.d;
+      a.spawn.yaw = p.yaw;
+      a.allyT -= dt;
+      // A foe near you: it goes for it straight away, whichever way it was facing.
+      if (a.alive && (a.state === 'idle' || a.state === 'return')) {
+        const t = this._allyTarget(a);
+        if (t.alive && Math.hypot(t.pos.x - a.pos.x, t.pos.z - a.pos.z) < 16) {
+          a.state = 'alert';
+          a.t = 0;
+          continue;
+        }
+      }
+      // Idle and left behind: it trots after you. Far behind (you rode off): it catches up at once.
+      if (a.alive && a.state === 'idle' && Math.hypot(a.pos.x - a.spawn.x, a.pos.z - a.spawn.z) > 3.5) {
+        a.state = 'return';
+        a.t = 0;
+      }
+      if (a.alive && Math.hypot(a.pos.x - p.pos.x, a.pos.z - p.pos.z) > 30) {
+        a.pos.set(a.spawn.x, this.world.getHeight(a.spawn.x, a.spawn.z), a.spawn.z);
+        this.particles.emit({ x: a.pos.x, y: a.pos.y + 1, z: a.pos.z, count: 16, speed: 2, up: 2, color: 0xbfe0ff, color2: 0xffffff, life: [0.4, 0.8], size: [0.1, 0.2], jitter: 0.5 });
+      }
+      if (a.allyT <= 0 || (!a.alive && a.t > 2.5) || !p.alive) {
+        this.allies.delete(a);
+        this.particles.emit({ x: a.pos.x, y: a.pos.y + 1, z: a.pos.z, count: 24, speed: 2, up: 2, color: 0xbfe0ff, color2: 0xffffff, life: [0.4, 0.9], size: [0.1, 0.2], jitter: 0.6 });
+        this.despawnExtras((e) => e === a);
+      }
+    }
   }
 
   // The boss whose bar is showing: a roaming boss while it fights (Vharra, Saelith, the troll),
@@ -656,6 +749,7 @@ export class Game {
   // ---------- outcomes ----------
 
   onEnemyKilled(e) {
+    if (e.ally) return; // a spirit ally fading is not a kill
     this.addAsh(e.ash);
     this.events.emit('enemyKilled', e);
     if (this.lockTarget === e) this.lockTarget = null;
@@ -861,6 +955,7 @@ export class Game {
   // the draw distance from the camera isn't drawn at all (frustum culling already skips what's
   // behind the camera). Foes (hounds, acolytes) manage their own draw distance.
   _updateEnemies(dt) {
+    this._updateAllies(dt);
     const c = this.camera.position;
     const coop = this.net.coop;
     for (const e of this.enemies) {
@@ -1242,6 +1337,7 @@ export class Game {
       e.dispose?.();
       if (this.lockTarget === e) this.lockTarget = null;
       this.extras.delete(e);
+      this.allies.delete(e);
     }
     const set = new Set(gone);
     this.enemies = this.enemies.filter((e) => !set.has(e));
@@ -1307,3 +1403,26 @@ export class Game {
   }
 }
 
+// Spirit allies look like ghosts: every material on the model swapped for a pale, glowing,
+// see-through copy (copies, so the ordinary enemies sharing those materials are untouched).
+function spectral(root) {
+  const copies = new Map();
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    const swap = (m) => {
+      if (!m || !m.isMeshStandardMaterial) return m;
+      if (!copies.has(m)) {
+        const c = m.clone();
+        c.color.lerp(new THREE.Color(0xbfe0ff), 0.6);
+        c.emissive.setHex(0x3a78c8);
+        c.emissiveIntensity = 0.7;
+        c.transparent = true;
+        c.opacity = 0.62;
+        copies.set(m, c);
+      }
+      return copies.get(m);
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
+    o.castShadow = false;
+  });
+}

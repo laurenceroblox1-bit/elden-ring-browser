@@ -98,7 +98,7 @@ export class Combat {
     if (attacker === this.game.player && this.game.cheats?.oneHit) h.dmg = 99999; // test menu
     // Multiplayer: an enemy another player's game is running. The blow goes to that game (net/Coop.js).
     if (target.netPuppet) {
-      if (attacker !== this.game.player) return false;
+      if (attacker !== this.game.player && !attacker.ally) return false;
       this.game.net.coop.sendHit(target, h);
       this.feedback(attacker, target, h, true);
       return true;

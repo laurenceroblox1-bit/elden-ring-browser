@@ -269,7 +269,7 @@ export class Sentry extends Actor {
       case 'return': {
         const hy = yawTo(this.pos.x, this.pos.z, this.spawn.x, this.spawn.z);
         this.turnTo(hy, 5, dt);
-        want = { x: Math.sin(hy) * 3, z: Math.cos(hy) * 3 };
+        want = { x: Math.sin(hy) * (this.returnSpeed ?? 3), z: Math.cos(hy) * (this.returnSpeed ?? 3) };
         this.hp = Math.min(this.maxHp, this.hp + 30 * dt);
         if (fromHome < 1.5) { this.state = 'idle'; this.turnTo(this.spawn.yaw, 10, 1); }
         else if (p.alive && dist < 8 && fromHome < 30) this.state = 'chase';

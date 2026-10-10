@@ -173,6 +173,7 @@ export const KEEP_CLEAR = [
   { x: -14, z: -534, r: 3 }, // Eskil's lantern on the hall steps
   { x: 108, z: -506, r: 3 }, // the frost chapel (Rite: Frost Nova)
   { x: 140, z: -470, r: 3 }, // the troll's den (Rimeguard Greatshield)
+  { x: 23, z: -346, r: 3 }, // the castle tower's foot (Rite: Spirit Knight)
 ];
 
 // Fires get a flickering light (campfires) or just a glow (braziers).

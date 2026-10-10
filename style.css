@@ -409,6 +409,7 @@ kbd {
 .ebar-track { position: absolute; left: -38px; top: -4px; width: 76px; height: 6px; border: 1px solid rgba(201, 164, 92, 0.45); background: rgba(0, 0, 0, 0.6); }
 .ebar-fill, .ebar-lag { position: absolute; inset: 1px; transform-origin: left; }
 .ebar-fill { background: linear-gradient(#b8322a, #6e1c18); }
+.ebar.ally .ebar-fill { background: linear-gradient(#a8d4ff, #4a7ab8); }
 .ebar-lag { background: var(--blood-lag); opacity: 0.8; }
 .ebar.open .ebar-track { border-color: #ff6a4a; box-shadow: 0 0 8px rgba(255, 106, 74, 0.7); }
 .ebar-name { position: absolute; left: -90px; width: 180px; top: -22px; text-align: center; font: 0.85rem/1 var(--font-display); color: var(--text); text-shadow: 0 1px 3px #000; white-space: nowrap; }

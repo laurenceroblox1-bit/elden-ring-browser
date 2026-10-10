@@ -566,6 +566,22 @@ export const RITES = {
       }],
     ],
   },
+  spirit_wolves: {
+    name: 'Spirit Wolves',
+    type: 'Spirit rite',
+    desc: 'Ring the little bone bell and the spirits of three Rime Wolves answer, pale as frost. They run at your side and hunt whatever comes for you, until the bell\'s note fades (45 seconds) or they fall.',
+    focus: 45, cooldown: 50,
+    time: 1.0, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.8,
+    events: [[0.5, (p) => p.game.summonAllies('wolf', 3, 45)]],
+  },
+  spirit_knight: {
+    name: 'Spirit Knight',
+    type: 'Spirit rite',
+    desc: 'A Dunmarrow Knight\'s oath, still binding: one of the old watch rises at your call, shield up, and fights beside you for a minute.',
+    focus: 45, cooldown: 60,
+    time: 1.0, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.8,
+    events: [[0.5, (p) => p.game.summonAllies('knight', 1, 60)]],
+  },
   mending_light: {
     name: 'Mending Light',
     type: 'Healing rite',

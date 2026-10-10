@@ -91,8 +91,8 @@ export const QUESTS = {
     stages: [
       { text: 'Put down Mire Hounds on the lake shore and the moor road', on: { type: 'kill', tag: 'hound', count: 5 }, marker: [-185, -85] },
     ],
-    reward: { ash: 350 },
-    doneText: 'The shore is quiet again. Ilse says she slept through the night for the first time in weeks.',
+    reward: { ash: 350, rite: 'spirit_wolves' },
+    doneText: 'The shore is quiet again. Ilse gave you a little bone bell she found on the moor: the Spirit Wolves rite. Prepare it in your equipment (I) and cast it with V.',
   },
   mother: {
     title: 'The Mother of the Mire',
