@@ -81,6 +81,21 @@ export class Net {
   }
 
   get online() { return this.status === 'online'; }
+  // The party code in the page address (?party=code or #party=code), if any.
+  static linkParty() {
+    const m = /[?&#]party=([a-z0-9_.-]{1,40})/i.exec(location.search + location.hash);
+    return m ? m[1].toLowerCase() : '';
+  }
+
+  // A link that opens the game straight into your party (or, with no party, the shared lobby).
+  inviteLink() {
+    const u = new URL(location.href);
+    u.hash = '';
+    u.searchParams.delete('party');
+    if (this.party) u.searchParams.set('party', this.party);
+    return u.toString();
+  }
+
   get roomMode() { return this.mode === 'room'; }
   get partyMode() { return this.mode === 'room' || this.mode === 'p2p'; } // party codes, no server address
   get hostName() {
@@ -199,7 +214,8 @@ export class Net {
       this.roomTried = true;
       // A plain website (GitHub Pages, Netlify...): no server, so players connect straight to each
       // other. Everyone lands in the public lobby unless they pick a party code.
-      if (P2P.auto()) this.joinP2P('lobby');
+      // An invite link (?party=code) puts you straight into that party.
+      if (P2P.auto()) this.joinP2P(Net.linkParty() || 'lobby');
       return;
     }
     let room = null;
@@ -221,6 +237,7 @@ export class Net {
       } catch { /* keep the wanderer name */ }
     }
     this._enter(room);
+    if (Net.linkParty()) this.joinParty(Net.linkParty());
   }
 
   // Listens to a room (the lobby, or a party) and starts sharing your knight there.

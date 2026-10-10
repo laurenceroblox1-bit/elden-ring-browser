@@ -29,6 +29,7 @@ export class NetPanel {
             <button class="btn net-lobby">Back to everyone</button>
             <button class="btn net-show"></button>
             <button class="btn net-re">Reconnect</button>
+            <button class="btn net-inv">Copy invite link</button>
           </div>
         </div>
         <p class="test-sub net-help"></p>
@@ -49,6 +50,12 @@ export class NetPanel {
     this.$('.net-party-go').addEventListener('click', () => { game.audio.play('ui'); net.joinParty(this.$('.net-party').value); });
     this.$('.net-lobby').addEventListener('click', () => { game.audio.play('ui'); this.$('.net-party').value = ''; net.joinParty(''); });
     this.$('.net-show').addEventListener('click', () => { game.audio.play('ui'); net.setVisible(!net.visible); });
+    this.$('.net-inv').addEventListener('click', async () => {
+      game.audio.play('ui');
+      const link = net.inviteLink();
+      try { await navigator.clipboard.writeText(link); game.hud.toast('Invite link copied: send it to your friends.', 'item'); }
+      catch { window.prompt('Copy this invite link:', link); }
+    });
     this.$('.net-re').addEventListener('click', () => { game.audio.play('ui'); net.reconnect(); });
     net.onChange = () => { if (!this.root.hidden) this.render(); };
 
