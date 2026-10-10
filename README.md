@@ -12,8 +12,9 @@ Dunmarrow open onto the **Rimewold**, a frozen highland where a troll owns the H
 **Saelith, the Winter Lantern** keeps the flame that holds the land in winter. Past the mountains
 around the Vale lie five more regions, each with its own weather, enemies, people and boss: the
 volcanic **Cinderfall Wastes**, the **Drowned Coast**, the **Glowcap Hollows**, the **Gilded Dunes**
-and the **Stormspire Heights** (see *The outer regions*). Play alone, or with friends in a shared
-Vale (see *Multiplayer*).
+and the **Stormspire Heights** (see *The outer regions*). Fell all five of their great ones and the
+mist lifts from the **Hollow Bell**, where the **Bell-Ringer** waits under the last spire. Play
+alone, or with friends in a shared Vale (see *Multiplayer*).
 
 ## Run it
 
@@ -95,7 +96,7 @@ sticks feed `Input.axis()` and `Input.look` (`core/Gamepad.js`).
   lake, forests, ruins, a roofless chapel, a graveyard approach and the walled arena. East of the
   Watch Ruins, the fen road leads down into the **Ashen Fen**: a basin of grey ash ground, black
   pools, reed beds and dead trees, with the Fenwatch Shrine at its edge and the Mother's Hollow at
-  its heart. The Hollow Bell spire stands on the far peaks.
+  its heart. The Hollow Bell spire stands on the far eastern peaks.
 - **Castle Dunmarrow and the Rimewold**: north of the arena a ridge of peaks closes the Vale, and
   Castle Dunmarrow holds the only pass. Its gatehouse opens with the arena's north gate when the
   Warden falls: a courtyard with the keep, knights and bowmen, and a rear gate onto the
@@ -200,6 +201,15 @@ comes through (`data/biomes.js` holds all their layout; `world/Biomes.js` builds
   (9% more damage per level).
 - **Tamsin's wares**: once you've spoken to her at the oasis, her crates sell smithing stones, flask
   seeds (one more flask each) and the Sunsteel Shield (which turns fire aside).
+- **The Hollow Bell**: east of the Vale, between the Dunes and the Heights (a branch off the Dunes
+  road climbs to it), a plateau of fallen bells sits behind a wall of mist. The mist holds until
+  Ashmaw, Morrow, Sylvara, Solkar and Vaelor are all dead (touch it to see who still stands).
+  Behind it, in the bell-yard under the spire, is **the Bell-Ringer**: hammer slams that ring outward, a sweep you can parry, a triple toll you
+  can't guard, bells dropped on and around you, and in its second phase the spire's great bell
+  tolls on its own. Beat it for the Ringer's Hammer and the ending (you can keep exploring after).
+- **Spirit summons**: the Spirit Wolves rite (the hounds quest's reward) and the Spirit Knight rite
+  (found in the Vale) call spectral allies with blue health bars that fight beside you, follow you,
+  and fade after a while or when you rest.
 - **Elites**: the Cinder Golems and Spire Gargoyles fight with a boss's moveset but are ordinary
   foes: leashed to their posts and back on their feet after you rest.
 
@@ -305,6 +315,9 @@ Click a lit lantern, on the map or in the list beside it, to travel there. It's 
 it doesn't count as resting, so enemies stay as they are and your flask isn't refilled. You can't
 travel during a boss fight or while you're down. The fen pools show on the map in black.
 
+Scroll (or the + and - buttons) to zoom, and drag to pan. Friends in a shared Vale show on the map
+and the compass.
+
 ## Test menu
 
 Press **`** (backquote), or choose *Test menu* in the pause menu. It pauses the game and frees the
@@ -365,6 +378,7 @@ src/entities/BigFoe.js     base for humanoid bosses that run their own fights (T
 src/entities/Drake.js      Ashmaw (and Scarab.js, Solkar): four-legged bosses on the hound's gait code
 src/data/biomes.js         the outer regions' layout: lobes, zones, roads, shrines, spawns, loot, stones
 src/data/smithing.js       weapon levels and their costs
+src/entities/BellRinger.js the Hollow Bell's boss
 src/world/Biomes.js        the outer regions' set pieces, lava, sea, oasis, glowcaps, storms, scenery
 src/models/creatures.js    the outer regions' creatures, bosses and traders
 src/ui/ShopPanel.js        Tamsin's wares
@@ -487,9 +501,9 @@ position; the test menu toggles it any time), plus these keys:
 - **Performance**: characters are merged into a few skinned meshes and distant things are culled
   (about 150 to 250 draw calls in open areas). Vegetation has no level of detail (LOD).
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
-- **Map**: fixed scale with no zoom or pan, and no custom waypoints.
-- **World**: the castle keep's interior and the Hollow Bell spire are hooks for later regions. The
-  outer regions' bosses don't yet change their land when they fall (the Rimewold's thaw does).
+- **Map**: no custom waypoints.
+- **World**: the castle keep's interior is a hook for a later region. Beaten outer bosses clear
+  their region's sky, but their land doesn't otherwise change (the Rimewold's thaw does).
 - **Multiplayer**: other players show on the compass and the map, and the Multiplayer panel's
   *Go to them* button takes you to their side. Enemies are host-run, so other players see them with a little delay (about a
   tenth of a second), and blows that land at the edge of reach can be judged differently. Loot
