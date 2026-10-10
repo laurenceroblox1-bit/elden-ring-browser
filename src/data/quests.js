@@ -137,4 +137,74 @@ export const QUESTS = {
     reward: { ash: 300, flask: 1 },
     doneText: 'Ilse ground a little of the shard into your flask. It holds one more draught, and it tastes of bronze.',
   },
+  // ---------- the outer regions ----------
+  ashmaw: {
+    title: 'The Old Fire',
+    main: true,
+    giver: 'Hessa, Smith of the Sunken Forge',
+    summary: 'South through the Cinder Pass, the Wastes run up to a smoking volcano. In the caldera beneath it sleeps Ashmaw, the drake whose breath turned the south of the Vale to cinders. Hessa wants its fire out.',
+    stages: [
+      { text: 'Kindle the Caldera Steps Shrine below the volcano.', on: { type: 'shrine', id: 'calderasteps' }, marker: [18, 576] },
+      { text: "Go down into Ashmaw's Caldera and slay the Cinder Drake.", on: { type: 'boss', id: 'ashmaw' }, marker: [0, 622] },
+      { text: 'Tell Hessa at the Sunken Forge that the drake is dead.', on: { type: 'talk', id: 'hessa' }, marker: [-76, 536] },
+    ],
+    reward: { ash: 2000, flask: 1 },
+    doneText: 'The Old Fire is out. Hessa says the forge will never burn so hot again, and seems glad of it.',
+  },
+  golems: {
+    title: 'Stone That Walks',
+    giver: 'Hessa, Smith of the Sunken Forge',
+    summary: 'Two golems of black basalt walk the Wastes, made in the Sunken Forge long ago and never unmade. Hessa wants them broken.',
+    stages: [
+      { text: 'Break the Cinder Golems that walk the Wastes', on: { type: 'kill', tag: 'golem', count: 2 }, marker: [84, 500] },
+    ],
+    reward: { ash: 700, item: 'smithing_stone', items: 2 },
+    doneText: "Hessa took the golems' cores and gave you stones for the anvil in return.",
+  },
+  tides: {
+    title: "Saltmarrow's Bell",
+    giver: 'Old Wenna, last of Saltmarrow',
+    summary: "Saltmarrow's harbour bell was torn away the night the Captain's ship came ashore. Wenna wants it back where it belongs.",
+    stages: [
+      { text: "Find Saltmarrow's bell, washed up at the end of the pier.", on: { type: 'item', id: 'drowned_bell' }, marker: [-556, 96] },
+      { text: 'Bring the bell back to Old Wenna.', on: { type: 'talk', id: 'wenna' }, marker: [-470, 106] },
+    ],
+    reward: { ash: 500, flask: 1 },
+    doneText: 'Wenna hung the bell over her door. It rang once on its own, which she says is the sea saying thank you.',
+  },
+  morrow: {
+    title: 'The Drowned Captain',
+    main: true,
+    giver: 'Old Wenna, last of Saltmarrow',
+    summary: "Captain Morrow ran his ship onto the coast and drowned with it; now he and his crew walk the beach and drag anyone they catch into the sea. Wenna was his wife's sister.",
+    stages: [
+      { text: 'Kindle the Tidehold Shrine on the Salt Road.', on: { type: 'shrine', id: 'tidehold' }, marker: [-446, 30] },
+      { text: "Find Captain Morrow by his wreck and send him back to the sea.", on: { type: 'boss', id: 'morrow' }, marker: [-560, -46] },
+    ],
+    reward: { ash: 1600, flask: 1 },
+    doneText: 'The tide went out further than Wenna has ever seen it, and came back clean.',
+  },
+  stalkers: {
+    title: 'Things Between the Caps',
+    giver: 'Murk, a Myconid',
+    summary: "Tall things drift between the glowcaps, throwing spores at anything that moves. Murk says they were Myconids once, before the Bloom Witch's spores got into them.",
+    stages: [
+      { text: 'Put the Glowcap Stalkers to rest', on: { type: 'kill', tag: 'stalker', count: 3 }, marker: [-400, -420] },
+    ],
+    reward: { ash: 600 },
+    doneText: 'Murk hums for a long while. It is, apparently, a song of thanks.',
+  },
+  bloom: {
+    title: 'The Bloom Witch',
+    main: true,
+    giver: 'Murk, a Myconid',
+    summary: 'In the Heartcap Grove at the end of the Hollows a woman went to sleep under the great mushroom and woke up as something else. Her spores are spreading. Murk asks you to end it.',
+    stages: [
+      { text: 'Kindle the Mossdeep Shrine in the Hollows.', on: { type: 'shrine', id: 'mossdeep' }, marker: [-328, -334] },
+      { text: 'Walk into the Heartcap Grove and face Sylvara, the Bloom Witch.', on: { type: 'boss', id: 'sylvara' }, marker: [-455, -482] },
+      { text: 'Tell Murk the grove is quiet.', on: { type: 'talk', id: 'murk' }, marker: [-306, -436] },
+    ],
+    reward: { ash: 1600, item: 'glowcap_spore', flask: 1 },
+    doneText: 'The Hollows are already growing back, gently, the way they did before.',
+  },
 };

@@ -52,6 +52,7 @@ export class Foe extends Actor {
     this.openT = 0;
     this.flinch = 0;
     this.frost = this.frostbite = 0;
+    this.clearBurnPoison();
     this.strafe = Math.random() < 0.5 ? -1 : 1;
     this.shown = true;
     this._onReset?.();

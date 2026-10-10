@@ -1,4 +1,5 @@
 // DOM overlay: bars, compass, quest tracker, prompts, toasts, banners, boss bar, and every menu screen.
+import { upgradeMult, levelName } from '../data/smithing.js';
 import * as THREE from '../lib/three.js';
 import { ITEMS } from '../data/items.js';
 import { WEAPONS, SHIELDS, speedLabel } from '../data/weapons.js';
@@ -62,6 +63,8 @@ const TEMPLATE = `
   <div class="bar fo"><div class="fill"></div></div>
   <div class="bar st"><div class="fill"></div></div>
   <div class="bar fr" hidden title="Frostbite"><div class="fill"></div></div>
+  <div class="bar bu" hidden title="Burning"><div class="fill"></div></div>
+  <div class="bar po" hidden title="Poison"><div class="fill"></div></div>
   <div class="perf" hidden aria-hidden="true"></div>
 </div>
 <div class="gear" aria-label="Equipped gear">
@@ -187,7 +190,7 @@ export class HUD {
     this.$ = $;
     this.el = {
       hpBar: $('.bar.hp'), hpFill: $('.bar.hp .fill'), hpLag: $('.bar.hp .lag'),
-      stBar: $('.bar.st'), stFill: $('.bar.st .fill'), frBar: $('.bar.fr'), frFill: $('.bar.fr .fill'), foBar: $('.bar.fo'), foFill: $('.bar.fo .fill'),
+      stBar: $('.bar.st'), stFill: $('.bar.st .fill'), frBar: $('.bar.fr'), frFill: $('.bar.fr .fill'), buBar: $('.bar.bu'), buFill: $('.bar.bu .fill'), poBar: $('.bar.po'), poFill: $('.bar.po .fill'), foBar: $('.bar.fo'), foFill: $('.bar.fo .fill'),
       flaskN: $('.flask-n'), flask: $('.flask'), ashN: $('.ash-n'),
       tracker: $('.tracker'), compass: $('.compass-track'), toasts: $('.toasts'), prompt: $('.prompt'),
       lock: $('.lock'), riposte: $('.riposte-hint'), hint: $('.hint'), banner: $('.banner'), bannerText: $('.banner-text'), bannerSub: $('.banner-sub'),
@@ -368,8 +371,9 @@ export class HUD {
     if (kind === 'weapon') {
       rows = owned.map((id) => {
         const w = WEAPONS[id], art = ARTS[w.art];
-        const m = 1 + (str - 10) * 0.05 * w.scale;
-        return row(id, w.name, `${w.type} · ${w.hands > 1 ? 'two hands' : 'one hand'}`, [
+        const lvl = this.game.state.upgrades?.[id] ?? 0;
+        const m = (1 + (str - 10) * 0.05 * w.scale) * upgradeMult(lvl);
+        return row(id, levelName(w.name, lvl), `${w.type} · ${w.hands > 1 ? 'two hands' : 'one hand'}`, [
           ['Damage', `${Math.round(w.moves.light1.dmg * m)} / ${Math.round(w.moves.heavy.dmg * m)}`],
           ['Speed', speedLabel(w)],
           ['Reach', `${w.moves.light1.reach.toFixed(1)} m`],
@@ -546,6 +550,15 @@ export class HUD {
       e.frFill.style.transform = `scaleX(${Math.min(1, fr)})`;
       e.frBar.classList.toggle('bitten', p.frostbite > 0);
     }
+    // Fire and poison work the same way.
+    for (const [bar, fill, v, on, full] of [[e.buBar, e.buFill, p.burn, p.burning, 5], [e.poBar, e.poFill, p.poison, p.poisoned, 14]]) {
+      const f = on > 0 ? on / full : v / 100;
+      if (bar.hidden !== !(f > 0.005)) bar.hidden = !(f > 0.005);
+      if (f > 0.005) {
+        fill.style.transform = `scaleX(${Math.min(1, f)})`;
+        bar.classList.toggle('bitten', on > 0);
+      }
+    }
     e.stBar.classList.toggle('winded', !!p.winded);
     e.stBar.classList.toggle('guarding', p.state === 'guard');
     e.flaskN.textContent = p.flasks;
@@ -618,10 +631,11 @@ export class HUD {
   // (a draining sweep) and short on focus. DOM writes happen only when something visible changes.
   _gear() {
     const p = this.game.player;
-    const key = `${p.weaponId}|${p.shieldId}|${p.riteId}`;
+    const lvl = this.game.state.upgrades?.[p.weaponId] ?? 0;
+    const key = `${p.weaponId}|${p.shieldId}|${p.riteId}|${lvl}`;
     if (key !== this.gearKey) {
       this.gearKey = key;
-      this.el.gearR.textContent = p.weapon.name;
+      this.el.gearR.textContent = levelName(p.weapon.name, lvl);
       this.el.gearL.textContent = p.weapon.hands > 1 ? 'Both hands' : p.shield ? p.shield.name : 'Nothing';
       const set = (ab, def) => {
         ab.name.textContent = def ? def.name : 'No rite';

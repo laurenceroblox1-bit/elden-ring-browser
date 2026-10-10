@@ -7,10 +7,12 @@ import { mat, mesh, box, cone, group, mergeRig } from './kit.js';
 // down the spine, ember eyes and a smouldering maw. Faces +Z with its feet at the root.
 // `mother` builds Vharra instead: soot-dark hide, a crown of bone, four eyes and a smouldering mane.
 // `frost` builds a Rime Wolf: white and pale-grey coat, ice-blue eyes and maw, a ruff of frost.
-export function buildHound({ mother = false, frost = false } = {}) {
-  const hide = mat(mother ? 0x4a4644 : frost ? 0xd9dee2 : 0x6b6e6f, { roughness: 0.95 });
-  const dark = mat(mother ? 0x2a2626 : frost ? 0x8e9aa6 : 0x3e4043, { roughness: 0.95 });
-  const bone = mat(frost ? 0xbfd8e6 : 0xd8cfb8);
+// `fire` builds an Ember Hound of the Cinderfall Wastes: charred black hide split by glowing seams,
+// a mane of flame along the spine.
+export function buildHound({ mother = false, frost = false, fire = false } = {}) {
+  const hide = mat(mother ? 0x4a4644 : frost ? 0xd9dee2 : fire ? 0x2e2422 : 0x6b6e6f, { roughness: 0.95 });
+  const dark = mat(mother ? 0x2a2626 : frost ? 0x8e9aa6 : fire ? 0x1a1414 : 0x3e4043, { roughness: 0.95 });
+  const bone = mat(frost ? 0xbfd8e6 : fire ? 0x6a4a3a : 0xd8cfb8);
   const ember = frost ? mat(0xcff0ff, { emissive: 0x58b8ff, emissiveIntensity: 2.4 }) : mat(0xffb04a, { emissive: 0xff7a1a, emissiveIntensity: 2.4, unique: mother }); // hers flares in phase two
   const maw = frost ? mat(0x2a4a6a, { emissive: 0x3a8ad8, emissiveIntensity: 0.8 }) : mat(0x6a2414, { emissive: 0xff4a10, emissiveIntensity: 0.7 });
 
@@ -51,6 +53,13 @@ export function buildHound({ mother = false, frost = false } = {}) {
     for (let i = 0; i < 4; i++) neck.add(mesh(cone(0.05, 0.16, 4), mat(0xf2f8fc), { x: (i % 2 ? 1 : -1) * 0.08, y: 0.1, z: 0.28 - i * 0.08, rx: -0.6, rz: (i % 2 ? -1 : 1) * 0.4 }));
     body.add(mesh(box(0.44, 0.1, 0.4), mat(0xf2f8fc), { y: 0.22, z: 0.28 }));
   }
+  if (fire) {
+    // A mane of fire down the neck and spine, and glowing seams on the flanks.
+    const flame = mat(0xffb04a, { emissive: 0xff5a10, emissiveIntensity: 2.6 });
+    for (let i = 0; i < 4; i++) neck.add(mesh(cone(0.05, 0.2 + i * 0.03, 4), flame, { y: 0.12, z: 0.3 - i * 0.09, rx: -0.5, shadow: false }));
+    for (let i = 0; i < 4; i++) body.add(mesh(cone(0.06, 0.22, 4), flame, { y: 0.26, z: 0.4 - i * 0.24, rx: -0.6, shadow: false }));
+    for (const x of [0.205, -0.205]) body.add(mesh(box(0.02, 0.05, 0.36), flame, { x, y: 0.02, z: 0.22, rx: 0.3, shadow: false }));
+  }
   if (mother) {
     // Ember mane down the neck and shoulders, a second pair of eyes, a crown of hooked horns, and a
     // glowing seam along the belly where the litter-fire burns.
@@ -69,6 +78,7 @@ export function buildHound({ mother = false, frost = false } = {}) {
   body.add(tail);
   tail.add(mesh(box(0.06, 0.06, 0.46), dark, { z: -0.22 }));
   tail.add(mesh(cone(0.04, 0.14, 4), bone, { z: -0.5, rx: -Math.PI / 2 }));
+  if (fire) tail.add(mesh(cone(0.06, 0.24, 4), mat(0xffb04a, { emissive: 0xff5a10, emissiveIntensity: 2.6 }), { z: -0.45, rx: -Math.PI / 2, shadow: false }));
 
   const legs = [];
   const mkLeg = (x, z, front) => {

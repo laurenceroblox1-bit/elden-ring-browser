@@ -159,7 +159,7 @@ export class Hound extends Foe {
       }
       this.turnTo(c.toP, 1.5, dt);
       if (t > L.windup + 0.05) {
-        const hit = { dmg: L.dmg * (this.dmgMul ?? 1), poise: L.poise, reach: L.reach * (this.size ?? 1), arc: L.arc, height: L.height, knock: 2.5, frost: this.biteFrost };
+        const hit = { dmg: L.dmg * (this.dmgMul ?? 1), poise: L.poise, reach: L.reach * (this.size ?? 1), arc: L.arc, height: L.height, knock: 2.5, frost: this.biteFrost, burn: this.biteBurn, poison: this.bitePoison };
         this.game.combat.melee(this, hit, this.hitSet);
       }
     } else {

@@ -51,7 +51,11 @@ export class Wraith extends Foe {
     this.parryable = new Set(); // claws of ice and bursts of frost: nothing to turn aside
     this.frostResist = 0; // the cold is what it is made of
     this.poseBuf = pose();
-    this._enter();
+    // What it throws and bursts with, and its colours (the Glowcap Stalker swaps these for spores).
+    this.shard = SHARD;
+    this.nova = NOVA;
+    this.look = { kind: 'shard', c1: 0xcfefff, c2: 0x7cc8ff, sound: 'frostbite', swirl: [0xe8f6ff, 0x9fd8ff] };
+    if (new.target === Wraith) this._enter();
   }
 
   _onReset() {
@@ -130,15 +134,17 @@ export class Wraith extends Foe {
     // Frost gathering in its hands: the tell.
     if (t < tw && Math.random() < dt * 25) {
       const a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 0.5;
-      g.particles.emit({ x: this.pos.x + Math.sin(a) * r, y: this.pos.y + HOVER + 1.5 + (Math.random() - 0.5) * 0.6, z: this.pos.z + Math.cos(a) * r, count: 1, speed: 0.2, up: 0.2, color: 0xcfefff, color2: 0xffffff, life: [0.2, 0.45], size: [0.05, 0.1], dir: { x: -Math.sin(a) * 2, y: 0, z: -Math.cos(a) * 2 } });
+      g.particles.emit({ x: this.pos.x + Math.sin(a) * r, y: this.pos.y + HOVER + 1.5 + (Math.random() - 0.5) * 0.6, z: this.pos.z + Math.cos(a) * r, count: 1, speed: 0.2, up: 0.2, color: this.look.c1, color2: 0xffffff, life: [0.2, 0.45], size: [0.05, 0.1], dir: { x: -Math.sin(a) * 2, y: 0, z: -Math.cos(a) * 2 } });
     }
     if (!this.fired && t >= tw) {
       this.fired = true;
       if (m === MOVES.shards) this._shards(c.p);
       else {
-        g.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: NOVA.maxR, speed: NOVA.speed, color: 0xbfe8ff, hit: { dmg: NOVA.dmg, poise: NOVA.poise, frost: NOVA.frost, knock: 3 } });
-        g.audio.play('frostbite');
-        g.particles.emit({ x: this.pos.x, y: this.pos.y + 1, z: this.pos.z, count: 30, speed: 5, up: 1, color: 0xdff4ff, color2: 0x7cc8ff, life: [0.3, 0.7], size: [0.08, 0.18], drag: 2 });
+        const N = this.nova;
+        g.effects.shockwave(this, this.pos.x, this.pos.z, { maxR: N.maxR, speed: N.speed, color: this.look.c1, hit: { dmg: N.dmg, poise: N.poise, frost: N.frost, poison: N.poison, knock: 3 } });
+        if (N.cloud) g.effects.hazard(this, this.pos.x, this.pos.z, { radius: N.cloud, life: 5, look: 'spore', hit: { dmg: 2, poise: 0, poison: 14, unblockable: true } });
+        g.audio.play(this.look.sound);
+        g.particles.emit({ x: this.pos.x, y: this.pos.y + 1, z: this.pos.z, count: 30, speed: 5, up: 1, color: this.look.c1, color2: this.look.c2, life: [0.3, 0.7], size: [0.08, 0.18], drag: 2 });
       }
     }
     if (t >= ta + m.recover) {
@@ -150,21 +156,21 @@ export class Wraith extends Foe {
   }
 
   _shards(p) {
-    const g = this.game;
+    const g = this.game, S = this.shard;
     const sx = this.pos.x + this.forwardX * 0.6, sy = this.pos.y + HOVER + 1.5, sz = this.pos.z + this.forwardZ * 0.6;
-    const flight = Math.hypot(p.pos.x - sx, p.pos.z - sz) / SHARD.speed;
+    const flight = Math.hypot(p.pos.x - sx, p.pos.z - sz) / S.speed;
     const tx = p.pos.x + p.vel.x * flight * 0.5, tz = p.pos.z + p.vel.z * flight * 0.5;
     const aim = Math.atan2(tx - sx, tz - sz), d = Math.hypot(tx - sx, tz - sz);
     const dy = (p.pos.y + 1.1 - sy) / Math.max(d, 1);
-    for (let i = 0; i < SHARD.count; i++) {
-      const a = aim + (i - (SHARD.count - 1) / 2) * SHARD.fan;
+    for (let i = 0; i < S.count; i++) {
+      const a = aim + (i - (S.count - 1) / 2) * S.fan;
       g.projectiles.spawn(this, {
-        kind: 'shard', x: sx, y: sy, z: sz, dirX: Math.sin(a), dirY: dy, dirZ: Math.cos(a),
-        speed: SHARD.speed, radius: SHARD.radius, life: SHARD.life,
-        hit: { dmg: SHARD.dmg, poise: SHARD.poise, frost: SHARD.frost, parryable: false }, sound: 'shard',
+        kind: this.look.kind, x: sx, y: sy, z: sz, dirX: Math.sin(a), dirY: dy, dirZ: Math.cos(a),
+        speed: S.speed, radius: S.radius, life: S.life,
+        hit: { dmg: S.dmg, poise: S.poise, frost: S.frost, poison: S.poison, parryable: false }, sound: this.look.kind === 'shard' ? 'shard' : 'spore', color: this.look.c1, color2: this.look.c2,
       });
     }
-    g.audio.play('shard');
+    g.audio.play(this.look.kind === 'shard' ? 'shard' : 'spore');
   }
 
   // Vanish in a swirl of snow and reappear a few strides away, out of reach.
@@ -206,7 +212,7 @@ export class Wraith extends Foe {
   }
 
   _swirl() {
-    this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 1.2, z: this.pos.z, count: 36, speed: 3, up: 1.5, color: 0xe8f6ff, color2: 0x9fd8ff, life: [0.4, 0.9], size: [0.08, 0.2], drag: 2, jitter: 0.6 });
+    this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 1.2, z: this.pos.z, count: 36, speed: 3, up: 1.5, color: this.look.swirl[0], color2: this.look.swirl[1], life: [0.4, 0.9], size: [0.08, 0.2], drag: 2, jitter: 0.6 });
   }
 
   _die(hit) {

@@ -1,9 +1,11 @@
 // World layout data. North is -Z. Everything that places content in the Vale lives here,
-// so new areas start as data before they need code.
+// so new areas start as data before they need code. The outer regions (the Cinderfall Wastes, the
+// Drowned Coast, the Glowcap Hollows) keep their own lists in data/biomes.js; they are merged in below.
+import { BIOME_ZONES, BIOME_ROADS, BIOME_SHRINES, BIOME_NPCS, BIOME_SPAWNS, BIOME_PICKUPS, BIOME_KEEP_CLEAR, BIOME_FIRES } from './biomes.js';
 
 export const WORLD = {
-  size: 1440, // terrain square edge, metres
-  segments: 432,
+  size: 1640, // terrain square edge, metres
+  segments: 492,
   playRadius: 470, // hard edge
   mountainStart: 385, // the ring of peaks starts rising here...
   mountainEnd: 560, // ...and is at full height here
@@ -184,3 +186,13 @@ export const FIRES = [
   { x: -7.5, z: -360.5, light: false }, // inside the castle's rear gate
   { x: 7.5, z: -360.5, light: false },
 ];
+
+// The outer regions join the lists above.
+Object.assign(ZONES, BIOME_ZONES);
+ROADS.push(...BIOME_ROADS);
+SHRINES.push(...BIOME_SHRINES);
+NPCS.push(...BIOME_NPCS);
+ENEMY_SPAWNS.push(...BIOME_SPAWNS);
+PICKUPS.push(...BIOME_PICKUPS);
+KEEP_CLEAR.push(...BIOME_KEEP_CLEAR);
+FIRES.push(...BIOME_FIRES);

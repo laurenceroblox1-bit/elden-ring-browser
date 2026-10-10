@@ -21,4 +21,16 @@ export const ITEMS = {
     name: "Warden's Bell",
     desc: 'The small bronze bell Odran wore at his throat. It rings without being touched.',
   },
+  smithing_stone: {
+    name: 'Smithing Stone',
+    desc: 'A heavy lump of dark ore shot through with a vein of light. Hessa, the smith of the Sunken Forge, can work it into a weapon to make it bite harder.',
+  },
+  drowned_bell: {
+    name: "Saltmarrow's Bell",
+    desc: 'A small bronze ship\'s bell crusted with barnacles. It rang in Saltmarrow\'s harbour every evening for two hundred years, until the night it didn\'t.',
+  },
+  glowcap_spore: {
+    name: 'Heartcap Spore',
+    desc: 'A spore the size of a plum that glows from inside, taken from the Heartcap. Murk says it will grow into something better, given time and a little gratitude.',
+  },
 };

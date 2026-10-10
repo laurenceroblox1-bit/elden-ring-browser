@@ -4,7 +4,8 @@
 //
 // spawn(owner, o) options:
 //   kind      'bolt' (a ball of lantern fire), 'crescent' (a flat burning arc), 'arrow' (a bowman's
-//             shaft, nose along its flight), 'shard' (a spike of ice) or 'boulder' (a lump of ice); the look
+//             shaft, nose along its flight), 'shard' (a spike of ice), 'boulder' (a lump of ice), 'fire',
+//             'magma' (a lobbed lump), 'spore' or 'water'; the look
 //   x, y, z   start point;  dirX, dirY, dirZ  direction (normalised here);  speed (m/s)
 //   radius    hit sphere radius (m);  life (s) before it fizzles
 //   hit       the hit object passed to Combat (dmg, poise, heavy, ...)
@@ -39,6 +40,11 @@ function looks() {
     arrow: { geo: new THREE.BoxGeometry(0.035, 0.035, 0.85), mat: new THREE.MeshStandardMaterial({ color: 0x6b5236, roughness: 0.8 }), glow: glow(0xffffff, 0.0), glowSize: 0.1, color: 0x8a7a66, color2: 0xd8ccb8, aligned: true, trail: 0 },
     shard: { geo: new THREE.OctahedronGeometry(0.16, 0).scale(0.7, 0.7, 2.6), mat: new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x4aa8ff, emissiveIntensity: 1.4, roughness: 0.2, flatShading: true }), glow: glow(0x8fd0ff, 0.6), glowSize: 1.0, color: 0xbfe8ff, color2: 0xffffff, aligned: true, trail: 1 },
     boulder: { geo: new THREE.IcosahedronGeometry(0.7, 0), mat: new THREE.MeshStandardMaterial({ color: 0xb8d0dc, roughness: 0.5, flatShading: true }), glow: glow(0xbfe8ff, 0.0), glowSize: 0.1, color: 0xd8eef8, color2: 0xffffff, trail: 1 },
+    // The outer regions: a ball of drake- or imp-fire, a lobbed lump of magma, a puff of spores, a gout of seawater.
+    fire: { geo: ico(0.18, 1), mat: additive(0xffd090), glow: glow(0xff5a10, 0.95), glowSize: 1.8, color: 0xff6a1a, color2: 0xffd060, trail: 3 },
+    magma: { geo: new THREE.IcosahedronGeometry(0.6, 0), mat: new THREE.MeshStandardMaterial({ color: 0x3a2a24, emissive: 0xff5010, emissiveIntensity: 0.9, roughness: 0.8, flatShading: true }), glow: glow(0xff6a20, 0.6), glowSize: 2.0, color: 0xff6a1a, color2: 0xffc060, trail: 2 },
+    spore: { geo: ico(0.2, 1), mat: additive(0xd0ffc0, 0.85), glow: glow(0x90e070, 0.8), glowSize: 1.6, color: 0x9ae070, color2: 0xe080ff, trail: 2 },
+    water: { geo: ico(0.22, 1), mat: additive(0xd0f4ff, 0.8), glow: glow(0x60c0e0, 0.7), glowSize: 1.6, color: 0x9fe0ff, color2: 0xffffff, trail: 3 },
   };
   return LOOKS;
 }
@@ -128,7 +134,7 @@ export class Projectiles {
       const u = p.age / p.life;
       p.mesh.scale.setScalar((o.scale ?? 1) * (1 + u * 0.35));
       p.mesh.material.opacity = 0.9; // shared: keep it steady, fade is done by the burst
-    } else if (o.kind === 'boulder') {
+    } else if (o.kind === 'boulder' || o.kind === 'magma') {
       p.mesh.rotation.x += dt * 4;
       p.mesh.rotation.y += dt * 3;
     } else if (!looks()[o.kind ?? 'bolt'].aligned) {

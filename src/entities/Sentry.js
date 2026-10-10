@@ -4,6 +4,7 @@
 // parried (their swing was parried), riposted (held for the player's riposte) and knockdown.
 import { Actor } from './Actor.js';
 import { buildSentry, buildKnight } from '../models/characters.js';
+import { buildDrowned } from '../models/creatures.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, angleDiff, easeOut } from '../core/math.js';
 
@@ -18,6 +19,8 @@ const MOVES = {
 const VARIANTS = {
   sentry: { tag: 'sentry', name: 'Hollow Sentry', hp: 62, poise: 22, ash: 70, radius: 0.45, height: 1.8, lock: 1.3, speed: 1, dmg: 1, guard: 0.35, guardMax: 55, reach: 1, pace: 1, build: () => buildSentry(false) },
   captain: { tag: 'sentry', name: 'Hollow Captain', hp: 170, poise: 45, ash: 260, radius: 0.55, height: 2.1, lock: 1.5, speed: 0.92, dmg: 1.4, guard: 0.5, guardMax: 90, reach: 1.12, pace: 0.85, build: () => buildSentry(true) },
+  // The Drowned Coast's sailors: no shield, a long harpoon they mostly thrust with.
+  drowned: { tag: 'drowned', name: 'Drowned Sailor', hp: 95, poise: 30, ash: 130, radius: 0.48, height: 1.9, lock: 1.35, speed: 0.9, dmg: 1.3, guard: 0, guardMax: 0, reach: 1.35, pace: 1.05, thrust: 0.75, build: buildDrowned },
   knight: { tag: 'knight', name: 'Dunmarrow Knight', hp: 160, poise: 50, ash: 240, radius: 0.5, height: 2.0, lock: 1.45, speed: 0.95, dmg: 1.55, guard: 0.6, guardMax: 120, reach: 1.15, pace: 0.9, bash: true, build: buildKnight },
 };
 
@@ -86,6 +89,7 @@ export class Sentry extends Actor {
     this.guardHp = this.guardMax;
     this.guardHold = 0;
     this.frost = this.frostbite = 0;
+    this.clearBurnPoison();
     this.shieldHit = 0;
     this.seenAtk = this.game.player?.atkSeq ?? 0;
     this.model.root.visible = true;
@@ -217,7 +221,7 @@ export class Sentry extends Actor {
         if (dist > 2.1) want = { x: Math.sin(toP) * 3.7, z: Math.cos(toP) * 3.7 };
         if ((this.cooldown -= dt) <= 0 && dist < 3.1) {
           const bash = this.variant.bash && dist < 2.2 && Math.random() < 0.3;
-          this._startMove(bash ? 'bash' : dist > 2.4 || Math.random() < 0.3 ? 'thrust' : 'slash');
+          this._startMove(bash ? 'bash' : dist > 2.4 || Math.random() < (this.variant.thrust ?? 0.3) ? 'thrust' : 'slash');
         }
         break;
       }
@@ -300,7 +304,7 @@ export class Sentry extends Actor {
     this.moveName = name; // (multiplayer: other players replay the move by name)
     const sp = this.variant.pace;
     this.move = { ...m, windup: m.windup * sp, recover: m.recover * sp };
-    this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * this.variant.reach, arc: m.arc, heavy: m.heavy, parryable: m.parryable, frost: this.variant.frost };
+    this.hit = { dmg: m.dmg * this.dmgMul, poise: m.poise, reach: m.reach * this.variant.reach, arc: m.arc, heavy: m.heavy, parryable: m.parryable, frost: this.variant.frost, burn: this.variant.burn, poison: this.variant.poison };
     this.hitSet = new Set();
     this.state = 'attack';
     this.t = 0;

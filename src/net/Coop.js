@@ -22,7 +22,7 @@ const FX_OWNER = { team: 'fx', pos: new THREE.Vector3(), alive: false };
 
 // Projectile options worth sending (functions and hit objects stay home).
 const PROJ_KEYS = ['kind', 'x', 'y', 'z', 'dirX', 'dirY', 'dirZ', 'speed', 'gravity', 'radius', 'life', 'scale', 'hug', 'pierce', 'color', 'color2', 'sound'];
-const FX_KEYS = ['maxR', 'speed', 'color', 'start', 'thickness', 'radius', 'count'];
+const FX_KEYS = ['maxR', 'speed', 'color', 'start', 'thickness', 'radius', 'count', 'life', 'look'];
 
 export class Coop {
   constructor(game, net) {
@@ -261,6 +261,7 @@ export class Coop {
   sendHit(e, h) {
     this.net.send('hit', {
       i: e.netId, d: r1(h.dmg), p: r1(h.poise ?? 10), f: h.frost ? r1(h.frost) : 0, h: h.heavy ? 1 : 0,
+      bu: h.burn ? r1(h.burn) : 0, po: h.poison ? r1(h.poison) : 0,
       r: h.riposte ? 1 : 0, b: h.backstabbed ? 1 : 0, u: h.unblockable ? 1 : 0, k: h.knock ?? 0,
     });
     e.recentDmg = (e.recentT > 0 ? e.recentDmg ?? 0 : 0) + h.dmg;
@@ -285,6 +286,7 @@ export class Coop {
     const a = hit.attacker;
     this.net.send('hurt', {
       to: gh.key, i: a?.netId ?? null, d: r1(hit.dmg), p: r1(hit.poise ?? 20), f: hit.frost ? r1(hit.frost) : 0,
+      bu: hit.burn ? r1(hit.burn) : 0, po: hit.poison ? r1(hit.poison) : 0,
       h: hit.heavy ? 1 : 0, u: hit.unblockable ? 1 : 0, pa: hit.parryable ? 1 : 0, k: hit.knock ?? 0,
       ox: r1(a?.pos?.x ?? gh.actor.pos.x), oz: r1(a?.pos?.z ?? gh.actor.pos.z),
     });
@@ -301,7 +303,7 @@ export class Coop {
       if (d.to !== this.net.selfKey) return;
       const e = this._byId(d.i);
       const attacker = e ?? { team: 'enemy', pos: new THREE.Vector3(d.ox, 0, d.oz), onParried() {}, alive: true };
-      const hit = { dmg: num(d.d, 0, 400), poise: num(d.p, 0, 200), frost: num(d.f, 0, 100), heavy: !!d.h, unblockable: !!d.u, knock: num(d.k, 0, 12) };
+      const hit = { dmg: num(d.d, 0, 400), poise: num(d.p, 0, 200), frost: num(d.f, 0, 100), burn: num(d.bu, 0, 100), poison: num(d.po, 0, 100), heavy: !!d.h, unblockable: !!d.u, knock: num(d.k, 0, 12) };
       g.combat.apply(attacker, g.player, hit, new Set(), num(d.ox, -2000, 2000), num(d.oz, -2000, 2000), !!d.pa);
       return;
     }
@@ -311,7 +313,7 @@ export class Coop {
     if (!e || !gh?.actor || e.netPuppet) return;
     if (type === 'hit') {
       if (!e.alive) return;
-      const hit = { dmg: num(d.d, 0, 2000), poise: num(d.p, 0, 300), frost: num(d.f, 0, 100), heavy: !!d.h, riposte: !!d.r, backstabbed: !!d.b, unblockable: !!d.u, knock: num(d.k, 0, 12) };
+      const hit = { dmg: num(d.d, 0, 2000), poise: num(d.p, 0, 300), frost: num(d.f, 0, 100), burn: num(d.bu, 0, 100), poison: num(d.po, 0, 100), heavy: !!d.h, riposte: !!d.r, backstabbed: !!d.b, unblockable: !!d.u, knock: num(d.k, 0, 12) };
       g.combat.apply(gh.actor, e, hit, new Set(), gh.actor.pos.x, gh.actor.pos.z, false);
     } else if (type === 'rip') {
       e.onRiposte?.(gh.actor);
@@ -349,11 +351,12 @@ export class Coop {
     const o = { ghostFx: true };
     for (const key of [...PROJ_KEYS, ...FX_KEYS]) if (d[key] !== undefined && (typeof d[key] === 'number' || typeof d[key] === 'string' || typeof d[key] === 'boolean')) o[key] = d[key];
     if (d.k === 'p') {
-      if (!['bolt', 'crescent', 'arrow', 'shard', 'boulder'].includes(o.kind)) return;
+      if (!['bolt', 'crescent', 'arrow', 'shard', 'boulder', 'fire', 'magma', 'spore', 'water'].includes(o.kind)) return;
       g.projectiles.spawn(FX_OWNER, { ...o, x: n(o.x), y: n(o.y), z: n(o.z), dirX: n(o.dirX), dirY: n(o.dirY), dirZ: n(o.dirZ) });
     } else if (d.k === 'wave') g.effects.shockwave(FX_OWNER, n(d.x), n(d.z), o);
     else if (d.k === 'spike') g.effects.iceSpike(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
     else if (d.k === 'bell') g.effects.bellDrop(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
+    else if (d.k === 'haz') g.effects.hazard(FX_OWNER, n(d.x), n(d.z), { ...o, life: Math.min(12, n(o.life)), radius: Math.min(12, n(o.radius)) });
   }
 }
 

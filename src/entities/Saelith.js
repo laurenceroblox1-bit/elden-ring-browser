@@ -227,7 +227,7 @@ export class Saelith extends BigFoe {
     const g = this.game;
     if (g.weatherLock) {
       g.weatherLock = false;
-      g.inRime = null; // the region weather is worked out afresh
+      g.weatherRegion = null; // the region weather is worked out afresh
     }
   }
 
@@ -235,7 +235,7 @@ export class Saelith extends BigFoe {
     const hl = this.game.world.hallLantern;
     if (hl) hl.lit = 0;
     this._lantern(0);
-    this.game.inRime = null;
+    this.game.weatherRegion = null;
   }
 
   _animate(dt) {

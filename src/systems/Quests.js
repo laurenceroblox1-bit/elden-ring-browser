@@ -77,6 +77,7 @@ export class Quests {
     }
     if (r.horse) g.state.flags.horse = true;
     for (const id of [r.weapon, r.shield, r.rite]) if (id) g.giveGear(id);
+    if (r.item) for (let i = 0; i < (r.items ?? 1); i++) g.giveItem(r.item);
     g.hud.toast(`Quest complete: ${def.title}`, 'quest');
     if (def.doneText) g.hud.toast(def.doneText);
     g.audio.play('quest');

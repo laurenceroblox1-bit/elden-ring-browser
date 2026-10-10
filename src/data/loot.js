@@ -2,6 +2,7 @@
 // Pickups whose gear is already owned don't spawn. Quest rewards hand out gear too (see data/quests.js).
 import { WEAPONS, SHIELDS } from './weapons.js';
 import { RITES } from './abilities.js';
+import { BIOME_LOOT } from './biomes.js';
 
 export const LOOT = [
   // Early and right by the road: the buckler teaches blocking before the first sentry.
@@ -28,6 +29,8 @@ export const LOOT = [
   { gear: 'rimeguard_greatshield', x: 140, z: -470 },
   // Propped against the Gatehouse Shrine, for whoever means to face the Warden.
   { gear: 'gatewarden_greatshield', x: 20.5, z: -190 },
+  // The outer regions (data/biomes.js).
+  ...BIOME_LOOT,
 ];
 
 // { id, slot: 'weapon' | 'shield' | 'rite', def } or null.

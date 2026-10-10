@@ -257,6 +257,121 @@ export const WEAPONS = {
       rolling: { stamina: 17, dmg: 22, poise: 22, windup: 0.14, active: 0.15, recover: 0.44, lunge: 3.0, reach: 2.4, arc: 0.7, pose: 'thrust', next: 'light2', sfx: 'heavySwing' },
     },
   },
+
+  // ---------- the outer regions ----------
+
+  ember_flamberge: {
+    name: 'Ember Flamberge',
+    type: 'Greatsword',
+    hands: 2,
+    stance: 'great',
+    scale: 1.45,
+    burn: 12, // every hit builds burning
+    desc: 'A wavy-edged greatsword forged in the Sunken Forge and dropped in the Obsidian Field when its bearer burned. The waves in the blade hold heat like coals; a few good blows set a foe alight.',
+    art: 'flame_wave',
+    riposte: { dmg: 32 },
+    guard: { name: 'greatblade', absorb: 0.7, cost: 1.25, parryWindow: 0.14, raiseTime: 0.14, arc: 1.75, speed: 2.0 },
+    moves: {
+      light1: { stamina: 24, dmg: 29, poise: 26, windup: 0.38, active: 0.2, recover: 0.55, lunge: 2.2, reach: 3.1, arc: 1.45, pose: 'gSweepR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 24, dmg: 29, poise: 26, windup: 0.34, active: 0.2, recover: 0.58, lunge: 2.2, reach: 3.1, arc: 1.45, pose: 'gSweepL', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 38, dmg: 60, poise: 56, windup: 0.78, active: 0.18, recover: 0.72, lunge: 3.0, reach: 3.3, arc: 0.6, pose: 'gOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 20, dmg: 25, poise: 22, windup: 0.18, active: 0.16, recover: 0.5, lunge: 3.4, reach: 3.0, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  ashmaw_fang: {
+    name: "Ashmaw's Fang",
+    type: 'Colossal sword',
+    hands: 2,
+    stance: 'great',
+    scale: 1.6,
+    burn: 18,
+    desc: "A fang from the Cinder Drake's jaw, still hot at the root, bound to a haft of black basalt. Slow as a falling tree; its weapon art breathes the drake's own fire.",
+    art: 'drake_breath',
+    riposte: { dmg: 38 },
+    guard: { name: 'greatblade', absorb: 0.76, cost: 1.2, parryWindow: 0.12, raiseTime: 0.14, arc: 1.75, speed: 1.9 },
+    moves: {
+      light1: { stamina: 30, dmg: 40, poise: 40, windup: 0.5, active: 0.22, recover: 0.64, lunge: 2.4, reach: 3.4, arc: 1.4, pose: 'gSweepR', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 30, dmg: 40, poise: 40, windup: 0.46, active: 0.22, recover: 0.66, lunge: 2.4, reach: 3.4, arc: 1.4, pose: 'gSweepL', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 44, dmg: 78, poise: 75, windup: 0.92, active: 0.18, recover: 0.8, lunge: 3.0, reach: 3.6, arc: 0.6, pose: 'gOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 26, dmg: 32, poise: 30, windup: 0.22, active: 0.18, recover: 0.56, lunge: 3.4, reach: 3.3, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'heavySwing' },
+    },
+  },
+
+  cutlass: {
+    name: 'Saltmarrow Cutlass',
+    type: 'Curved sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1,
+    desc: 'A short, broad, curved sailor\'s blade with a basket of brass around the grip, green with sea-rot but sharp as the day it was ground. Quick, and its weapon art throws a slash of seawater.',
+    art: 'tidecaller',
+    riposte: { dmg: 24 },
+    guard: { name: 'blade', absorb: 0.58, cost: 1.5, parryWindow: 0.22, raiseTime: 0.09, arc: 1.75 },
+    moves: {
+      light1: { stamina: 12, dmg: 15, poise: 12, windup: 0.13, active: 0.14, recover: 0.32, lunge: 2.6, reach: 2.2, arc: 1.05, pose: 'slashR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 12, dmg: 15, poise: 12, windup: 0.12, active: 0.14, recover: 0.32, lunge: 2.6, reach: 2.2, arc: 1.05, pose: 'slashL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 14, dmg: 18, poise: 16, windup: 0.14, active: 0.14, recover: 0.36, lunge: 3.0, reach: 2.2, arc: 1.05, pose: 'slashR', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 26, dmg: 38, poise: 40, windup: 0.44, active: 0.15, recover: 0.48, lunge: 3.4, reach: 2.4, arc: 0.7, pose: 'overhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 12, dmg: 15, poise: 10, windup: 0.09, active: 0.14, recover: 0.32, lunge: 3.2, reach: 2.3, arc: 0.6, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
+
+  harpoon: {
+    name: 'Lighthouse Harpoon',
+    type: 'Spear',
+    hands: 1,
+    stance: 'spear',
+    scale: 1.1,
+    desc: 'A whaler\'s harpoon left at the lighthouse door: a long shaft, a barbed iron head, a coil of rotten rope. Thrusts reach a long way, and can be made from behind a raised shield.',
+    art: 'lunging_pierce',
+    guardAttack: true,
+    riposte: { dmg: 28 },
+    guard: { name: 'spear', absorb: 0.5, cost: 1.6, parryWindow: 0.18, raiseTime: 0.1, arc: 1.75 },
+    moves: {
+      light1: { stamina: 15, dmg: 21, poise: 16, windup: 0.2, active: 0.14, recover: 0.4, lunge: 2.6, reach: 3.6, arc: 0.36, pose: 'sThrustHi', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 15, dmg: 21, poise: 16, windup: 0.18, active: 0.14, recover: 0.4, lunge: 2.6, reach: 3.6, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 30, dmg: 44, poise: 42, windup: 0.52, active: 0.16, recover: 0.56, lunge: 5.2, reach: 3.9, arc: 0.36, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 15, dmg: 20, poise: 14, windup: 0.14, active: 0.14, recover: 0.4, lunge: 3.4, reach: 3.6, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  drowned_anchor: {
+    name: "Morrow's Anchor",
+    type: 'Colossal weapon',
+    hands: 2,
+    stance: 'maul',
+    scale: 1.6,
+    desc: "The anchor of Captain Morrow's lost ship. It took the sea a long time to give it back. Swung, it lands like the ship coming down on top of you; its art splits the ground.",
+    art: 'quake',
+    riposte: { dmg: 40 },
+    guard: { name: 'club', absorb: 0.74, cost: 1.25, parryWindow: 0.1, raiseTime: 0.12, arc: 1.75, speed: 1.8 },
+    moves: {
+      light1: { stamina: 34, dmg: 52, poise: 56, windup: 0.66, active: 0.18, recover: 0.72, lunge: 2.4, reach: 3.2, arc: 1.3, pose: 'mSwing', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 34, dmg: 50, poise: 54, windup: 0.62, active: 0.16, recover: 0.74, lunge: 2.4, reach: 3.1, arc: 0.75, pose: 'mOverhead', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 50, dmg: 95, poise: 92, windup: 1.05, active: 0.18, recover: 0.92, lunge: 2.6, reach: 3.2, arc: 0.6, pose: 'mOverhead', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 30, dmg: 40, poise: 40, windup: 0.34, active: 0.18, recover: 0.64, lunge: 3.0, reach: 3.0, arc: 1.2, pose: 'mSwing', next: 'light1', sfx: 'heavySwing' },
+    },
+  },
+
+  bloom_scythe: {
+    name: 'Bloom Scythe',
+    type: 'Reaper',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.4,
+    poison: 14, // every hit builds poison
+    desc: "Sylvara's scythe: a curved blade of living cap-flesh on a staff of grove-wood, still faintly glowing. Every cut leaves spores in the wound; its art sows a cloud of them.",
+    art: 'spore_cloud',
+    riposte: { dmg: 32 },
+    guard: { name: 'glaive', absorb: 0.66, cost: 1.3, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 27, poise: 22, windup: 0.3, active: 0.2, recover: 0.46, lunge: 2.2, reach: 3.9, arc: 1.4, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 20, dmg: 27, poise: 22, windup: 0.28, active: 0.2, recover: 0.46, lunge: 2.2, reach: 3.9, arc: 1.4, pose: 'sSweep', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 52, poise: 50, windup: 0.6, active: 0.18, recover: 0.6, lunge: 4.0, reach: 4.1, arc: 1.0, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 23, poise: 18, windup: 0.16, active: 0.16, recover: 0.42, lunge: 3.2, reach: 3.9, arc: 1.2, pose: 'sSweep', next: 'light1', sfx: 'swing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.
@@ -274,6 +389,12 @@ export const SHIELDS = {
     type: 'Greatshield',
     desc: 'A tower shield of blue-grey steel from the old Rime-Watch, rimed white at the edges. Lighter than it looks, and the cold that soaks into it never reaches the arm behind it.',
     guard: { name: 'greatshield', absorb: 1, cost: 0.68, parryWindow: 0.14, raiseTime: 0.1, arc: 1.95, speed: 1.8 },
+  },
+  thornguard: {
+    name: 'Thornguard',
+    type: 'Medium shield',
+    desc: 'A kite shield grown, not made: a shell of hard grey cap-flesh bristling with violet thorns, found under a giant glowcap. Whatever strikes it too hard comes away poisoned.',
+    guard: { name: 'shield', absorb: 0.92, cost: 0.85, parryWindow: 0.2, raiseTime: 0.08, arc: 1.8, thorns: 14 },
   },
   gatewarden_greatshield: {
     name: 'Gatewarden Greatshield',

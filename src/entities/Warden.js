@@ -70,6 +70,7 @@ export class Warden extends Actor {
 
   reset() {
     this.frost = this.frostbite = 0;
+    this.clearBurnPoison();
     this.pos.set(ARENA.x, this.game.world.getHeight(ARENA.x, ARENA.z - 6), ARENA.z - 6);
     this.vel.set(0, 0, 0);
     this.yaw = 0;

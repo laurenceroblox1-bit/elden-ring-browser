@@ -8,6 +8,7 @@ import { WORLD, ZONES, ROADS, LAKE, FEN, FEN_POOLS, HOLLOW, RIME, TARN, HALL, SH
 import * as P from '../models/props.js';
 import { ChunkBatcher } from './Batcher.js';
 import { windPatch, windDepthMaterial, ADDITIVE_FOG } from './Wind.js';
+import { biomeScenery } from './Biomes.js';
 
 // Big chunks are coarse (fewer draw calls for what is seen far off); small chunks are fine-grained
 // so distance culling trims them closely.
@@ -64,6 +65,7 @@ export class Scenery {
     this._stoneRing(-60, -110, 7.5);
     this._fen();
     this._rimewold();
+    biomeScenery(this);
     this._bakeStatics();
     const bell = world.chapelBell;
     if (bell) this._put(this.big, P.fallenBellParts(this.rng), bell.x, bell.z, { ry: bell.ry, sink: 0.2 });
@@ -117,6 +119,7 @@ export class Scenery {
     for (let i = 0; i < tries && placed < n; i++) {
       const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * radius;
       const x = Math.sin(a) * d, z = Math.cos(a) * d;
+      if (this.world.biomeAt(x, z, 10)) continue; // the outer regions dress themselves (world/Biomes.js)
       if (this.clearOfGear(x, z, 1.5) && accept(x, z)) placed++;
     }
   }

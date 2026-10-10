@@ -30,6 +30,12 @@ const M = {
   silver: () => mat(0xc9ced6, { metalness: 0.7, roughness: 0.3 }),
   ice: () => mat(0xcfefff, { emissive: 0x3a90d8, emissiveIntensity: 0.9, roughness: 0.15, metalness: 0.1 }),
   rimeSteel: () => mat(0x6d7c8a, { metalness: 0.6, roughness: 0.4 }),
+  basalt: () => mat(0x2c292e, { roughness: 0.8 }),
+  brass: () => mat(0x8a7a3a, { metalness: 0.6, roughness: 0.45 }),
+  seaRot: () => mat(0x6a8a7a, { metalness: 0.5, roughness: 0.5 }),
+  capFlesh: () => mat(0xc8a8d8, { emissive: 0x7a2a8a, emissiveIntensity: 0.5 }),
+  sporeGlow: () => mat(0x8ff0dc, { emissive: 0x30c0a0, emissiveIntensity: 1.4 }),
+  grove: () => mat(0x3a2a24),
   frostRim: () => mat(0xe8f4fa, { roughness: 0.6 }),
 };
 
@@ -191,9 +197,81 @@ const BUILD = {
     for (let i = 0; i < 4; i++) g.add(mesh(box(0.02, 0.03, 0.02), M.trim(), { z: 0.25 + i * 0.2, x: -0.07, y: 0.012 }));
     return { right: g };
   },
+  // Ember Flamberge: a long wavy blade (offset segments) with a glowing core.
+  ember_flamberge() {
+    const g = group();
+    g.add(mesh(box(0.05, 0.05, 0.42), M.leather(), { z: -0.08 }));
+    g.add(mesh(box(0.42, 0.06, 0.08), M.iron(), { z: 0.15 }));
+    for (let i = 0; i < 5; i++) g.add(mesh(box(0.12, 0.026, 0.32), M.ashSteel(), { z: 0.38 + i * 0.28, x: (i % 2 ? 0.025 : -0.025), ry: (i % 2 ? -0.12 : 0.12) }));
+    g.add(mesh(box(0.025, 0.032, 1.36), M.ember(), { z: 0.92, shadow: false }));
+    return { right: g };
+  },
+  // Ashmaw's Fang: a huge curved fang on a basalt haft, glowing at the root.
+  ashmaw_fang() {
+    const g = group();
+    g.add(mesh(box(0.07, 0.07, 0.6), M.basalt(), { z: -0.12 }));
+    g.add(mesh(box(0.24, 0.16, 0.16), M.basalt(), { z: 0.24 }));
+    g.add(mesh(box(0.2, 0.08, 0.7), M.bone(), { z: 0.66 }));
+    g.add(mesh(box(0.16, 0.07, 0.6), M.bone(), { z: 1.24, x: 0.04, ry: -0.1 }));
+    const tip = mesh(cone(0.08, 0.5, 4), M.bone(), { z: 1.74, x: 0.1, rx: Math.PI / 2, ry: Math.PI / 4 });
+    tip.scale.set(1, 1, 0.45);
+    g.add(tip);
+    g.add(mesh(box(0.03, 0.09, 0.9), M.ember(), { z: 0.75, x: -0.04, shadow: false }));
+    return { right: g };
+  },
+  // Saltmarrow Cutlass: a short curved blade with a brass basket hilt.
+  cutlass() {
+    const g = group();
+    g.add(mesh(box(0.045, 0.045, 0.18), M.leather(), { z: -0.02 }));
+    g.add(mesh(box(0.1, 0.12, 0.2), M.brass(), { z: 0.0, x: 0.03 }));
+    g.add(mesh(box(0.08, 0.018, 0.4), M.seaRot(), { z: 0.3 }));
+    g.add(mesh(box(0.08, 0.018, 0.3), M.seaRot(), { z: 0.62, x: -0.03, ry: 0.15 }));
+    g.add(mesh(box(0.07, 0.018, 0.2), M.seaRot(), { z: 0.82, x: -0.08, ry: 0.4 }));
+    return { right: g };
+  },
+  // Lighthouse Harpoon: a long shaft, a barbed iron head, a coil of rope.
+  harpoon() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.028, 2.4, 6), M.wood(), { rx: Math.PI / 2, z: 0.5 }));
+    g.add(mesh(cyl(0.06, 0.06, 0.12, 6), M.leather(), { rx: Math.PI / 2, z: 0.0 }));
+    const head = mesh(cone(0.07, 0.34, 4), M.iron(), { rx: Math.PI / 2, z: 1.85 });
+    g.add(head);
+    g.add(mesh(box(0.02, 0.02, 0.16), M.iron(), { x: 0.06, z: 1.68, ry: 0.5 }));
+    g.add(mesh(box(0.02, 0.02, 0.16), M.iron(), { x: -0.06, z: 1.68, ry: -0.5 }));
+    return { right: g };
+  },
+  // Morrow's Anchor: the ship's anchor, shank up the hands, flukes at the far end.
+  drowned_anchor() {
+    const g = group();
+    g.add(mesh(box(0.09, 0.09, 1.4), M.iron(), { z: 0.5 }));
+    g.add(mesh(box(0.06, 0.06, 0.3), M.leather(), { z: -0.1 }));
+    g.add(mesh(box(0.7, 0.09, 0.09), M.iron(), { z: 1.18 }));
+    g.add(mesh(box(0.09, 0.09, 0.3), M.iron(), { x: 0.36, z: 1.05, ry: 0.4 }));
+    g.add(mesh(box(0.09, 0.09, 0.3), M.iron(), { x: -0.36, z: 1.05, ry: -0.4 }));
+    g.add(mesh(box(0.36, 0.07, 0.07), M.seaRot(), { z: 0.15 }));
+    return { right: g };
+  },
+  // Bloom Scythe: a glowing curved blade of cap-flesh on a grove-wood staff.
+  bloom_scythe() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.03, 2.2, 6), M.grove(), { rx: Math.PI / 2, z: 0.4 }));
+    g.add(mesh(box(0.05, 0.08, 0.1), M.grove(), { z: 1.5 }));
+    g.add(mesh(box(0.03, 0.12, 0.5), M.capFlesh(), { z: 1.5, y: 0.25, x: 0.0, rx: 1.2 }));
+    g.add(mesh(box(0.03, 0.1, 0.4), M.capFlesh(), { z: 1.3, y: 0.55, rx: 2.0 }));
+    g.add(mesh(box(0.02, 0.03, 0.4), M.sporeGlow(), { z: 1.44, y: 0.34, rx: 1.4, shadow: false }));
+    return { right: g };
+  },
 };
 
 const BUILD_SHIELD = {
+  // Thornguard: a kite shield of grey cap-flesh bristling with violet thorns.
+  thornguard() {
+    const g = group({ x: 0.09, y: -0.15 });
+    g.add(mesh(box(0.05, 0.7, 0.46), mat(0x6a6070)));
+    g.add(mesh(cone(0.23, 0.3, 4), mat(0x6a6070), { y: -0.5, rx: Math.PI }));
+    for (const [y, z] of [[0.2, 0.12], [0.2, -0.12], [-0.05, 0], [-0.25, 0.1], [-0.25, -0.1]]) g.add(mesh(cone(0.04, 0.16, 4), M.capFlesh(), { x: 0.08, y, z, rz: -Math.PI / 2 }));
+    return g;
+  },
   // Pilgrim's Buckler: a small round shield, light enough to turn a blade aside at the last moment.
   pilgrim_buckler() {
     const g = group({ x: 0.08, y: -0.17 });

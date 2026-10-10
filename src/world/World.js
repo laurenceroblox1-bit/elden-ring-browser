@@ -9,6 +9,8 @@ import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
 import { Ambient } from './Ambient.js';
 import { WIND } from './Wind.js';
+import { LOBES, SEA, LAVA, VOLCANO } from '../data/biomes.js';
+import { buildBiomes, updateBiomes } from './Biomes.js';
 
 const SIZE = WORLD.size;
 const SEG = WORLD.segments;
@@ -27,7 +29,21 @@ const COL = {
   rut: C(0x87714f), scree: C(0x8a8578), rockWarm: C(0x857a6a),
   fen: C(0x6d6c56), fenAsh: C(0x85827a), bog: C(0x3b382e), fenMoss: C(0x55603f),
   snowLit: C(0xeef2f4), snowShade: C(0xc6d2dc), snowRoad: C(0xa9a197), iceRock: C(0x6c7680), hallIce: C(0xb4cbd8),
+  // The Cinderfall Wastes.
+  cinder: C(0x3f3b39), cinderLit: C(0x5a534c), basalt: C(0x2b292f), rust: C(0x6e3d26), sulfur: C(0xa3943e),
+  scorch: C(0xb4471c), cinderRoad: C(0x6a5f52),
+  // The Drowned Coast.
+  sand: C(0xdcc898), sandDim: C(0xc4ad80), wetSand: C(0xa6946e), seabed: C(0x7d8f7a), seaDeep: C(0x5a7066),
+  duneGrass: C(0x99a159), coastRock: C(0x8b8476), coastRoad: C(0xbca77c),
+  // The Glowcap Hollows.
+  moss: C(0x43345c), mossTeal: C(0x2d5d5d), spore: C(0x5cc4b2), sporePink: C(0xb05aa8), hollowRock: C(0x4b4560),
+  hollowRoad: C(0x5a4d68),
 };
+
+// Points along the lava river, as segments.
+const RIVER = [];
+for (let i = 0; i < LAVA.river.length - 1; i++) RIVER.push([...LAVA.river[i], ...LAVA.river[i + 1]]);
+
 
 export class World {
   constructor(game) {
@@ -53,6 +69,8 @@ export class World {
     // The fen's pools all share one level, just under the fen floor.
     this.fenFloor = this._raw(FEN.x, FEN.z).big;
     this.fenLevel = this.fenFloor - 0.35;
+    // Each lava pool's surface sits a little under the ash around it.
+    this.lavaPools = LAVA.pools.map((p) => ({ ...p, level: this._raw(p.x, p.z).big - 1.0 }));
     this.flatZones = Object.values(ZONES).filter((z) => z.flat != null).map((z) => ({ x: z.x, z: z.z, r: z.flat, h: this._flatHeight(z.x, z.z) }));
 
     this._buildHeights();
@@ -79,18 +97,121 @@ export class World {
     return smoothstep(RIME.snowZ + 4, RIME.snowZ - 22, z);
   }
 
+  // Distance from an outer region's centre (the coast's lobe runs on west as a band to the sea).
+  lobeDist(L, x, z) {
+    return L.band && x < L.x ? Math.abs(z - L.z) : Math.hypot(x - L.x, z - L.z);
+  }
+
+  // How far inside each outer region (x, z) is, sharply at its rim (where its ridge stands):
+  // { cinder, coast, glow }, each 0..1.
+  biomeW(x, z) {
+    const o = {};
+    for (const k in LOBES) {
+      const L = LOBES[k];
+      o[k] = smoothstep(L.r + 12, L.r - 26, this.lobeDist(L, x, z));
+    }
+    return o;
+  }
+
+  // The outer region (x, z) lies in ('cinder' | 'coast' | 'glow'), or null for the Vale and the
+  // Rimewold. `pad` metres past a region's rim still count.
+  biomeAt(x, z, pad = 0) {
+    for (const k in LOBES) if (this.lobeDist(LOBES[k], x, z) < LOBES[k].r + pad) return k;
+    return null;
+  }
+
+  // Where (x, z) is, for weather, music and ambience: 'cinder' | 'coast' | 'glow' | 'rime' | 'fen' | 'vale'.
+  regionAt(x, z) {
+    const b = this.biomeAt(x, z);
+    if (b) return b;
+    if (z < RIME.snowZ - 4) return 'rime';
+    if (Math.hypot(x - FEN.x, z - FEN.z) < FEN.r) return 'fen';
+    return 'vale';
+  }
+
   _raw(x, z) {
     let big = fbm(this.noise, x * 0.0032, z * 0.0032, 4) * 24;
     const r = Math.hypot(x, z);
     const lobe = this.rimeLobe(x, z);
     // The Rimewold is a highland a little above the Vale, ringed by its own peaks.
     big += lobe * smoothstep(RIME.ridgeZ + 10, RIME.ridgeZ - 40, z) * 8;
-    big += smoothstep(WORLD.mountainStart, WORLD.mountainEnd, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50) * (1 - lobe);
+    // The ring of mountains stands back from every lobe of the play area.
+    let open = lobe;
+    for (const k in LOBES) {
+      const L = LOBES[k];
+      open = Math.max(open, 1 - smoothstep(L.r * 0.8, L.r * 1.2, this.lobeDist(L, x, z)));
+    }
+    big += smoothstep(WORLD.mountainStart, WORLD.mountainEnd, r) * (80 + fbm(this.noise2, x * 0.008, z * 0.008, 3) * 50) * (1 - open);
     // The ridge between the Vale and the Rimewold; Castle Dunmarrow holds the only pass through it.
     const ridge = (1 - smoothstep(8, 46, Math.abs(z - RIME.ridgeZ))) * smoothstep(36, 95, Math.abs(x));
     if (ridge > 0) big += ridge * (46 + fbm(this.noise2, x * 0.02 + 5, z * 0.02, 2) * 14);
-    const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2;
+    // The outer regions: each has its own ground, and a ridge along its rim with one pass through.
+    const B = this.biomeW(x, z);
+    if (B.cinder > 0) {
+      // Black mesas in broken terraces.
+      let t = fbm(this.noise2, x * 0.007 + 20, z * 0.007 - 4, 3) * 26 + 6;
+      const q = 3.6, f = t / q - Math.floor(t / q);
+      t = (Math.floor(t / q) + smoothstep(0.55, 1, f)) * q;
+      big = lerp(big, t, B.cinder);
+    }
+    if (B.coast > 0) {
+      // Dunes sloping down to the sea, and the seabed shelving away under it.
+      const d = x - SEA.shoreX;
+      const dune = fbm(this.noise2, x * 0.02 - 30, z * 0.02 + 8, 2) * 2.6 * smoothstep(5, 45, d);
+      const shelf = d > 0 ? Math.min(d * 0.1, 9) : Math.max(d * 0.12, -12);
+      big = lerp(big, SEA.level + 0.6 + shelf + dune, B.coast);
+    }
+    if (B.glow > 0) {
+      // A sunken hollow with a soft, rolling floor.
+      big = lerp(big, big * 0.35 - 7 + fbm(this.noise2, x * 0.015 + 9, z * 0.015 + 3, 2) * 4, B.glow);
+    }
+    for (const k in LOBES) {
+      const L = LOBES[k];
+      const d = this.lobeDist(L, x, z);
+      if (Math.abs(d - L.r) > 40 || (L.band && x < L.x) || r > WORLD.playRadius + 60) continue;
+      const rim = (1 - smoothstep(6, 30, Math.abs(d - L.r))) * smoothstep(L.gap, L.gap + 34, Math.hypot(x - L.gate[0], z - L.gate[1]));
+      big += rim * (40 + fbm(this.noise2, x * 0.02 - 11, z * 0.02 + 6, 2) * 14) * (1 - smoothstep(WORLD.playRadius, WORLD.playRadius + 60, r));
+    }
+    // Ashmaw's volcano.
+    const vd = Math.hypot(x - VOLCANO.x, z - VOLCANO.z);
+    if (vd < VOLCANO.r) {
+      const c = 1 - vd / VOLCANO.r;
+      big += Math.pow(c, 1.4) * VOLCANO.h - smoothstep(VOLCANO.crater + 6, VOLCANO.crater - 8, vd) * 34;
+    }
+    const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2 * (1 - B.coast * 0.6);
     return { big, h: big + detail };
+  }
+
+  // 0 off the lava, rising to 1 in the middle of a pool or the river's channel.
+  lavaDepth(x, z) {
+    if (this.lobeDist(LOBES.cinder, x, z) > LOBES.cinder.r + 50) return 0;
+    let best = 0;
+    for (const p of LAVA.pools) {
+      const d = Math.hypot(x - p.x, z - p.z);
+      if (d > p.r * 1.3) continue;
+      best = Math.max(best, 1 - smoothstep(p.r * 0.45, p.r, d + this.noise(x * 0.13, z * 0.13) * p.r * 0.2));
+    }
+    let rd = Infinity;
+    for (const s of RIVER) rd = Math.min(rd, distToSegment(x, z, s[0], s[1], s[2], s[3]));
+    return Math.max(best, 1 - smoothstep(LAVA.riverW * 0.55, LAVA.riverW * 1.5, rd));
+  }
+
+  // The lava's surface level at (x, z): a pool's own level, or the river's, which runs downhill.
+  lavaLevelAt(x, z) {
+    for (const p of this.lavaPools) if (Math.hypot(x - p.x, z - p.z) < p.r * 1.3) return p.level;
+    let best = Infinity, bx = x, bz = z;
+    for (const s of RIVER) {
+      const dx = s[2] - s[0], dz = s[3] - s[1];
+      const t = clamp(((x - s[0]) * dx + (z - s[1]) * dz) / (dx * dx + dz * dz), 0, 1);
+      const px = s[0] + dx * t, pz = s[1] + dz * t, d = Math.hypot(x - px, z - pz);
+      if (d < best) { best = d; bx = px; bz = pz; }
+    }
+    return this._raw(bx, bz).big - 1.0;
+  }
+
+  // Standing in lava?
+  isLava(x, z) {
+    return this.lavaDepth(x, z) > 0.55;
   }
 
   // Level a zone settles at: its own ground, or the fen floor when it sits inside the fen.
@@ -127,6 +248,9 @@ export class World {
     // Fen pools, with ragged shores; the road stays a causeway between them.
     const pool = this.fenPoolDepth(x, z);
     if (pool > 0) h = lerp(h, this.fenLevel - 2.6, pool * smoothstep(3.5, 8, rd));
+    // Lava basins and the lava river's channel, sunk below the ash.
+    const lava = this.lavaDepth(x, z);
+    if (lava > 0) h = lerp(h, this.lavaLevelAt(x, z) - 1.6, lava);
     return h;
   }
 
@@ -227,10 +351,45 @@ export class World {
           const hd = Math.hypot(x - HALL.x, z - HALL.z);
           c.lerp(COL.hallIce, (1 - smoothstep(HALL.r - 4, HALL.r + 6, hd)) * 0.8);
         }
+        const B = this.biomeW(x + nz * 5, z - nz * 5);
+        if (B.cinder > 0) {
+          // Black ash and basalt, rusty drifts, sulphur crusts, and scorched rock round the lava.
+          tmpC.copy(COL.cinder).lerp(COL.cinderLit, smoothstep(0.3, 0.8, t));
+          tmpC.lerp(COL.rust, smoothstep(0.25, 0.7, macro) * 0.5);
+          tmpC.lerp(COL.sulfur, smoothstep(0.72, 0.92, (this.noise(x * 0.06 + 3, z * 0.06) + 1) / 2) * 0.55);
+          tmpC.lerp(COL.basalt, smoothstep(0.35, 0.75, slope));
+          tmpC.lerp(COL.cinderRoad, rw * 0.85);
+          const lv = this.lavaDepth(x, z);
+          tmpC.lerp(COL.scorch, smoothstep(0.0, 0.5, lv) * 0.9);
+          c.lerp(tmpC, B.cinder);
+        }
+        if (B.coast > 0) {
+          // Pale dunes, wet sand at the tide line, the seabed going green-grey under the water.
+          tmpC.copy(COL.sandDim).lerp(COL.sand, smoothstep(0.2, 0.8, t));
+          tmpC.lerp(COL.duneGrass, smoothstep(0.2, 0.6, macro) * smoothstep(SEA.shoreX + 30, SEA.shoreX + 70, x) * 0.7);
+          tmpC.lerp(COL.coastRock, smoothstep(0.45, 0.8, slope));
+          tmpC.lerp(COL.coastRoad, rw * 0.6);
+          tmpC.lerp(COL.wetSand, smoothstep(SEA.level + 1.6, SEA.level + 0.3, h));
+          tmpC.lerp(COL.seabed, smoothstep(SEA.level - 0.2, SEA.level - 1.5, h));
+          tmpC.lerp(COL.seaDeep, smoothstep(SEA.level - 2, SEA.level - 8, h));
+          c.lerp(tmpC, B.coast);
+        }
+        if (B.glow > 0) {
+          // Violet and teal moss, with luminous rings of spore-light here and there.
+          tmpC.copy(COL.moss).lerp(COL.mossTeal, smoothstep(0.25, 0.75, t));
+          const ring = (this.noise(x * 0.07 - 5, z * 0.07 + 9) + 1) / 2;
+          tmpC.lerp(macro > 0.1 ? COL.spore : COL.sporePink, smoothstep(0.78, 0.9, ring) * 0.6);
+          tmpC.lerp(COL.hollowRock, smoothstep(0.45, 0.8, slope));
+          tmpC.lerp(COL.hollowRoad, rw * 0.8);
+          c.lerp(tmpC, B.glow);
+        }
         const ad = Math.hypot(x - ARENA.x, z - ARENA.z);
         c.lerp(COL.ash, 1 - smoothstep(ARENA.r - 2, ARENA.r + 12, ad));
         const snowLine = h + nz * 7;
-        const snow = smoothstep(76, 92, snowLine) * (1 - smoothstep(0.85, 1.4, slope) * 0.7);
+        // Around the Wastes the high peaks are ash and rock, not snow.
+        const hot = 1 - smoothstep(LOBES.cinder.r * 1.1, LOBES.cinder.r * 1.6, Math.hypot(x - LOBES.cinder.x, z - LOBES.cinder.z));
+        if (hot > 0) c.lerp(tmpC.copy(COL.basalt).lerp(COL.cinder, strata), hot * smoothstep(30, 60, h));
+        const snow = smoothstep(76, 92, snowLine) * (1 - smoothstep(0.85, 1.4, slope) * 0.7) * (1 - hot);
         c.lerp(COL.scree, smoothstep(58, 76, snowLine) * smoothstep(0.3, 0.7, slope) * 0.45 * (1 - snow));
         c.lerp(COL.snow, snow);
         col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
@@ -316,6 +475,7 @@ export class World {
 
   isWater(x, z) {
     if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r) return this.getHeight(x, z) < this.waterLevel - 0.3;
+    if (x < SEA.shoreX + 30 && this.lobeDist(LOBES.coast, x, z) < LOBES.coast.r + 10) return this.getHeight(x, z) < SEA.level - 0.3;
     return this.fenPoolDepth(x, z) > 0 && this.getHeight(x, z) < this.fenLevel - 0.3;
   }
 
@@ -457,6 +617,7 @@ export class World {
     this._buildArena();
     this._buildCastle();
     this._buildRimewold();
+    buildBiomes(this);
 
     // The Hollow Bell on the eastern peaks.
     const spire = P.buildSpire();
@@ -920,27 +1081,55 @@ export class World {
     return hit;
   }
 
-  // The walkable area: the Vale's circle plus the Rimewold's lobe to the north. A point outside both
-  // goes back to whichever edge is nearer. True if it moved.
+  // The walkable area: the Vale's circle plus the lobes beyond it (the Rimewold to the north and
+  // the outer regions); the sea stops you once it is too deep to wade. A point outside them all goes
+  // back to whichever edge is nearest. True if it moved.
   clampToPlay(pos) {
     const PR = WORLD.playRadius;
     const r = Math.hypot(pos.x, pos.z);
-    if (r <= PR) return false;
-    const dx = pos.x - RIME.x, dz = pos.z - RIME.z, dl = Math.hypot(dx, dz);
-    if (dl <= RIME.r) return false;
-    if (dl - RIME.r < r - PR) {
-      pos.x = RIME.x + (dx / dl) * RIME.r;
-      pos.z = RIME.z + (dz / dl) * RIME.r;
-    } else {
-      pos.x *= PR / r;
-      pos.z *= PR / r;
+    const coast = LOBES.coast;
+    if (pos.x < SEA.walkX && this.lobeDist(coast, pos.x, pos.z) < coast.r + 4) {
+      pos.x = SEA.walkX;
+      return true;
     }
+    if (r <= PR) return false;
+    let best = r - PR, fix = () => { pos.x *= PR / r; pos.z *= PR / r; };
+    const dl = Math.hypot(pos.x - RIME.x, pos.z - RIME.z);
+    if (dl <= RIME.r) return false;
+    if (dl - RIME.r < best) {
+      best = dl - RIME.r;
+      fix = () => { pos.x = RIME.x + ((pos.x - RIME.x) / dl) * RIME.r; pos.z = RIME.z + ((pos.z - RIME.z) / dl) * RIME.r; };
+    }
+    for (const k in LOBES) {
+      const L = LOBES[k];
+      const d = this.lobeDist(L, pos.x, pos.z);
+      if (d <= L.r) return false;
+      if (d - L.r < best) {
+        best = d - L.r;
+        fix = L.band && pos.x < L.x
+          ? () => { pos.z = L.z + Math.sign(pos.z - L.z) * L.r; }
+          : () => { pos.x = L.x + ((pos.x - L.x) / d) * L.r; pos.z = L.z + ((pos.z - L.z) / d) * L.r; };
+      }
+    }
+    fix();
     return true;
+  }
+
+  // Signed distance to the walkable area's edge: negative inside (for the map's vignette).
+  playEdgeDist(x, z) {
+    let d = Math.min(Math.hypot(x, z) - WORLD.playRadius, Math.hypot(x - RIME.x, z - RIME.z) - RIME.r);
+    for (const k in LOBES) d = Math.min(d, this.lobeDist(LOBES[k], x, z) - LOBES[k].r);
+    if (x < SEA.walkX) d = Math.max(d, SEA.walkX - x);
+    return d;
   }
 
   // Inside the walkable area (with `pad` metres to spare)?
   inPlay(x, z, pad = 0) {
-    return Math.hypot(x, z) < WORLD.playRadius - pad || Math.hypot(x - RIME.x, z - RIME.z) < RIME.r - pad;
+    if (Math.hypot(x, z) < WORLD.playRadius - pad || Math.hypot(x - RIME.x, z - RIME.z) < RIME.r - pad) return true;
+    for (const k in LOBES) {
+      if (this.lobeDist(LOBES[k], x, z) < LOBES[k].r - pad) return k !== 'coast' || x > SEA.walkX + pad;
+    }
+    return false;
   }
 
   // ---------- per-frame ----------
@@ -980,6 +1169,7 @@ export class World {
       }
     }
     // The ice crystals breathe a little light; the hall's lantern flickers cold.
+    updateBiomes(this, dt, time);
     if (this.crystals) this.crystals.mat.emissiveIntensity = 0.8 + Math.sin(time * 0.9) * 0.18;
     const hl = this.hallLantern;
     if (hl) {

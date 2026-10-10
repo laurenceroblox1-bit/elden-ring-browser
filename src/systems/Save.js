@@ -53,6 +53,8 @@ export function newGameState() {
     flags: { horse: false, wardenDead: false },
     remnant: null,
     quests: null,
+    upgrades: {}, // weapon id -> smithing level (data/smithing.js)
+    stonesTaken: [], // indices into data/biomes.js STONES already picked up
     // Owned gear ids, and what is in each hand and the rite slot (null = empty).
     gear: { owned: [STARTING_WEAPON], right: STARTING_WEAPON, left: null, rite: null },
   };

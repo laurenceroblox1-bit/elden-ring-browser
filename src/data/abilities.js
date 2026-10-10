@@ -179,6 +179,104 @@ export const ARTS = {
     ],
   },
 
+  // Ember Flamberge: an overhead slam that sends a line of fire racing along the ground ahead.
+  flame_wave: {
+    name: 'Flame Wave',
+    desc: 'Bring the flamberge down so hard the ground splits, and a line of fire races out ahead of you, burning everything in its path and leaving the ground alight behind it.',
+    focus: 18, stamina: 26, cooldown: 5,
+    time: 1.3, track: 0.6, cancel: 1.0,
+    keys: [[0, 'rest'], [0.38, 'quakeRaise'], [0.6, 'quakeRaise'], [0.72, 'quakeSlam'], [1.05, 'quakeSlam'], [1.3, 'rest']],
+    events: [
+      [0.3, (p) => p.game.audio.play('heavySwing')],
+      [0.72, (p) => {
+        const g = p.game;
+        const f = front(p, 1.6, 0.8);
+        g.combat.sphere(p, f, 2.0, { dmg: 30 * p.dmgMult, poise: 50, heavy: true, burn: 30 }, new Set());
+        g.audio.play('slam');
+        g.audio.play('ignite');
+        g.cameraShake(0.35);
+        const hitSet = new Set();
+        for (let i = 0; i < 6; i++) {
+          g.after(i * 0.09, () => {
+            const d = 2.5 + i * 2.2;
+            const x = p.pos.x + p.forwardX * d, z = p.pos.z + p.forwardZ * d;
+            g.combat.sphere(p, { x, y: g.world.getHeight(x, z) + 0.8, z }, 1.8, { dmg: 18 * p.dmgMult, poise: 24, burn: 26 }, hitSet);
+            g.particles.emit({ x, y: g.world.getHeight(x, z) + 0.3, z, count: 22, speed: 3, up: 5, color: 0xff6a1a, color2: 0xffd060, life: [0.4, 0.9], size: [0.15, 0.3], drag: 1.5, jitter: 0.8 });
+            if (i % 2) g.effects.hazard(p, x, z, { radius: 1.8, life: 3, look: 'fire', hit: { dmg: 3 * p.dmgMult, poise: 0, burn: 12 } });
+          });
+        }
+      }],
+    ],
+  },
+
+  // Ashmaw's Fang: the drake's own breath, a short river of fire ahead.
+  drake_breath: {
+    name: "Drake's Breath",
+    desc: 'Plant the fang and breathe out the fire still burning in it: a roaring cone of flame ahead of you for a long moment. Sweep it with your aim.',
+    focus: 24, stamina: 20, cooldown: 6,
+    time: 1.8, track: 1.6, walk: 0.6, cancel: 1.5,
+    keys: [[0, 'rest'], [0.3, 'castThrust'], [1.5, 'castThrust'], [1.8, 'rest']],
+    events: [
+      [0.25, (p) => p.game.audio.play('breath')],
+    ],
+    move(p, act, dt) {
+      const g = p.game, t = p.t;
+      p.vel.x *= Math.exp(-8 * dt);
+      p.vel.z *= Math.exp(-8 * dt);
+      if (t < 0.32 || t > 1.5) return;
+      const f = front(p, 0.9, 1.4);
+      for (let i = 0; i < 3; i++) {
+        const sp = 11 + Math.random() * 4, a = p.yaw + (Math.random() - 0.5) * 0.4;
+        g.particles.emit({ x: f.x, y: f.y, z: f.z, count: 1, speed: 0.8, color: 0xff5a10, color2: 0xffe080, life: [0.35, 0.6], size: [0.25, 0.5], drag: 0.6, jitter: 0.15, dir: { x: Math.sin(a) * sp, y: -0.8, z: Math.cos(a) * sp } });
+      }
+      act.tick = (act.tick ?? 0) - dt;
+      if (act.tick <= 0) {
+        act.tick = 0.2;
+        g.combat.melee(p, { dmg: 9 * p.dmgMult, poise: 8, reach: 7, arc: 0.4, burn: 20, height: 3 }, new Set());
+      }
+    },
+  },
+
+  // Saltmarrow Cutlass: a slash that throws a crescent of seawater through everything in a line.
+  tidecaller: {
+    name: 'Tidecaller',
+    desc: 'A wide slash that throws a crescent of seawater skimming over the ground. It cuts through every foe in its path and knocks them back.',
+    focus: 12, stamina: 12, cooldown: 2.4,
+    time: 0.8, track: 0.26, cancel: 0.55,
+    keys: [[0, 'rest'], [0.22, 'emberWind'], [0.32, 'emberStrike'], [0.54, 'emberStrike'], [0.8, 'rest']],
+    events: [
+      [0.32, (p) => {
+        const g = p.game;
+        const f = front(p, 0.8, 0.9);
+        g.projectiles.spawn(p, {
+          kind: 'crescent', x: f.x, y: f.y, z: f.z, dirX: p.forwardX, dirY: 0, dirZ: p.forwardZ, speed: 22, life: 0.75, radius: 1.3,
+          pierce: true, hug: 0.9, scale: 1.4, color: 0x9fe0ff, color2: 0xffffff, sound: 'splash',
+          hit: { dmg: 26 * p.dmgMult, poise: 30, knock: 4 },
+        });
+        g.audio.play('splash');
+      }],
+    ],
+  },
+
+  // Bloom Scythe: a wide reap that sows a cloud of spores ahead.
+  spore_cloud: {
+    name: 'Sow Spores',
+    desc: 'A wide reaping sweep that scatters the spores caught in the blade: a poison cloud blooms where it ends and lingers a while.',
+    focus: 16, stamina: 16, cooldown: 4,
+    time: 0.95, track: 0.3, cancel: 0.7,
+    keys: [[0, 'rest'], [0.24, 'emberWind'], [0.36, 'emberStrike'], [0.6, 'emberStrike'], [0.95, 'rest']],
+    events: [
+      [0.36, (p) => {
+        const g = p.game;
+        g.audio.play('heavySwing');
+        g.audio.play('spore');
+        g.combat.melee(p, { dmg: 24 * p.dmgMult, poise: 26, reach: 4, arc: 1.4, poison: 30 }, new Set());
+        const f = front(p, 4, 0);
+        g.effects.hazard(p, f.x, f.z, { radius: 3.4, life: 6, look: 'spore', hit: { dmg: 3 * p.dmgMult, poise: 0, poison: 18 } });
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',
@@ -333,6 +431,43 @@ export const RITES = {
         g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.6, maxR: 8, speed: 14, color: 0xbfe8ff, hit: { dmg: 26 * p.riteMult, poise: 30, frost: 55 } });
         g.audio.play('frostbite');
         g.particles.emit({ x: p.pos.x, y: p.pos.y + 1, z: p.pos.z, count: 40, speed: 5, up: 1.2, color: 0xdff4ff, color2: 0x7cc8ff, life: [0.3, 0.8], size: [0.08, 0.18], drag: 2 });
+      }],
+    ],
+  },
+  flame_breath: {
+    name: 'Flame Breath',
+    type: 'Fire rite',
+    desc: 'Learned from the Sunken Forge\'s cold anvil: breathe out a short, roaring cone of fire. Hold your ground while it burns; everything in front of you catches light.',
+    focus: 26, cooldown: 6,
+    time: 1.4, keys: [[0, 'rest'], [0.25, 'castThrust'], [1.15, 'castThrust'], [1.4, 'rest']], overlay: true, walk: 0.5, cancel: 1.2,
+    events: [[0.2, (p) => p.game.audio.play('breath')]],
+    move(p, act, dt) {
+      const g = p.game, t = p.t;
+      if (t < 0.25 || t > 1.15) return;
+      const f = front(p, 0.7, 1.5);
+      for (let i = 0; i < 3; i++) {
+        const sp = 10 + Math.random() * 4, a = p.yaw + (Math.random() - 0.5) * 0.45;
+        g.particles.emit({ x: f.x, y: f.y, z: f.z, count: 1, speed: 0.8, color: 0xff6a1a, color2: 0xffe080, life: [0.3, 0.55], size: [0.2, 0.42], drag: 0.6, jitter: 0.12, dir: { x: Math.sin(a) * sp, y: -0.6, z: Math.cos(a) * sp } });
+      }
+      act.tick = (act.tick ?? 0) - dt;
+      if (act.tick <= 0) {
+        act.tick = 0.2;
+        g.combat.melee(p, { dmg: 8 * p.riteMult, poise: 6, reach: 6, arc: 0.45, burn: 22, height: 3 }, new Set());
+      }
+    },
+  },
+  spore_burst: {
+    name: 'Spore Burst',
+    type: 'Poison rite',
+    desc: "Murk's gift: a puff of the Hollows' spores bursts out from you in a ring and hangs in the air around you. Everything caught in it sickens.",
+    focus: 24, cooldown: 8,
+    time: 0.9, keys: RAISE, overlay: true, walk: 0.8, cancel: 0.7,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        g.effects.shockwave(p, p.pos.x, p.pos.z, { start: 0.6, maxR: 7, speed: 12, color: 0xb070e0, hit: { dmg: 16 * p.riteMult, poise: 20, poison: 50 } });
+        g.effects.hazard(p, p.pos.x, p.pos.z, { radius: 4, life: 6, look: 'spore', hit: { dmg: 3 * p.riteMult, poise: 0, poison: 18 } });
+        g.audio.play('spore');
       }],
     ],
   },

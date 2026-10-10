@@ -3,9 +3,11 @@
 // arena ring and Castle Dunmarrow. Live markers sit on top as DOM elements and are placed each
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
 import { WORLD, ZONES, ROADS, ARENA, LAKE, RIME } from '../data/world.js';
+import { LOBES, SEA } from '../data/biomes.js';
 
-const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z) + 14; // metres from the centre to each edge of the map (the Rimewold reaches furthest)
-const RES = 512; // canvas pixels per side
+// Metres from the centre to each edge of the map: far enough for every lobe of the play area.
+const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z, ...Object.values(LOBES).map((L) => Math.hypot(L.x, L.z) + L.r)) + 14;
+const RES = 640; // canvas pixels per side
 const LIGHT = norm([-0.55, 0.75, -0.55]); // hill shading from the north-west, as on old survey maps
 
 // Height (m) -> colour: damp hollows, olive lowland, gold grass, dry slopes, rock, snow.
@@ -172,18 +174,26 @@ export class MapScreen {
         // Only the lake and the fen pools hold water (World.isWater); other hollows are dry ground.
         const lake = Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r;
         const level = lake ? wl : w.fenLevel;
-        if (h < level && (lake || w.fenPoolDepth(x, z) > 0)) {
+        const B = w.biomeW(x, z);
+        if (B.coast > 0.5 && h < SEA.level) {
+          c = mix([96, 150, 148], [36, 74, 98], Math.min(1, (SEA.level - h) / 8)); // the sea
+          if (SEA.level - h < 0.4) c = mix(c, [236, 228, 200], 0.5);
+        } else if (B.cinder > 0.3 && w.isLava(x, z)) {
+          c = [236, 104, 34]; // lava
+        } else if (h < level && (lake || w.fenPoolDepth(x, z) > 0)) {
           c = mix(rgb(lake ? WATER[0] : 0x4a5240), rgb(lake ? WATER[1] : 0x1c2424), Math.min(1, (level - h) / 4));
           if (level - h < 0.35) c = mix(c, [226, 214, 176], 0.45); // a pale shoreline
         } else {
           c = ramp(h);
-          if (z < RIME.snowZ) c = mix(c, [228, 234, 238], Math.min(1, (RIME.snowZ - z) / 20) * 0.75); // snow
+          if (z < RIME.snowZ && !B.glow) c = mix(c, [228, 234, 238], Math.min(1, (RIME.snowZ - z) / 20) * 0.75); // snow
+          if (B.cinder > 0) c = mix(c, [64, 58, 56], B.cinder * 0.85); // ash
+          if (B.coast > 0) c = mix(c, [222, 202, 150], B.coast * 0.8); // sand
+          if (B.glow > 0) c = mix(c, [86, 64, 120], B.glow * 0.8); // violet moss
           c = c.map((v) => v * (0.5 + shade * 0.72));
         }
         c = mix(c, tint, PARCHMENT[1]);
         // Beyond the walkable edge the mountains fade toward the frame.
-        // (the walkable area is the Vale's circle plus the Rimewold's lobe)
-        const r = Math.min(Math.hypot(x, z) - edge, Math.hypot(x - RIME.x, z - RIME.z) - RIME.r);
+        const r = w.playEdgeDist(x, z);
         if (r > -10) c = mix(c, [40, 33, 26], Math.min(0.55, (r + 10) / 60));
         const o = (j * RES + i) * 4;
         d[o] = c[0];

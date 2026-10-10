@@ -6,6 +6,7 @@ import * as THREE from '../lib/three.js';
 const VERT = /* glsl */ `
 attribute float aDepth;
 uniform float uTime;
+uniform float uAmp;
 varying float vDepth;
 varying vec3 vWorld;
 #include <common>
@@ -15,7 +16,9 @@ void main() {
   float calm = smoothstep(0.0, 1.2, aDepth);
   float w = sin(wp.x * 0.37 + uTime * 1.1) * 0.5 + sin(wp.z * 0.43 - uTime * 0.9) * 0.5
           + sin((wp.x + wp.z) * 0.9 + uTime * 1.9) * 0.3;
-  wp.y += w * 0.06 * calm;
+  wp.y += w * uAmp * calm;
+  // Sea swell: long rollers coming in from the west.
+  wp.y += sin(wp.x * 0.08 + uTime * 0.7) * uAmp * 1.6 * calm * step(0.1, uAmp);
   vWorld = wp.xyz;
   vDepth = aDepth;
   vec4 mvPosition = viewMatrix * wp;
@@ -75,15 +78,16 @@ const GOLDEN_LIGHT = (() => {
 
 export class Water {
   // `depthAt(x, z)` returns water level minus terrain height (negative on dry land).
-  constructor(scene, lake, level, depthAt) {
+  // o.step: grid spacing (metres); o.amp: wave height (the open sea runs bigger and coarser).
+  constructor(scene, lake, level, depthAt, o = {}) {
     const R = lake.r * 1.05;
-    const step = 2.4;
+    const step = o.step ?? 2.4;
     const n = Math.ceil((R * 2) / step);
     const pos = [], depth = [], idx = [];
     const vid = new Map();
     // A jittered triangle grid clipped to the shore: the jitter keeps the facets from lining up.
     const vert = (i, j) => {
-      const key = i * 1000 + j;
+      const key = i * 4096 + j;
       if (vid.has(key)) return vid.get(key);
       const jx = (Math.sin(i * 12.9898 + j * 78.233) * 43758.5453) % 1;
       const jz = (Math.sin(i * 39.346 + j * 11.135) * 24634.6345) % 1;
@@ -114,6 +118,7 @@ export class Water {
 
     this.uniforms = THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
       uTime: { value: 0 },
+      uAmp: { value: o.amp ?? 0.06 },
       uRain: { value: 0 },
       uLight: { value: 1 },
       uShallow: { value: new THREE.Color(0x5f7a5c) },

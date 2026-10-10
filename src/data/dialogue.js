@@ -276,4 +276,150 @@ export const DIALOGUE = {
       lines: [g.state.flags.saelithDead ? 'The cold is going out of the wind. First time I have seen the tarn sweat in years.' : 'The Winter Lantern still burns in the hall. As long as it does, the snow will not leave.'],
     };
   },
+
+  hessa(g) {
+    const q = g.quests;
+    const name = 'Hessa, Smith of the Sunken Forge';
+    const drakeDead = g.state.flags.ashmawDead;
+    if (q.status('ashmaw') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'Mind the trough. That water hasn\'t been cold since my grandmother\'s time.',
+          'This was the Sunken Forge. Smiths came from all over the Vale to work at a fire that never went out. The fire was Ashmaw\'s: the drake sleeps in the caldera under the mountain, and its heat came up through the rock to us.',
+          'Then it woke hungry, and the Wastes are what it left. I\'m the last smith here. I stay because the anvil does.',
+          drakeDead ? 'And you\'ve already... the mountain\'s gone quiet. That was you? Then the Old Fire is out.' : 'Go down into the caldera and put the Old Fire out. Kindle the shrine on the steps first; you\'ll be back there more than once.',
+          'And bring me smithing stones, the dark ore with light in it. Lay them on the anvil with your weapon and I\'ll make it bite.',
+        ],
+        effect: () => {
+          q.start('ashmaw');
+          if (drakeDead) q.complete('ashmaw');
+        },
+      };
+    }
+    if (q.status('ashmaw') === 'active' && drakeDead) {
+      return {
+        name,
+        lines: [
+          'I felt it go. The floor went cold under my feet for the first time in my life.',
+          'You\'d think a smith would be sorry. I\'m not. Here: everything I\'d saved for a day like this.',
+        ],
+        effect: () => q.complete('ashmaw'),
+      };
+    }
+    if (q.status('golems') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'One more thing, while you\'re walking the Wastes.',
+          'The forge made golems once: black stone with a coal for a heart, to carry ore. Two of them are still walking out there and they don\'t know who they\'re carrying it for any more.',
+          'Break them. Bring me nothing; the stones they\'re made of are no use. I\'ll pay you in the good kind.',
+        ],
+        effect: () => q.start('golems'),
+      };
+    }
+    if (q.status('ashmaw') === 'active') return { name, lines: ['The caldera is south, under the smoke. You\'ll hear it breathing before you see it.', 'Use the anvil if you have stones. Your weapon on it, the stones beside it.'] };
+    return {
+      name,
+      lines: [
+        g.state.inventory.smithing_stone ? 'You\'ve stones with you. The anvil\'s there; lay your weapon on it.' : 'Smithing stones lie where the land is old: the Wastes, the coast, the Hollows, the far edges of the Vale. Look for the light in them.',
+      ],
+    };
+  },
+
+  wenna(g) {
+    const q = g.quests;
+    const name = 'Old Wenna, last of Saltmarrow';
+    if (q.status('tides') === 'active' && g.hasItem('drowned_bell')) {
+      return {
+        name,
+        lines: [
+          'Oh. Oh, you found it. It\'s smaller than I remember. Everything is.',
+          'It rang every evening when the boats came in. Then one night it rang for Morrow\'s ship, and the ship didn\'t stop.',
+          'Thank you. Have this; I\'ve no use for it, but you look like you\'ll need it.',
+        ],
+        effect: () => {
+          g.takeItem('drowned_bell');
+          q.complete('tides');
+        },
+      };
+    }
+    if (q.status('tides') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'A living face. I\'d nearly forgotten what one looks like.',
+          'This was Saltmarrow. Fishers, all of us. Now it\'s me, and the ones the sea gave back, and they don\'t talk.',
+          'Our harbour bell went into the sea the night the Captain\'s ship came ashore. The tide brings things back to the end of the old pier sometimes. If it brings the bell, I\'d like it.',
+        ],
+        effect: () => q.start('tides'),
+      };
+    }
+    if (q.status('morrow') === 'inactive') {
+      const dead = g.state.flags.morrowDead;
+      return {
+        name,
+        lines: dead
+          ? ['The Captain\'s gone quiet. I watched the tide go out and out last night and come back clean. That was you.', 'My sister would have thanked you. I will instead.']
+          : [
+            'You\'ve seen them on the beach. The drowned. That was his crew.',
+            'Captain Morrow married my sister. He ran his ship onto the rocks on a clear night, and every one of them came walking back out of the sea, and him the last.',
+            'He stands by the wreck south of the lighthouse looking out to sea. Send him back to it. Please.',
+          ],
+        effect: () => {
+          q.start('morrow');
+          if (dead) q.complete('morrow');
+        },
+      };
+    }
+    if (q.status('tides') === 'active') return { name, lines: ['The pier\'s the broken one north of the houses. The tide leaves things at the end of it.'] };
+    if (q.status('morrow') === 'active') return { name, lines: ['South along the strand, past the lighthouse. The wreck is the big one. He\'ll be there; he always is.'] };
+    return { name, lines: [g.state.flags.morrowDead ? 'The gulls came back this morning. First time in years.' : 'Mind the crabs. They\'ve got bold.'] };
+  },
+
+  murk(g) {
+    const q = g.quests;
+    const name = 'Murk, a Myconid';
+    if (q.status('stalkers') === 'inactive') {
+      return {
+        name,
+        lines: [
+          '...Hmmm. You are warm. Warm things do not usually come into the Hollows. Hmmm.',
+          'I am Murk. I am a Myconid. We grew here, many of us, under the caps. Now there is me, and the ring, and the ones who drift.',
+          'The drifting ones were Myconids too. The Bloom Witch\'s spores got into them. They do not know me now. Please... let them rest.',
+        ],
+        effect: () => q.start('stalkers'),
+      };
+    }
+    if (q.status('bloom') === 'inactive') {
+      const dead = g.state.flags.sylvaraDead;
+      return {
+        name,
+        lines: dead
+          ? ['...The grove is quiet. I felt it through the roots. Hmmm. Thank you, warm one.']
+          : [
+            'Hmmm. You should know about the grove.',
+            'A woman came into the Hollows, long ago, and slept under the great Heartcap. When she woke she was more cap than woman. Sylvara, she calls herself. Her spores are what turned the drifting ones.',
+            'She is at the end of the Hollows, in the Heartcap Grove. Kindle the old shrine on the way. And... be kind, if you can. She was someone, once.',
+          ],
+        effect: () => {
+          q.start('bloom');
+          if (dead) q.complete('bloom');
+        },
+      };
+    }
+    if (q.status('bloom') === 'active' && g.state.flags.sylvaraDead) {
+      return {
+        name,
+        lines: [
+          '...She is gone. I felt the Heartcap let go of her. Hmmm.',
+          'Take this. A spore from the Heartcap itself. It will grow into something better than she did. Thank you, warm one.',
+        ],
+        effect: () => q.complete('bloom'),
+      };
+    }
+    if (q.status('stalkers') === 'active') return { name, lines: ['Hmmm. The drifting ones keep to the deep caps, west of the ring.'] };
+    if (q.status('bloom') === 'active') return { name, lines: ['The grove is at the end of the road, where the light turns pink. Hmmm.'] };
+    return { name, lines: ['Hmmm. The caps are growing back. Slowly. That is the right speed.'] };
+  },
 };

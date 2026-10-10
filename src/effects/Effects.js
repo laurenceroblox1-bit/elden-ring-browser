@@ -80,13 +80,17 @@ export class Effects {
     game.net?.coop.fx('spike', owner, o, { x, z, delay });
     const R = o.radius ?? 2.2;
     const y = game.world.getHeight(x, z);
-    const ring = new THREE.Mesh(ringGeo, fxMaterial(0xbfe8ff, 0));
+    // o.look 'thorn': the Bloom Witch's roots instead of ice.
+    const thorn = o.look === 'thorn';
+    const ring = new THREE.Mesh(ringGeo, fxMaterial(thorn ? 0xf080e0 : 0xbfe8ff, 0));
     ring.position.set(x, y + 0.12, z);
     ring.scale.set(R, 1, R);
-    const disc = new THREE.Mesh(discGeo, fxMaterial(0x7cc8ff, 0));
+    const disc = new THREE.Mesh(discGeo, fxMaterial(thorn ? 0x9a3a8a : 0x7cc8ff, 0));
     disc.position.set(x, y + 0.1, z);
     disc.scale.set(0.01, 1, 0.01);
-    const spikeMat = new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x3a90d8, emissiveIntensity: 0.8, roughness: 0.15, flatShading: true, transparent: true, opacity: 0.95 });
+    const spikeMat = thorn
+      ? new THREE.MeshStandardMaterial({ color: 0x4a3a58, emissive: 0x7a2a8a, emissiveIntensity: 0.6, roughness: 0.8, flatShading: true, transparent: true, opacity: 0.98 })
+      : new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x3a90d8, emissiveIntensity: 0.8, roughness: 0.15, flatShading: true, transparent: true, opacity: 0.95 });
     const spikes = new THREE.Group();
     const n = o.count ?? 7;
     for (let i = 0; i < n; i++) {
@@ -117,8 +121,8 @@ export class Effects {
             burst = true;
             spikes.visible = true;
             if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 0.8, z), R, o.hit, hitSet);
-            game.audio.playAt('frostbite', { x, z });
-            game.particles.emit({ x, y: y + 0.5, z, count: 30, speed: 6, up: 4, color: 0xdff4ff, color2: 0x7cc8ff, life: [0.4, 0.9], size: [0.1, 0.22], drag: 2.5, gravity: 4 });
+            game.audio.playAt(thorn ? 'spore' : 'frostbite', { x, z });
+            game.particles.emit({ x, y: y + 0.5, z, count: 30, speed: 6, up: 4, color: thorn ? 0x9ae070 : 0xdff4ff, color2: thorn ? 0xd070f0 : 0x7cc8ff, life: [0.4, 0.9], size: [0.1, 0.22], drag: 2.5, gravity: 4 });
           }
           return true;
         }
@@ -132,6 +136,45 @@ export class Effects {
         ring.material.dispose();
         disc.material.dispose();
         spikeMat.dispose();
+      },
+    });
+  }
+
+  // A lingering hazard on the ground: a patch of fire (o.look 'fire') or a cloud of spores ('spore').
+  // Anyone inside is struck every half second for `life` seconds (o.hit, usually light with burn or
+  // poison buildup). Fades in, holds, fades out.
+  hazard(owner, x, z, o = {}) {
+    const game = this.game;
+    game.net?.coop.fx('haz', owner, o, { x, z });
+    const R = o.radius ?? 3, life = o.life ?? 5, spore = o.look === 'spore';
+    const color = o.color ?? (spore ? 0x8acb3a : 0xff6a1a);
+    const y = game.world.getHeight(x, z);
+    const disc = new THREE.Mesh(discGeo, fxMaterial(color, 0));
+    disc.position.set(x, y + 0.12, z);
+    disc.scale.set(R, 1, R);
+    game.scene.add(disc);
+    let t = 0, tick = 0;
+    const center = new THREE.Vector3(x, y + 0.8, z);
+    return this.add({
+      update(dt) {
+        t += dt;
+        const a = Math.min(1, t * 4) * Math.min(1, (life - t) * 1.5);
+        disc.material.opacity = (spore ? 0.22 : 0.3) * a;
+        if ((tick -= dt) <= 0 && o.hit && !o.ghostFx && t > 0.2) {
+          tick = 0.5;
+          game.combat.sphere(owner, center, R * 0.9, o.hit, new Set());
+        }
+        if (Math.random() < dt * R * (spore ? 6 : 10)) {
+          const ang = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * R;
+          game.particles.emit(spore
+            ? { x: x + Math.sin(ang) * d, y: y + 0.3 + Math.random(), z: z + Math.cos(ang) * d, count: 1, speed: 0.3, up: 0.5, color, color2: 0xc070e0, life: [0.8, 1.6], size: [0.15, 0.3], drag: 1, jitter: 0.3 }
+            : { x: x + Math.sin(ang) * d, y: y + 0.2, z: z + Math.cos(ang) * d, count: 1, speed: 0.5, up: 2.5, color, color2: 0xffd060, life: [0.3, 0.7], size: [0.1, 0.22], drag: 1, jitter: 0.2 });
+        }
+        return t < life;
+      },
+      dispose() {
+        game.scene.remove(disc);
+        disc.material.dispose();
       },
     });
   }

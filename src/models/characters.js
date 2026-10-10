@@ -394,3 +394,56 @@ export function buildAcolyte() {
   mergeHumanoid(r);
   return { ...r, lantern, glow, flame };
 }
+
+// Hessa, smith of the Sunken Forge: broad, soot-dark, a leather apron scorched through, cropped iron-grey
+// hair and a heavy hammer that never leaves her hand.
+export function buildHessa() {
+  const leather = mat(0x5a3a26), soot = mat(0x3a3330);
+  const r = buildHumanoid({ skin: mat(0xa0705a), body: soot, arms: mat(0xa0705a), legs: mat(0x2e2824), boots: mat(0x221c18), hands: mat(0x2a2420) },
+    { chestW: 0.62, waistW: 0.54, shoulderW: 0.37, armW: 0.16 });
+  r.head.add(mesh(box(0.27, 0.08, 0.29), mat(0x7a7470), { y: 0.3 })); // cropped hair
+  r.head.add(mesh(box(0.26, 0.05, 0.05), mat(0x8a5a2a), { y: 0.2, z: 0.14 })); // a scorched brow band
+  r.torso.add(mesh(box(0.5, 0.62, 0.05), leather, { y: 0.28, z: 0.16 })); // apron bib
+  r.hips.add(mesh(box(0.5, 0.56, 0.05), leather, { y: -0.26, z: 0.15 }));
+  r.torso.add(mesh(box(0.66, 0.08, 0.34), leather, { y: 0.04 }));
+  const hammer = group();
+  hammer.add(mesh(cyl(0.03, 0.03, 0.7, 5), mat(0x4a3826), { rx: Math.PI / 2, z: 0.2 }));
+  hammer.add(mesh(box(0.14, 0.14, 0.26), mat(0x55565c, { metalness: 0.6, roughness: 0.45 }), { z: 0.52, ry: Math.PI / 2 }));
+  r.armR.hand.add(hammer);
+  return mergeHumanoid(r);
+}
+
+// Old Wenna, last of Saltmarrow: stooped in an oilskin coat and a sou'wester, a lantern of green
+// glass in one hand and a net-needle tucked in her belt.
+export function buildWenna() {
+  const oil = mat(0x6a6a3a, { side: THREE.DoubleSide });
+  const r = buildHumanoid({ skin: mat(0xc49a80), body: oil, arms: oil, legs: mat(0x3a3a34), boots: mat(0x2a2a26) }, { chestW: 0.48, waistW: 0.44 });
+  r.head.add(mesh(cyl(0.2, 0.26, 0.16, 8), mat(0x8a7a3a), { y: 0.3, z: -0.03, rx: -0.15 })); // sou'wester
+  r.head.add(mesh(box(0.25, 0.06, 0.04), mat(0xd8d4cc), { y: 0.05, z: 0.13 })); // white whiskers of hair
+  r.hips.add(mesh(cyl(0.24, 0.38, 0.62, 8, true), oil, { y: -0.3 }));
+  const lantern = group({ y: -0.18 });
+  lantern.add(mesh(box(0.14, 0.03, 0.14), mat(0x3a3530), { y: 0.1 }));
+  lantern.add(mesh(box(0.11, 0.16, 0.11), mat(0x9af0b8, { emissive: 0x40d080, emissiveIntensity: 1.6 }), { shadow: false }));
+  lantern.add(glowSprite(0x60f0a0, 0.9, 0.6));
+  r.armL.hand.add(lantern);
+  return mergeHumanoid(r);
+}
+
+// Murk, a Myconid: a squat walking mushroom with a broad glowing cap for a head, root-like limbs and
+// two calm black eyes. The cap glows (its material is unique so it can pulse while Murk talks).
+export function buildMurk() {
+  const stalk = mat(0xd4c8dc), gill = mat(0x5a4870);
+  const r = buildHumanoid({ skin: stalk, body: stalk, arms: mat(0xb8a8c4), legs: mat(0xa898b8), boots: mat(0x6a5a78), hands: mat(0xb8a8c4) },
+    { chestW: 0.5, waistW: 0.56, shoulderW: 0.31, thigh: 0.28, shin: 0.3, headW: 0.3, headH: 0.3 });
+  const cap = mat(0x6ff0dc, { unique: true, emissive: 0x30c0b0, emissiveIntensity: 1.2 });
+  r.head.add(mesh(cyl(0.62, 0.5, 0.1, 9), gill, { y: 0.34 }));
+  r.head.add(mesh(cone(0.66, 0.42, 9), cap, { y: 0.58, shadow: false }));
+  for (const [x, z] of [[0.3, 0.2], [-0.25, 0.3], [0.1, -0.4], [-0.35, -0.15]]) r.head.add(mesh(box(0.08, 0.04, 0.08), mat(0xf2e8ff), { x, y: 0.5, z }));
+  for (const x of [0.06, -0.06]) r.head.add(mesh(box(0.05, 0.07, 0.02), mat(0x120e18), { x, y: 0.16, z: 0.16 }));
+  r.rig.position.y -= 0.26; // the shorter legs
+  const glow = glowSprite(0x6ff0dc, 1.8, 0.4);
+  glow.position.y = 0.7;
+  r.head.add(glow);
+  mergeHumanoid(r, [glow]);
+  return { ...r, cap };
+}

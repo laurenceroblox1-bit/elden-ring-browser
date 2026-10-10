@@ -2,6 +2,7 @@
 // backstep, flask, guard / parry / riposte, lock-on strafing, and riding. Gear comes from data:
 // the weapon (data/weapons.js) sets the moveset, stance, damage scaling and weapon art; a shield sets
 // the guard; the rite (data/abilities.js) is the spell on V. Arts and rites spend focus.
+import { upgradeMult } from '../data/smithing.js';
 import * as THREE from '../lib/three.js';
 import { Actor } from './Actor.js';
 import { buildPlayer } from '../models/characters.js';
@@ -150,7 +151,8 @@ export class Player extends Actor {
 
   // Strength scales each weapon by its own `scale`: heavy weapons gain the most from it.
   _scaleDamage() {
-    this.dmgMult = 1 + ((this.statsRef.strength ?? 10) - 10) * 0.05 * (this.weapon?.scale ?? 1);
+    // Hessa's smithing adds its own share on top (data/smithing.js).
+    this.dmgMult = (1 + ((this.statsRef.strength ?? 10) - 10) * 0.05 * (this.weapon?.scale ?? 1)) * upgradeMult(this.game.state?.upgrades?.[this.weaponId]);
   }
 
   // Equips gear by id: { right: weapon, left: shield | null, rite: rite | null }. Unknown ids fall back
@@ -181,6 +183,7 @@ export class Player extends Actor {
   respawn(x, z, yaw) {
     this.alive = true;
     this.frost = this.frostbite = 0;
+    this.clearBurnPoison();
     this.hp = this.maxHp;
     this.stamina = this.maxStamina;
     this.flasks = this.flasksMax;
@@ -260,7 +263,7 @@ export class Player extends Actor {
     this.t = 0;
     this.hitSet = new Set();
     this.swung = false;
-    this.hit = { dmg: def.dmg * this.dmgMult, poise: def.poise, reach: def.reach, arc: def.arc, heavy: def.heavy, height: def.height, yawOffset: def.yawOffset, frost: def.frost ?? WEAPONS[this.weaponId]?.frost };
+    this.hit = { dmg: def.dmg * this.dmgMult, poise: def.poise, reach: def.reach, arc: def.arc, heavy: def.heavy, height: def.height, yawOffset: def.yawOffset, frost: def.frost ?? WEAPONS[this.weaponId]?.frost, burn: def.burn ?? WEAPONS[this.weaponId]?.burn, poison: def.poison ?? WEAPONS[this.weaponId]?.poison };
     if (!this.mounted) {
       const lock = this.game.lockTarget;
       if (lock) this.yaw = yawTo(this.pos.x, this.pos.z, lock.pos.x, lock.pos.z);
@@ -476,6 +479,9 @@ export class Player extends Actor {
     }
     this.guardRecoil = hit.heavy ? 0.4 : 0.22;
     this.vel.set(hit.dirX * k, 0, hit.dirZ * k);
+    // A thorned shield poisons whatever strikes it up close.
+    const a = hit.attacker;
+    if (gs.thorns && a?.addPoison && a.pos && Math.hypot(a.pos.x - this.pos.x, a.pos.z - this.pos.z) < 6) a.addPoison(gs.thorns);
     this.stats.blocks++;
     return 'block';
   }
@@ -527,6 +533,21 @@ export class Player extends Actor {
     this.game.onPlayerDeath();
   }
 
+  // Lava scalds whoever wades in it, and soon sets them alight.
+  _lava(dt) {
+    const w = this.game.world;
+    this.inLava = w.isLava(this.pos.x, this.pos.z) && this.pos.y < w.lavaLevelAt(this.pos.x, this.pos.z) + 0.6;
+    if (!this.inLava) { this.lavaAcc = 0; return; }
+    this.addBurn(70 * dt);
+    this.lavaAcc = (this.lavaAcc ?? 0) + 26 * dt;
+    if (Math.random() < dt * 20) this.game.particles.emit({ x: this.pos.x, y: this.pos.y + 0.3, z: this.pos.z, count: 2, speed: 1, up: 3, color: 0xff6a1a, color2: 0xffd060, life: [0.3, 0.7], size: [0.08, 0.16], jitter: 0.4 });
+    if (this.lavaAcc >= 5) {
+      const dmg = this.lavaAcc;
+      this.lavaAcc = 0;
+      this.takeHit({ dmg, poise: 0, dirX: 0, dirZ: 0, unblockable: true, status: 'lava' });
+    }
+  }
+
   // ---------- update ----------
 
   update(dt) {
@@ -538,6 +559,7 @@ export class Player extends Actor {
       return;
     }
     this.tickFrost(dt);
+    this._lava(dt);
     this._readBuffer(dt);
     this._guardTimers(dt);
     this._focusAndBuffs(dt);
@@ -648,7 +670,7 @@ export class Player extends Actor {
     }
     if (this.winded && this.stamina > 25) this.winded = false;
     let speed = this.sprinting ? 7.4 : lock ? 3.8 : 4.6;
-    if (this.game.world.isWater(this.pos.x, this.pos.z)) speed *= 0.55;
+    if (this.game.world.isWater(this.pos.x, this.pos.z) || this.inLava) speed *= 0.55;
     speed *= this.frostSlow;
     this.vel.x = damp(this.vel.x, mi.x * speed, 12, dt);
     this.vel.z = damp(this.vel.z, mi.z * speed, 12, dt);

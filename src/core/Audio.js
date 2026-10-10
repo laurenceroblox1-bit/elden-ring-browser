@@ -35,12 +35,17 @@ export class AudioFx {
     setTimeout(() => { g.disconnect(); out.disconnect(); }, 4000);
   }
 
-  // Region ambience: wind howling through the Rimewold, frogs croaking in the Ashen Fen.
+  // Region ambience: wind howling through the Rimewold, frogs croaking in the Ashen Fen, the deep
+  // rumble and crackle of the Cinderfall Wastes, surf and gulls on the Drowned Coast, water dripping
+  // in the Glowcap Hollows.
   setRegion(r) {
     if (r === this.region) return;
     this.region = r;
     if (!this.ctx) return;
-    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : 0, this.ctx.currentTime, 1.5);
+    const t = this.ctx.currentTime;
+    this.howl?.gain.setTargetAtTime(r === 'rime' ? 0.32 : 0, t, 1.5);
+    this.rumble?.gain.setTargetAtTime(r === 'cinder' ? 0.5 : 0, t, 1.5);
+    this.surf?.gain.setTargetAtTime(r === 'coast' ? 0.42 : 0, t, 1.5);
     clearInterval(this.croakTimer);
     if (r === 'fen') {
       this.croakTimer = setInterval(() => {
@@ -48,7 +53,57 @@ export class AudioFx {
         const f = 90 + Math.random() * 60;
         for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) this._tone({ freq: f, to: f * 0.8, type: 'square', dur: 0.09, gain: 0.025, delay: i * 0.14, dest: this.amb });
       }, 1300);
+    } else if (r === 'cinder') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted) return;
+        // Crackling embers, and now and then a lava pop.
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 4); i++) this._noise({ dur: 0.03, type: 'highpass', freq: 2500 + Math.random() * 2000, gain: 0.04, dest: this.amb });
+        if (Math.random() < 0.3) this._tone({ freq: 70, to: 40, type: 'sine', dur: 0.35, gain: 0.12, dest: this.amb });
+      }, 900);
+    } else if (r === 'coast') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.55) return;
+        // A gull: two or three falling cries.
+        const f = 1500 + Math.random() * 500;
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 2); i++) this._tone({ freq: f, to: f * 0.62, type: 'triangle', dur: 0.22, gain: 0.03, delay: i * 0.28, dest: this.amb });
+      }, 2600);
+    } else if (r === 'glow') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.3) return;
+        // A drip in a still pool, with its echo off the caps.
+        const f = 900 + Math.random() * 1100;
+        for (let i = 0; i < 3; i++) this._tone({ freq: f, to: f * 1.4, type: 'sine', dur: 0.12, gain: 0.05 / (1 + i * 2), delay: i * 0.21, dest: this.amb });
+      }, 1100);
     }
+  }
+
+  // The Wastes' rumble (low, slow-breathing noise) and the coast's surf (waves rolling in and out).
+  _startRegionBeds() {
+    const c = this.ctx;
+    const bed = (freq, type, q, lfoHz, lfoDepth) => {
+      const src = c.createBufferSource();
+      src.buffer = this.noiseBuf;
+      src.loop = true;
+      const f = c.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const swell = c.createGain();
+      swell.gain.value = 1 - lfoDepth;
+      const lfo = c.createOscillator();
+      lfo.frequency.value = lfoHz;
+      const lg = c.createGain();
+      lg.gain.value = lfoDepth;
+      lfo.connect(lg).connect(swell.gain);
+      const out = c.createGain();
+      out.gain.value = 0;
+      src.connect(f).connect(swell).connect(out).connect(this.amb);
+      src.start();
+      lfo.start();
+      return out;
+    };
+    this.rumble = bed(80, 'lowpass', 0.8, 0.07, 0.4);
+    this.surf = bed(700, 'lowpass', 0.6, 0.13, 0.85);
   }
 
   _startHowl() {
@@ -100,6 +155,7 @@ export class AudioFx {
 
     this._startAmbient();
     this._startHowl();
+    this._startRegionBeds();
     this._startDrone();
     const r = this.region;
     this.region = null;
@@ -118,8 +174,8 @@ export class AudioFx {
     return g;
   }
 
-  _noise({ dur = 0.2, type = 'bandpass', freq = 1000, q = 1, gain = 0.4, to = null, attack = 0.005, dest = this.sfx }) {
-    const c = this.ctx, t = c.currentTime;
+  _noise({ dur = 0.2, type = 'bandpass', freq = 1000, q = 1, gain = 0.4, to = null, attack = 0.005, delay = 0, dest = this.sfx }) {
+    const c = this.ctx, t = c.currentTime + delay;
     const src = c.createBufferSource();
     src.buffer = this.noiseBuf;
     const f = c.createBiquadFilter();
@@ -255,6 +311,40 @@ export class AudioFx {
         this._noise({ dur: 0.35, freq: 3200, to: 900, q: 2, gain: 0.35 });
         this._tone({ freq: 1760, to: 1320, type: 'triangle', dur: 0.7, gain: 0.12 });
         this._tone({ freq: 2640, type: 'sine', dur: 0.9, gain: 0.07, delay: 0.05 });
+        break;
+      case 'ignite':
+        // A whoomph of catching flame.
+        this._noise({ dur: 0.6, type: 'lowpass', freq: 300, to: 2400, gain: 0.4, attack: 0.04 });
+        this._tone({ freq: 90, to: 60, type: 'sawtooth', dur: 0.4, gain: 0.08 });
+        break;
+      case 'poison':
+        // A sickly bubbling.
+        for (let i = 0; i < 5; i++) this._tone({ freq: 220 + Math.random() * 180, to: 120, type: 'sine', dur: 0.12, gain: 0.08, delay: i * 0.07 });
+        this._noise({ dur: 0.5, type: 'bandpass', freq: 600, q: 3, gain: 0.08 });
+        break;
+      case 'breath':
+        // A roaring jet of fire.
+        this._noise({ dur: 1.6, type: 'lowpass', freq: 500, to: 1500, gain: 0.45, attack: 0.15 });
+        this._noise({ dur: 1.4, type: 'bandpass', freq: 200, q: 1.5, gain: 0.25, attack: 0.1 });
+        break;
+      case 'wings':
+        // A heavy wingbeat.
+        this._noise({ dur: 0.45, type: 'lowpass', freq: 260, to: 120, gain: 0.5, attack: 0.08 });
+        break;
+      case 'spore':
+        // A soft puff of spores.
+        this._noise({ dur: 0.5, type: 'bandpass', freq: 900, to: 400, q: 1.2, gain: 0.18, attack: 0.03 });
+        break;
+      case 'splash':
+        this._noise({ dur: 0.5, type: 'bandpass', freq: 1200, to: 500, q: 0.8, gain: 0.25 });
+        break;
+      case 'smith':
+        // Hammer on the anvil: a bright ringing clang, twice.
+        for (let i = 0; i < 2; i++) {
+          this._tone({ freq: 1320, to: 1250, type: 'triangle', dur: 0.6, gain: 0.14, delay: i * 0.32 });
+          this._tone({ freq: 2210, type: 'sine', dur: 0.5, gain: 0.06, delay: i * 0.32 });
+          this._noise({ dur: 0.06, freq: 3000, q: 1, gain: 0.25, delay: i * 0.32 });
+        }
         break;
       case 'shard':
         this._noise({ dur: 0.22, freq: 2600, to: 4200, q: 1.5, gain: 0.16 });
@@ -407,7 +497,26 @@ export class AudioFx {
     this.music.gain.setTargetAtTime(on ? 0.5 : 0, this.ctx.currentTime, on ? 1.2 : 0.8);
     clearInterval(this.tollTimer);
     if (!on) return;
-    const toll = style === 'winter' ? () => { this._bell(392, 0.07, 6, this.music); this._bell(587, 0.04, 5, this.music); } : () => this._bell(98, 0.12, 5, this.music);
-    this.tollTimer = setInterval(() => !this.muted && toll(), style === 'winter' ? 5200 : 7000);
+    // Each boss has its own pulse: the Warden's low bell, winter's high chimes, the drake's war drums,
+    // the captain's foghorn and surf, the witch's eerie chimes.
+    const STYLES = {
+      bell: [() => this._bell(98, 0.12, 5, this.music), 7000],
+      winter: [() => { this._bell(392, 0.07, 6, this.music); this._bell(587, 0.04, 5, this.music); }, 5200],
+      fire: [() => {
+        for (let i = 0; i < 4; i++) this._tone({ freq: 70, to: 45, type: 'sine', dur: 0.35, gain: i === 0 ? 0.3 : 0.18, delay: i * 0.42, dest: this.music });
+        this._bell(147, 0.05, 3, this.music);
+      }, 3400],
+      sea: [() => {
+        this._tone({ freq: 82, to: 78, type: 'sawtooth', dur: 2.6, gain: 0.06, attack: 0.6, dest: this.music });
+        this._noise({ dur: 3, type: 'lowpass', freq: 400, to: 900, gain: 0.12, attack: 1.2, dest: this.music });
+      }, 6000],
+      spore: [() => {
+        const f = [523, 622, 784, 932][Math.floor(Math.random() * 4)];
+        this._bell(f, 0.04, 5, this.music);
+        this._bell(f * 1.5, 0.025, 4, this.music);
+      }, 2600],
+    };
+    const [toll, every] = STYLES[style] ?? STYLES.bell;
+    this.tollTimer = setInterval(() => !this.muted && toll(), every);
   }
 }

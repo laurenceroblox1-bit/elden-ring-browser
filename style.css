@@ -433,6 +433,11 @@ kbd {
 .bar.fr { height: 5px; width: 60%; }
 .bar.fr .fill { background: linear-gradient(#cfefff, #6fb4e0); }
 .bar.fr.bitten { border-color: #bfe8ff; box-shadow: 0 0 10px rgba(150, 210, 255, 0.8); }
+.bar.bu, .bar.po { height: 5px; width: 60%; }
+.bar.bu .fill { background: linear-gradient(#ffd27a, #e0541c); }
+.bar.bu.bitten { border-color: #ffb060; box-shadow: 0 0 10px rgba(255, 120, 40, 0.85); }
+.bar.po .fill { background: linear-gradient(#b8e070, #6a9a2a); }
+.bar.po.bitten { border-color: #c070e0; box-shadow: 0 0 10px rgba(160, 90, 220, 0.75); }
 .ebar-frost { position: absolute; left: -38px; top: 4px; width: 76px; height: 3px; background: rgba(0, 0, 0, 0.6); }
 .ebar-frost i { position: absolute; inset: 0; transform-origin: left; background: #bfe8ff; }
 .ebar-frost.bitten i { background: #ffffff; box-shadow: 0 0 6px #9fd8ff; }

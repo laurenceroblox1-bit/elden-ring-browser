@@ -31,6 +31,11 @@ import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
 import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL, FEN } from '../data/world.js';
+import { STONES } from '../data/biomes.js';
+import { MAX_LEVEL, upgradeCost, levelName } from '../data/smithing.js';
+
+// The weather each region brings with it; the Vale and the fen keep whatever the Vale has.
+const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores' };
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -138,6 +143,36 @@ export class Game {
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
     const cd = this.world.castleDoor;
     I.add({ x: cd.x, z: cd.z, radius: 4, enabled: () => !this.state.flags.wardenDead, label: () => 'Examine the doors', action: () => this.talk('castle') });
+    // Hessa's anvil in the Sunken Forge: smithing (data/smithing.js).
+    I.add({ x: -90, z: 545, radius: 2.4, label: () => this._anvilLabel(), action: () => this.smith() });
+  }
+
+  _anvilLabel() {
+    const id = this.player.weaponId, lvl = this.state.upgrades?.[id] ?? 0;
+    const name = levelName(WEAPONS[id].name, lvl);
+    if (lvl >= MAX_LEVEL) return `${name} is as strong as Hessa can make it`;
+    const c = upgradeCost(lvl);
+    return `Smith ${name} to +${lvl + 1} (${c.stones} stone${c.stones > 1 ? 's' : ''}, ${c.ash} ash)`;
+  }
+
+  // Raises the weapon in hand one level at the anvil, if you have the stones and the ash.
+  smith() {
+    const id = this.player.weaponId, ups = (this.state.upgrades ??= {});
+    const lvl = ups[id] ?? 0;
+    if (lvl >= MAX_LEVEL) return this.hud.toast('Hessa shakes her head: no more can be done for that one.');
+    const c = upgradeCost(lvl);
+    const have = this.state.inventory.smithing_stone ?? 0;
+    if (have < c.stones) return this.hud.toast(`You need ${c.stones} smithing stone${c.stones > 1 ? 's' : ''} (you have ${have}).`);
+    if (this.state.ash < c.ash) return this.hud.toast(`You need ${c.ash} ash.`);
+    this.state.inventory.smithing_stone = have - c.stones;
+    this.state.ash -= c.ash;
+    ups[id] = lvl + 1;
+    this.player._scaleDamage();
+    this.audio.play('smith');
+    this.particles.emit({ x: -90, y: this.world.getHeight(-90, 545) + 1.2, z: 545, count: 40, speed: 4, up: 3, color: 0xffa040, color2: 0xfff0c0, life: [0.3, 0.8], size: [0.05, 0.12], gravity: 8, drag: 1 });
+    this.hud.toast(`${levelName(WEAPONS[id].name, lvl + 1)}: it bites harder now.`, 'item');
+    this.events.emit('smithed', id);
+    this.save();
   }
 
   // One-time hints the first time the player meets each guard mechanic (per page session).
@@ -215,6 +250,11 @@ export class Game {
     this._clearPickups();
     for (const p of PICKUPS) if (!this.hasItem(p.item) && (!p.quest || this.quests.status(p.quest) !== 'done')) this.spawnPickup(p.item, p.x, p.z);
     for (const l of LOOT) if (!this.hasGear(l.gear)) this.spawnPickup(l.gear, l.x, l.z);
+    // Smithing stones: each one is picked up once per journey.
+    const taken = (this.state.stonesTaken ??= []);
+    STONES.forEach((st, i) => {
+      if (!taken.includes(i)) this.spawnPickup('smithing_stone', st.x, st.z, () => taken.includes(i) || taken.push(i));
+    });
     if (st.remnant) this.spawnRemnant(st.remnant.x, st.remnant.z, st.remnant.amount);
     else this._removeRemnant();
     if (st.flags.wardenDead) {
@@ -382,7 +422,7 @@ export class Game {
   // ---------- world objects ----------
 
   // A key item (a glinting gem) or a piece of gear (the thing itself, turning slowly over a cooler glow).
-  spawnPickup(item, x, z) {
+  spawnPickup(item, x, z, onTake = null) {
     const y = this.world.getHeight(x, z);
     const gear = gearOf(item);
     const glow = glowSprite(gear ? 0xd8e6ff : 0xfff0c0, gear ? 2.2 : 1.6, 0.9);
@@ -398,6 +438,7 @@ export class Game {
     this.scene.add(glow, gem);
     const pk = { item, x, z, y, glow, gem, spin: gear ? 0.8 : 2 };
     pk.inter = this.interactions.add({ x, z, radius: gear ? 2.6 : 2.2, label: () => (gear ? `Take the ${gear.def.name}` : 'Pick up'), action: () => {
+      onTake?.();
       if (gear) this.giveGear(item);
       else this.giveItem(item);
       this._removePickup(pk);
@@ -1010,20 +1051,21 @@ export class Game {
     this._regionWeather(p);
   }
 
-  // Snow falls north of the ridge: crossing it swaps the Vale's weather for the Rimewold's and back
+  // Each region keeps its own sky: snow north of the ridge, falling cinders over the Wastes, sea mist
+  // on the coast, spores in the Hollows. Crossing back into the Vale restores the Vale's weather
   // (a boss that brings its own weather sets weatherLock while it lasts).
   _regionWeather(p, instant = false) {
-    const north = p.z < RIME.snowZ - 4;
-    this.audio.setRegion(north ? 'rime' : Math.hypot(p.x - FEN.x, p.z - FEN.z) < FEN.r ? 'fen' : 'vale');
-    if (north === this.inRime || this.weatherLock) return;
-    this.inRime = north;
-    const now = this.world.getWeather();
-    const wintry = now === 'snow' || now === 'blizzard';
-    if (north) {
-      if (!wintry) this.valeWeather = now;
+    const region = this.world.regionAt(p.x, p.z);
+    this.audio.setRegion(region);
+    if (region === this.weatherRegion || this.weatherLock) return;
+    const was = this.weatherRegion;
+    this.weatherRegion = region;
+    const own = REGION_WEATHER[region];
+    if (was && !REGION_WEATHER[was]) this.valeWeather = this.world.getWeather(); // leaving the Vale: remember its sky
+    if (own) {
       // Once the Winter Lantern is out the snow stops falling (the thaw has begun).
-      this.world.setWeather(this.state.flags.saelithDead ? 'clear' : 'snow', instant);
-    } else if (wintry) {
+      this.world.setWeather(region === 'rime' && this.state.flags.saelithDead ? 'clear' : own, instant);
+    } else if (was === null || REGION_WEATHER[was]) {
       this.world.setWeather(this.valeWeather ?? 'clear', instant);
     }
   }

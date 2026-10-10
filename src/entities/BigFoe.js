@@ -10,6 +10,8 @@
 // It handles the rest: waking (timed to a cutscene when there is one), circling, running moves with
 // wind-up, active frames, lunges, chained follow-ups, the phase-two switch at `phaseAt` of health,
 // the boss bar's damage counter, and staying dead once beaten (state.flags[flag]).
+// An `elite` (the Cinder Golems) uses the same moveset machinery as an ordinary foe instead: no boss
+// fight, no bar, leashed to its post, back on its feet after you rest.
 import { Foe } from './Foe.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, easeOut } from '../core/math.js';
@@ -42,7 +44,8 @@ export class BigFoe extends Foe {
     this.flipT = 2;
     copyPose(this.poseBuf, this.poses.rest);
     applyPose(this.model, this.poseBuf, 1);
-    if (this.game.state?.flags?.[this.flag]) {
+    if (this.elite) this.lockable = true;
+    if (this.flag && this.game.state?.flags?.[this.flag]) {
       // Beaten for good.
       this.alive = false;
       this.state = 'dead';
@@ -64,8 +67,8 @@ export class BigFoe extends Foe {
 
   takeHit(hit) {
     if (!this.alive) return false;
-    if (this.state === 'idle' && !this.hitWhileIdle) return false;
-    if (this.state === 'idle' || this.state === 'return') this.game.startFoeFight(this, { cutscene: false });
+    if (this.state === 'idle' && !this.hitWhileIdle && !this.elite) return false;
+    if (!this.elite && (this.state === 'idle' || this.state === 'return')) this.game.startFoeFight(this, { cutscene: false });
     const before = this.hp;
     // Bosses shrug off ordinary flinches mid-move: only poise breaks (or ripostes) stagger them.
     const r = super.takeHit(hit);
@@ -95,7 +98,7 @@ export class BigFoe extends Foe {
     this.invuln = false;
     const r = super._die(hit);
     this.lockable = false;
-    this.game.onFoeBossDefeated(this);
+    if (!this.elite) this.game.onFoeBossDefeated(this);
     return r;
   }
 
@@ -116,6 +119,10 @@ export class BigFoe extends Foe {
     const g = this.game, p = c.p;
     if (this.state === 'idle') {
       this._idle?.(dt, c);
+      if (this.elite) {
+        if (p.alive && this._sees(c)) { this.awaken(); this._onAlert?.(); }
+        return true;
+      }
       if (p.alive && !g.cutscene && !g.fieldBoss && this._sees(c)) g.startFoeFight(this);
       return true;
     }
@@ -127,10 +134,12 @@ export class BigFoe extends Foe {
       }
       return false;
     }
-    const A = this.arena();
-    if (!p.alive || Math.hypot(p.pos.x - A.x, p.pos.z - A.z) > A.leash) {
-      g.endFoeFight();
-      return false;
+    if (!this.elite) {
+      const A = this.arena();
+      if (!p.alive || Math.hypot(p.pos.x - A.x, p.pos.z - A.z) > A.leash) {
+        g.endFoeFight();
+        return false;
+      }
     }
     if (this.phase === 1 && this.state !== 'phase' && !this.move && this.hp <= this.maxHp * this.phaseAt) {
       this._setState('phase');
