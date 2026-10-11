@@ -389,6 +389,17 @@ export class Sentry extends Actor {
         this.gait += dt * (2 + sp * 1.4);
         addGait(p, this.gait, clamp(sp / 5, 0, 1), 0.35);
         p.torsoX += Math.sin(this.game.time * 1.7 + this.spawn.x) * 0.03;
+        if (this.state === 'idle' && sp < 0.3) {
+          // On watch: a slow look round now and then, weight settling from foot to foot.
+          const t = this.game.time * 0.35 + this.spawn.z;
+          const look = Math.sin(t) * Math.max(0, Math.sin(t * 0.37 + 1)) * 0.9;
+          p.headY += look;
+          p.torsoY += look * 0.2;
+          p.hipsZ = (p.hipsZ ?? 0) + Math.sin(t * 0.8) * 0.03;
+        } else if (this.state === 'chase' || this.state === 'circle') {
+          p.torsoX += 0.12; // leaning in, weapon ready
+          p.headX -= 0.08;
+        }
       }
     }
     if (this.flinch > 0 && this.alive) { p.torsoX -= this.flinch * 0.9; p.headX -= this.flinch * 0.8; k = Math.max(k, 0.5); }

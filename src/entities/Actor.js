@@ -162,6 +162,7 @@ export class Actor {
         this.pos.y = ground;
         this.landV = -this.vy; // how hard it came down (the player's landing squash reads this)
         this.landAt = this.game.time;
+        if (this.landV > 6) this.kickUp?.(Math.min(2, this.landV / 6)); // a hard landing throws up the ground
         this.vy = 0;
         this.onGround = true;
       } else {

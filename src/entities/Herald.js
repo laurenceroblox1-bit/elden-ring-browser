@@ -60,6 +60,8 @@ export class Herald extends BigFoe {
     this.chaseSpeed = 5.4;
     this.circleSpeed = 2.2;
     this.poses = POSES;
+    this.trailLen = 2.0; // the blade's reach from the hand, for swing trails
+    this.trailColor = 0xbfe8ff;
     this.knockKeys = [[0, POSES.riposted], [0.4, POSES.dead], [KNOCKDOWN - 0.8, POSES.dead], [KNOCKDOWN, POSES.rest]];
     const blade = (dmg, reach, arc, extra = {}) => ({ reach, arc, dmg, poise: 32, height: 4, knock: 4, ...extra });
     this.moves = {

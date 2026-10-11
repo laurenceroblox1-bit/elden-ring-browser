@@ -61,6 +61,8 @@ export class AntlerKing extends BigFoe {
     this.chaseSpeed = 5.6;
     this.circleSpeed = 2.2;
     this.poses = POSES;
+    this.trailLen = 1.6; // the blade's reach from the hand, for swing trails
+    this.trailColor = 0xffc070;
     this.knockKeys = [[0, POSES.riposted], [0.4, POSES.dead], [KNOCKDOWN - 0.8, POSES.dead], [KNOCKDOWN, POSES.rest]];
     const blade = (dmg, reach, arc, extra = {}) => ({ reach, arc, dmg, poise: 34, height: 4, knock: 4, ...extra });
     this.moves = {

@@ -289,6 +289,7 @@ export class Player extends Actor {
       this.rollDir = { x: -this.forwardX, z: -this.forwardZ };
     }
     this.game.audio.play('roll');
+    this.kickUp(0.8);
     return true;
   }
 
@@ -974,8 +975,24 @@ export class Player extends Actor {
 
   _footsteps(amp) {
     const step = Math.sign(Math.sin(this.gait));
-    if (amp > 0.2 && step !== this.lastStep) this.game.audio.play('step');
+    if (amp > 0.2 && step !== this.lastStep) {
+      this.game.audio.play('step');
+      if (Math.hypot(this.vel.x, this.vel.z) > 4.5) this.kickUp(0.5);
+    }
     this.lastStep = step;
+  }
+
+  // A puff from the ground underfoot, in the colour of what you're running on (or a splash in water).
+  kickUp(k = 1) {
+    const g = this.game, w = g.world, x = this.pos.x, z = this.pos.z, y = w.getHeight(x, z);
+    if (w.isWater(x, z)) {
+      g.particles.emit({ x, y: Math.max(y, this.pos.y) + 0.1, z, count: Math.round(8 * k), speed: 1.6, up: 2.4, gravity: 9, color: 0xd8f0ff, color2: 0xffffff, life: [0.3, 0.6], size: [0.06, 0.12], drag: 1 });
+      return;
+    }
+    const r = w.regionAt(x, z);
+    const SURF = { rime: [0xf0f4f8, 0xd8e4ec], dunes: [0xe8c890, 0xc8a060], coast: [0xe0d0a8, 0xc8b890], cinder: [0x6a625a, 0x3a3634], amber: [0xc8742e, 0xa8442a], shard: [0xd8d0e8, 0xb8a8e0], glow: [0x6a5a8a, 0x5ef0d8], bell: [0xa8a0a8, 0x8a8490], fen: [0x6a6a5a, 0x4a4a40], crypt: [0x5a5650, 0x3a3632], storm: [0x7a7e86, 0x5a5e66] };
+    const [c1, c2] = SURF[r] ?? [0xa89a78, 0x8a7a5a];
+    g.particles.emit({ x, y: y + 0.1, z, count: Math.round(6 * k), speed: 0.8, up: 0.9, gravity: 2, color: c1, color2: c2, life: [0.4, 0.8], size: [0.08, 0.18], drag: 2, jitter: 0.25 });
   }
 
   // Small things layered on whatever the body is doing, so it never stands like a statue: breathing

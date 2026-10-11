@@ -58,6 +58,8 @@ export class BellRinger extends BigFoe {
     this.chaseSpeed = 5;
     this.circleSpeed = 1.6;
     this.poses = POSES;
+    this.trailLen = 1.6; // the blade's reach from the hand, for swing trails
+    this.trailColor = 0xffd8a0;
     this.knockKeys = [[0, POSES.riposted], [0.4, POSES.dead], [KNOCKDOWN - 0.8, POSES.dead], [KNOCKDOWN, POSES.rest]];
     this.moves = {
       slam: {

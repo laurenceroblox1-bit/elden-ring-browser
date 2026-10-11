@@ -1,5 +1,6 @@
 // Game: owns the renderer, the loop and the glue between systems (deaths, shrines, the boss fight, saves).
 import * as THREE from '../lib/three.js';
+import { Trails, weaponReach, trailA, trailB } from '../effects/Trails.js';
 import { AppearancePanel } from '../ui/AppearancePanel.js';
 import { applyLook, cleanLook, cloakHex } from '../models/look.js';
 import { Events } from './Events.js';
@@ -98,6 +99,7 @@ export class Game {
     this.particles = new Particles(this.scene);
     this.effects = new Effects(this);
     this.projectiles = new Projectiles(this);
+    this.trails = new Trails(this);
     this.sky = new Sky(this.scene);
     this.sky.bakeEnvironment(r);
     this.world = new World(this);
@@ -618,8 +620,10 @@ export class Game {
 
   talk(id) {
     const d = DIALOGUE[id](this);
+    this.talkingTo = id;
     this.openModal('dialogue');
     this.hud.openDialogue(d.name, d.lines, () => {
+      this.talkingTo = null;
       this.closeModal();
       d.effect?.();
     });
@@ -1133,6 +1137,7 @@ export class Game {
         this.boss.update(sdt);
       }
       this._separate();
+      this._updateTrails(sdt);
       for (const n of this.npcs) n.update(sdt);
       this.effects.update(sdt);
       this.projectiles.update(sdt);
@@ -1143,6 +1148,8 @@ export class Game {
       this._pickupFx(dt);
       this._ambient(dt, this.player.pos);
       this._waypointCheck();
+    } else if (this.modal === 'dialogue') {
+      for (const n of this.npcs) n.update(dt); // whoever you're talking to turns to you and gestures
     }
     this._updatePings(dt);
     this.cam.update(dt, !this.modal || this.modal === 'dialogue');
@@ -1174,6 +1181,35 @@ export class Game {
   setLook(l) {
     this.look = applyLook(this.player.model, l);
     Save.pref('look', this.look);
+  }
+
+  // ---------- swing trails ----------
+
+  // Feeds effects/Trails.js: the player's weapon mid-swing, and armed foes near the camera mid-swing.
+  _updateTrails(dt) {
+    const T = this.trails, p = this.player;
+    const hand = (actor, w, active, color) => {
+      if (!w || !active) return T.track(actor, false);
+      const r = weaponReach(w);
+      T.track(actor, true, w.localToWorld(trailA.set(0, 0, r.lo + (r.hi - r.lo) * 0.35)), w.localToWorld(trailB.set(0, 0, r.hi)), color);
+    };
+    const a = p.atk, def = p.weapon;
+    const swinging = (p.state === 'attack' && a && p.t >= a.windup * 0.6 && p.t <= a.windup + a.active + 0.06) || p.state === 'riposte' || (p.state === 'art' && p.t > 0.2 && p.t < 0.75);
+    hand(p, p.model.sword, swinging && p.alive, def?.burn ? 0xffa060 : def?.frost ? 0xa8e0ff : def?.poison ? 0xc0f080 : 0xfff2d8);
+    const c = this.camera.position;
+    for (const e of this.enemies) {
+      const m = e.move;
+      if (!m || e.state !== 'attack' || !e.alive || Math.hypot(e.pos.x - c.x, e.pos.z - c.z) > 40) { if (this.trails.ribbons.has(e)) T.track(e, false); continue; }
+      const on = e.t >= m.windup * 0.7 && e.t <= m.windup + m.active + 0.05;
+      if (e.model.markers) {
+        const mk = e.model.markers;
+        T.track(e, on, mk.mid.getWorldPosition(trailA), mk.tip.getWorldPosition(trailB), e.trailColor ?? 0xd8d0c8);
+      } else if (e.trailLen && e.model.armR && m.melee) {
+        const h = e.model.armR.hand;
+        T.track(e, on, h.localToWorld(trailA.set(0, 0, e.trailLen * 0.4)), h.localToWorld(trailB.set(0, 0, e.trailLen)), e.trailColor ?? 0xd8d0c8);
+      }
+    }
+    T.update(dt);
   }
 
   // ---------- pings ----------

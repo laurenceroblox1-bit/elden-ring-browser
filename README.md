@@ -457,6 +457,12 @@ Everything moves procedurally; there are no animation files. Look here:
 - `src/entities/Horse.js`: Wisp's walk and gallop gaits.
 - `src/data/abilities.js`: weapon arts and rites as pose tracks (`keys`) plus timed events.
 
+- **Feel**: swing trails follow blades through their active frames (the player's weapon, in its
+  element's colour, and armed foes near the camera; `effects/Trails.js`). Running, rolling and hard
+  landings kick up the ground in its own colour (snow, sand, ash, leaves, crystal grit) or splash in
+  water. People you talk to turn to face you and talk with their hands; sentries on watch look slowly
+  round and lean in once they've seen you.
+
 ## Multiplayer
 
 Run `node server.js` on one computer. It prints the addresses to open: `http://localhost:8080` on

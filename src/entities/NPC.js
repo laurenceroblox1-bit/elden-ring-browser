@@ -2,7 +2,7 @@
 import { buildBrannoc, buildIlse, buildOrmund, buildHessa, buildWenna, buildMurk } from '../models/characters.js';
 import { buildTamsin, buildAldous, buildEdda, buildPell, buildDorn } from '../models/creatures.js';
 import { pose, copyPose, applyPose } from '../models/pose.js';
-import { clamp, dampK, angleDiff, yawTo } from '../core/math.js';
+import { clamp, dampK, angleDiff, yawTo, damp } from '../core/math.js';
 
 const BUILDERS = { brannoc: buildBrannoc, ilse: buildIlse, ormund: buildOrmund, hessa: buildHessa, wenna: buildWenna, murk: buildMurk, tamsin: buildTamsin, aldous: buildAldous, edda: buildEdda, pell: buildPell, dorn: buildDorn };
 const IDLE = {
@@ -42,6 +42,20 @@ export class NPC {
       const look = angleDiff(this.def.yaw, yawTo(this.def.x, this.def.z, p.x, p.z));
       this.pose.headY = clamp(look, -1.1, 1.1);
       this.pose.torsoY = clamp(look * 0.3, -0.4, 0.4);
+    }
+    // In conversation: turn to face you, nod along, and talk with the hands.
+    const talking = this.game.talkingTo === this.id && this.game.modal === 'dialogue';
+    this.turn = damp(this.turn ?? 0, talking ? angleDiff(this.def.yaw, yawTo(this.def.x, this.def.z, p.x, p.z)) : 0, 4, dt);
+    this.model.root.rotation.y = this.def.yaw + this.turn;
+    if (talking) {
+      const t = this.game.time;
+      this.pose.headY -= this.turn * 0.9;
+      this.pose.torsoY -= this.turn * 0.3;
+      this.pose.headX += Math.sin(t * 5.3) * 0.06;
+      const k = 0.5 + 0.5 * Math.sin(t * 1.7);
+      this.pose.sRx = -0.5 - k * 0.5 + Math.sin(t * 4.1) * 0.08;
+      this.pose.eR = -1.2 - Math.sin(t * 3.3) * 0.25;
+      this.pose.sRz = -0.15 - k * 0.2;
     }
     // Murk's cap pulses gently; brighter while you're near.
     if (this.model.cap) this.model.cap.emissiveIntensity = (d < 9 ? 1.6 : 1.0) + Math.sin(this.game.time * 1.3) * 0.3;
