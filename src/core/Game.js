@@ -152,6 +152,13 @@ export class Game {
     }
     for (const n of NPCS) I.add({ x: n.x, z: n.z, radius: 2.8, label: () => `Talk to ${n.name}`, action: () => this.talk(n.id) });
     // The Undercroft: the keep's stair down, and the same stair back up.
+    // Multiplayer: a hand up for a friend who's down (the prompt follows them).
+    const game = this;
+    I.add({
+      get x() { return game._downedFriend()?.model.root.position.x ?? 1e9; },
+      get z() { return game._downedFriend()?.model.root.position.z ?? 1e9; },
+      radius: 3, label: () => `Help ${this._downedFriend()?.name ?? 'them'} up`, action: () => { const gh = this._downedFriend(); if (gh) this.helpUp(gh); },
+    });
     const kd = CRYPT.keepDoor, st = CRYPT.stair;
     I.add({ x: kd.x, z: kd.z, radius: 2.6, label: () => 'Descend into the Undercroft', action: () => this.descend() });
     I.add({ x: CRYPT.x + st.u, z: CRYPT.z + st.v, radius: 3, label: () => 'Climb back up to the castle', action: () => this.ascend() });
@@ -877,6 +884,53 @@ export class Game {
       this.after(3.4, () => this.giveGear('bell_maul')); // no-op if the quest reward already gave it
       this.save();
     });
+  }
+
+  // ---------- downed (multiplayer) ----------
+
+  // A friend near enough to help: then a killing blow puts you down instead (Player.die).
+  canBeDowned() {
+    if (!this.net?.online) return false;
+    const p = this.player.pos;
+    for (const gh of this.net.ghosts.values()) {
+      const m = gh.target;
+      if (gh.model.root.visible && m?.a && m.st !== 'downed' && Math.hypot(m.p[0] - p.x, m.p[2] - p.z) < 60) return true;
+    }
+    return false;
+  }
+
+  onPlayerDowned() {
+    this.lockTarget = null;
+    this.audio.play('hurt');
+    this.hud.banner('Downed', 'A friend can lift you up. E to give in.', 'death', 4000);
+  }
+
+  // The nearest other player who's down, within reach of a hand up.
+  _downedFriend() {
+    const p = this.player.pos;
+    let best = null, bd = 3;
+    for (const gh of this.net?.ghosts.values() ?? []) {
+      const q = gh.model.root.position;
+      if (gh.target?.st !== 'downed' || !gh.model.root.visible) continue;
+      const d = Math.hypot(q.x - p.x, q.z - p.z);
+      if (d < bd) { bd = d; best = gh; }
+    }
+    return best;
+  }
+
+  helpUp(gh) {
+    this.net.send('revive', { to: gh.key });
+    this.hud.toast(`You help ${gh.name} to their feet.`);
+    this.audio.play('mend');
+  }
+
+  // Another player helped you up.
+  onRevived(name) {
+    if (!this.player.revive()) return;
+    this.hud.toast(`${name} helped you to your feet.`, 'item');
+    this.audio.play('mend');
+    const p = this.player.pos;
+    this.particles.emit({ x: p.x, y: p.y + 1, z: p.z, count: 30, speed: 2, up: 2, color: 0xfff0c0, color2: 0xffd080, life: [0.5, 1.0], size: [0.08, 0.16], jitter: 0.6 });
   }
 
   onPlayerDeath() {

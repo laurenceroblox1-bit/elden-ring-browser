@@ -67,6 +67,9 @@ const POSES = {
 };
 
 const R = ATTACKS.riposte;
+// Down on one knee, head hanging, waiting for a friend (multiplayer).
+const DOWNED_TIME = 20;
+const DOWNED = pose({ hipsH: -0.45, lRx: -1.4, kR: 1.7, lLx: 0.35, kL: 1.95, torsoX: 0.55, headX: 0.45, sRx: 0.2, eR: -0.6, sLx: -0.3, eL: -1.2, sLz: 0.2 });
 const RIPOSTE_KEYS = [
   [0, POSES.rest], [0.3, POSES.ripWind], [R.stab, POSES.ripStab], [R.impact - 0.08, POSES.ripStab],
   [R.impact, POSES.ripDrive], [0.86, POSES.ripDrive], [0.98, POSES.ripPull], [R.time, POSES.rest],
@@ -606,6 +609,20 @@ export class Player extends Actor {
   }
 
   die() {
+    // In a shared Vale with a friend close by you go down instead, and they can lift you up again.
+    if (this.state !== 'downed' && this.game.canBeDowned?.()) {
+      this.alive = false;
+      this.act = null;
+      this.ward = this.mend = null;
+      this.wardFx.visible = false;
+      this.state = 'downed';
+      this.t = 0;
+      this.downT = DOWNED_TIME;
+      this.vel.set(0, 0, 0);
+      this.model.flask.visible = false;
+      this.game.onPlayerDowned();
+      return;
+    }
     this.alive = false;
     this.act = null;
     this.ward = this.mend = null;
@@ -634,8 +651,31 @@ export class Player extends Actor {
 
   // ---------- update ----------
 
+  // A friend lifts you up: back on your feet with some of your health, untouchable for a moment.
+  revive() {
+    if (this.state !== 'downed') return false;
+    this.alive = true;
+    this.hp = Math.round(this.maxHp * 0.4);
+    this.state = 'move';
+    this.t = 0;
+    this.graceT = 2;
+    this.downT = 0;
+    return true;
+  }
+
   update(dt) {
     this.t += dt;
+    if (this.state === 'downed') {
+      // Down, waiting for a friend: give in with E, or bleed out.
+      this.downT -= dt;
+      const give = this.game.input.pressed('interact') && this.t > 1;
+      if (this.downT <= 0 || give) {
+        if (give) this.game.input.consume('interact');
+        this.state = 'dead';
+        this.t = 0;
+        this.game.onPlayerDeath();
+      }
+    }
     if (!this.alive) {
       this.vel.multiplyScalar(Math.exp(-6 * dt));
       this.integrate(dt);
@@ -655,6 +695,7 @@ export class Player extends Actor {
     const lock = this.game.lockTarget;
     this.sprinting = false;
     this.invuln = false;
+    if (this.graceT > 0) { this.graceT -= dt; this.invuln = true; }
 
     switch (this.state) {
       case 'move': this._move(dt, mi, lock); break;
@@ -1161,6 +1202,11 @@ export class Player extends Actor {
       }
       case 'fog': copyPose(p, POSES.fog); addGait(p, (this.gait += dt * 5), 0.35); break;
       case 'dead': copyPose(p, POSES.dead); k = dampK(5, dt); break;
+      case 'downed':
+        copyPose(p, DOWNED);
+        p.torsoX += Math.sin(this.t * 2.2) * 0.04; // laboured breathing
+        k = dampK(6, dt);
+        break;
     }
     this._layers(p, dt, speed);
     applyPose(r, p, k);

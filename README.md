@@ -504,6 +504,13 @@ leave someone else takes over.
 How it works: `src/net/Net.js` (presence, events, host election) and `src/net/Coop.js` (shared
 enemies, hits, effects).
 
+- **Downed, not dead**: in a shared Vale, a killing blow with another player within 60 m puts you on
+  one knee instead. For 20 seconds a friend can walk up and press E to help you to your feet (with 40%
+  of your health and a moment's grace); press E yourself to give in, or wait it out, and you fall as
+  usual. Foes leave you alone while you're down and go after whoever is still standing.
+- **Marks and looks**: Y marks a place or a foe for everyone (see *Controls*), and everyone sees your
+  chosen cloak, armour and helm (see *Backstabs, appearance and New Game+*).
+
 ### Adding things
 
 - **A place**: add a zone to `data/world.js` (it gets flattened ground and an area banner), then

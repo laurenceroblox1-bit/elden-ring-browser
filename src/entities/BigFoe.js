@@ -136,7 +136,7 @@ export class BigFoe extends Foe {
     }
     if (!this.elite) {
       const A = this.arena();
-      if (!p.alive || Math.hypot(p.pos.x - A.x, p.pos.z - A.z) > A.leash) {
+      if ((!p.alive && p.state !== 'downed') || Math.hypot(p.pos.x - A.x, p.pos.z - A.z) > A.leash) {
         g.endFoeFight();
         return false;
       }

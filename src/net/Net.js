@@ -128,6 +128,8 @@ export class Net {
       if (type === 'chat') {
         const text = clean(data?.text, 200);
         if (text) this._chat(this.ghosts.get(key)?.name ?? clean(this.present.get(key)?.n, 20) ?? 'Someone', text, false);
+      } else if (type === 'revive') {
+        if (data?.to === this.selfKey) this.game.onRevived(this.ghosts.get(key)?.name ?? 'Someone');
       } else if (type === 'ping') {
         const gh = this.ghosts.get(key);
         if (gh && Number.isFinite(data?.x) && Number.isFinite(data?.z)) this.game.ping(data.x, data.z, { color: gh.cloak, who: gh.name, foe: !!data.f });
