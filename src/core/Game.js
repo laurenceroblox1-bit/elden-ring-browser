@@ -34,11 +34,11 @@ import { QUESTS } from '../data/quests.js';
 import { DIALOGUE } from '../data/dialogue.js';
 import { ITEMS } from '../data/items.js';
 import { WORLD, ZONES, NOTICE, ENEMY_SPAWNS, PICKUPS, NPCS, ARENA, HOLLOW, RIME, HALL, FEN } from '../data/world.js';
-import { STONES, GREAT_ONES, LOBES } from '../data/biomes.js';
+import { STONES, GREAT_ONES, LOBES, CRYPT } from '../data/biomes.js';
 import { MAX_LEVEL, upgradeCost, levelName } from '../data/smithing.js';
 
 // The weather each region brings with it; the Vale and the fen keep whatever the Vale has.
-const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm', bell: 'bellmist', amber: 'autumn', shard: 'glint' };
+const REGION_WEATHER = { rime: 'snow', cinder: 'cinders', coast: 'seamist', glow: 'spores', dunes: 'dunesun', storm: 'storm', bell: 'bellmist', amber: 'autumn', shard: 'glint', crypt: 'crypt' };
 import { LOOT, gearOf, ALL_GEAR } from '../data/loot.js';
 import { WEAPONS } from '../data/weapons.js';
 import { glowSprite, mesh, ico, mat } from '../models/kit.js';
@@ -149,6 +149,10 @@ export class Game {
       I.add({ x: s.x, z: s.z, radius: 3.2, label: () => (s.lit ? 'Rest at the lantern' : 'Kindle the lantern'), action: () => (s.lit ? this.rest(s) : this.kindle(s)) });
     }
     for (const n of NPCS) I.add({ x: n.x, z: n.z, radius: 2.8, label: () => `Talk to ${n.name}`, action: () => this.talk(n.id) });
+    // The Undercroft: the keep's stair down, and the same stair back up.
+    const kd = CRYPT.keepDoor, st = CRYPT.stair;
+    I.add({ x: kd.x, z: kd.z, radius: 2.6, label: () => 'Descend into the Undercroft', action: () => this.descend() });
+    I.add({ x: CRYPT.x + st.u, z: CRYPT.z + st.v, radius: 3, label: () => 'Climb back up to the castle', action: () => this.ascend() });
     I.add({ x: NOTICE.x, z: NOTICE.z, radius: 2.4, label: () => 'Read the notice', action: () => this.talk('notice') });
     const fog = this.world.fogGate;
     I.add({ x: fog.x, z: fog.z + 1.8, radius: 3.2, enabled: () => fog.active && !this.bossFight, label: () => 'Pass through the mist', action: () => this.enterMist() });
@@ -1143,6 +1147,26 @@ export class Game {
     this._updatePings(dt);
     this.cam.update(dt, !this.modal || this.modal === 'dialogue');
     this.debugViews.update(dt);
+  }
+
+  // ---------- the Undercroft ----------
+
+  descend() {
+    const a = CRYPT.arrive;
+    this.audio.play('mist');
+    this.teleport(CRYPT.x + a.u, CRYPT.z + a.v, a.yaw, { banner: false });
+    this.hud.banner('The Undercroft', 'Beneath Castle Dunmarrow', 'area', 4200);
+    if (!this.state.flags.undercroftTip) {
+      this.state.flags.undercroftTip = true;
+      this.after(4.5, () => this.hud.toast('Mind the floor: the old watch left traps for grave-robbers.'));
+    }
+  }
+
+  ascend() {
+    const k = CRYPT.keepDoor;
+    this.audio.play('mist');
+    this.teleport(k.x + 1.2, k.z, k.yaw, { banner: false });
+    this.hud.banner('Castle Dunmarrow', '', 'area');
   }
 
   // ---------- appearance ----------

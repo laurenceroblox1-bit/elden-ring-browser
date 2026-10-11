@@ -301,6 +301,30 @@ export const QUESTS = {
     reward: { ash: 2000, flask: 1 },
     doneText: "The crystals still sing, Pell says, but it's a different song. Slower. He thinks they're sleeping.",
   },
+  gravewardens: {
+    title: 'Keepers of the Dead',
+    giver: 'Dorn, Gravedigger of Dunmarrow',
+    summary: "Two Gravewardens walk the Undercroft, one in the catacombs and one by the cistern: the old watch's grave-keepers, still keeping. Dorn can't dig past them.",
+    stages: [
+      { text: 'Put down the Gravewardens', on: { type: 'kill', tag: 'gravewarden', count: 2 }, marker: [-700, -697] },
+      { text: 'Tell Dorn in the stair hall.', on: { type: 'talk', id: 'dorn' }, marker: [-706, -652] },
+    ],
+    reward: { ash: 800, item: 'smithing_stone', items: 2 },
+    doneText: 'Dorn has started digging again. He says it is good honest work, now that nobody climbs out.',
+  },
+  undercroft: {
+    title: 'The Ossuary Queen',
+    main: true,
+    giver: 'Dorn, Gravedigger of Dunmarrow',
+    summary: "Under Castle Dunmarrow the watch buried its dead for three hundred years, and its last abbess, Vesperine, stayed down there with them. Now none of them will stay buried. Dorn asks you to go to her chapel at the far end and let them rest.",
+    stages: [
+      { text: 'Kindle the Undercroft Shrine at the foot of the stair.', on: { type: 'shrine', id: 'undercroft' }, marker: [-692, -648] },
+      { text: 'Go north through the Undercroft to the Bone Chapel and face the Ossuary Queen.', on: { type: 'boss', id: 'vesperine' }, marker: [-700, -746] },
+      { text: 'Tell Dorn in the stair hall.', on: { type: 'talk', id: 'dorn' }, marker: [-706, -652] },
+    ],
+    reward: { ash: 1900, flask: 1 },
+    doneText: 'The Undercroft is quiet. Dorn lit a candle in the Bone Chapel, for her as well.',
+  },
   hollowbell: {
     title: 'The Hollow Bell',
     main: true,

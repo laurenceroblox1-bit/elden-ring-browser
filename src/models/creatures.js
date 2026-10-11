@@ -967,3 +967,168 @@ export function buildPell() {
   mergeHumanoid(r);
   return r;
 }
+
+// ---------- the Undercroft ----------
+
+// Skeletons of the old watch: yellowed bones in the rags of a Dunmarrow tabard, a notched sword and a
+// round shield gone green with age. Two cold points of light in the skull.
+export function buildSkeleton() {
+  const bone = mat(0xd8cdb0, { roughness: 0.9 }), dark = mat(0x8a7e66, { roughness: 0.9 });
+  const eye = mat(0xbfe8ff, { emissive: 0x60b0ff, emissiveIntensity: 2.4 });
+  const r = buildHumanoid({ skin: bone, body: dark, arms: bone, legs: bone, boots: bone, hands: bone },
+    { chestW: 0.4, chestD: 0.22, waistW: 0.22, armW: 0.07, legW: 0.08, headW: 0.22, headH: 0.24 });
+  // Ribs over a hollow chest, a spine, a pelvis.
+  for (let i = 0; i < 4; i++) r.torso.add(mesh(box(0.44, 0.04, 0.26), bone, { y: 0.3 + i * 0.08 }));
+  r.torso.add(mesh(box(0.06, 0.4, 0.06), bone, { y: 0.2, z: -0.1 }));
+  r.hips.add(mesh(box(0.3, 0.1, 0.16), bone, { y: -0.04 }));
+  r.head.add(mesh(box(0.16, 0.08, 0.04), mat(0x1a1612), { y: 0.06, z: 0.12 })); // the jaw's gap
+  for (const x of [-0.05, 0.05]) {
+    r.head.add(mesh(box(0.06, 0.05, 0.02), mat(0x1a1612), { x, y: 0.15, z: 0.12 }));
+    r.head.add(mesh(box(0.025, 0.02, 0.02), eye, { x, y: 0.15, z: 0.13, shadow: false }));
+  }
+  r.torso.add(mesh(box(0.3, 0.4, 0.02), mat(0x5a3a30, { side: THREE.DoubleSide }), { y: 0.1, z: 0.15, rx: 0.05 })); // a rag of tabard
+  const sword = group();
+  sword.add(mesh(box(0.04, 0.04, 0.2), mat(0x2b241d)));
+  sword.add(mesh(box(0.2, 0.03, 0.04), mat(0x6a5a3a), { z: 0.12 }));
+  sword.add(mesh(box(0.06, 0.016, 0.8), mat(0x8a8478, { metalness: 0.5, roughness: 0.6 }), { z: 0.54 }));
+  r.armR.hand.add(sword);
+  const mid = group({ z: 0.5 }), tip = group({ z: 0.94 });
+  r.armR.hand.add(mid, tip);
+  const shield = mesh(cyl(0.24, 0.24, 0.05, 10), mat(0x4f7a6a, { metalness: 0.4, roughness: 0.6 }), { rz: Math.PI / 2, x: 0.07 });
+  r.armL.elbow.add(shield);
+  shield.position.y = -0.18;
+  mergeHumanoid(r);
+  return { ...r, markers: { mid, tip } };
+}
+
+// Ghouls: grave-eaters, long-limbed and pale, that run on all fours through the catacombs. The hound
+// layout again, gaunt and grey-white.
+export function buildGhoul() {
+  const skin = mat(0xa8a49a, { roughness: 0.95 }), dark = mat(0x5a5650, { roughness: 0.95 });
+  const eye = mat(0xd8ff90, { emissive: 0x90d040, emissiveIntensity: 2.0 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.6 });
+  root.add(body);
+  body.add(mesh(box(0.36, 0.26, 0.42), skin, { z: 0.2, y: 0.06 }));
+  body.add(mesh(box(0.22, 0.2, 0.4), skin, { z: -0.2 }));
+  for (let i = 0; i < 5; i++) body.add(mesh(box(0.05, 0.05, 0.06), dark, { z: 0.36 - i * 0.14, y: 0.2 })); // spine knuckles
+  for (let i = 0; i < 3; i++) body.add(mesh(box(0.38, 0.03, 0.04), dark, { z: 0.14 + i * 0.09, y: 0.0 }));
+  const neck = group({ y: 0.08, z: 0.4, rx: -0.3 });
+  body.add(neck);
+  neck.add(mesh(box(0.14, 0.14, 0.24), skin, { z: 0.1 }));
+  const head = group({ z: 0.24, rx: 0.4 });
+  neck.add(head);
+  head.add(mesh(box(0.22, 0.2, 0.22), skin));
+  head.add(mesh(box(0.06, 0.18, 0.06), mat(0x3a3630), { x: 0.0, y: 0.12, z: -0.08, rx: -0.6 })); // lank hair
+  for (const x of [-0.06, 0.06]) head.add(mesh(box(0.04, 0.03, 0.03), eye, { x, y: 0.03, z: 0.11, shadow: false }));
+  const jaw = group({ y: -0.08, z: 0.04 });
+  head.add(jaw);
+  jaw.add(mesh(box(0.16, 0.05, 0.2), dark, { z: 0.08 }));
+  for (const x of [-0.05, 0, 0.05]) jaw.add(mesh(cone(0.015, 0.05, 3), mat(0xe8e0c8), { x, y: 0.04, z: 0.16 }));
+  const tail = group({ y: 0.0, z: -0.42 });
+  body.add(tail);
+  tail.add(mesh(box(0.03, 0.03, 0.04), dark));
+  const legs = [];
+  const mkLeg = (x, z, front) => {
+    const hip = group({ x, y: -0.06, z });
+    body.add(hip);
+    hip.add(mesh(box(0.08, 0.34, 0.08), skin, { y: -0.15 }));
+    const knee = group({ y: -0.3 });
+    hip.add(knee);
+    knee.add(mesh(box(0.06, 0.32, 0.06), skin, { y: -0.15 }));
+    knee.add(mesh(box(0.12, 0.04, 0.14), dark, { y: -0.3, z: 0.04 }));
+    for (const fx of [-0.04, 0.04]) knee.add(mesh(cone(0.012, 0.08, 3), mat(0x2a2620), { x: fx, y: -0.31, z: 0.12, rx: Math.PI / 2 }));
+    legs.push({ hip, knee, front, side: Math.sign(x) });
+  };
+  mkLeg(0.2, 0.32, true); mkLeg(-0.2, 0.32, true); mkLeg(0.13, -0.32, false); mkLeg(-0.13, -0.32, false);
+  mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
+  return { root, body, neck, head, jaw, tail, legs, materials: { ember: eye } };
+}
+
+// Gravewardens: the catacombs' keepers, armoured giants of the dead watch in black iron, carrying a
+// grave-slab for a shield and a great iron-bound club. A green fire burns in the visor.
+export function buildGravewarden() {
+  const iron = mat(0x3a3a40, { metalness: 0.55, roughness: 0.5 }), iron2 = mat(0x26262c, { metalness: 0.5, roughness: 0.55 });
+  const fire = mat(0xd8ffb0, { unique: true, emissive: 0x70e040, emissiveIntensity: 2.0 });
+  const r = buildHumanoid({ skin: iron2, body: iron, arms: iron2, legs: iron, boots: iron2, hands: iron2 },
+    { chestW: 0.66, chestD: 0.4, waistW: 0.48, shoulderW: 0.42, armW: 0.17, legW: 0.2, headW: 0.28, headH: 0.3 });
+  r.head.add(mesh(box(0.32, 0.36, 0.34), iron, { y: 0.17 }));
+  r.head.add(mesh(box(0.24, 0.04, 0.02), fire, { y: 0.2, z: 0.175, shadow: false }));
+  r.head.add(mesh(cone(0.16, 0.2, 4), iron2, { y: 0.44, ry: Math.PI / 4 }));
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.3, 0.16, 0.34), iron, { y: 0.04 }));
+  r.hips.add(mesh(box(0.5, 0.5, 0.03), mat(0x2a3a2a, { side: THREE.DoubleSide }), { y: -0.24, z: 0.2 }));
+  const club = group();
+  club.add(mesh(cyl(0.04, 0.05, 1.2, 6), mat(0x3a2a1e), { rx: Math.PI / 2, z: 0.4 }));
+  club.add(mesh(box(0.2, 0.2, 0.46), iron2, { z: 1.0 }));
+  for (const zz of [0.86, 1.14]) club.add(mesh(box(0.24, 0.24, 0.04), iron, { z: zz }));
+  r.armR.hand.add(club);
+  const slab = group({ x: 0.1, y: -0.2 });
+  slab.add(mesh(box(0.08, 0.86, 0.5), mat(0x6a6660, { roughness: 0.95 })));
+  slab.add(mesh(box(0.09, 0.3, 0.06), mat(0x4a4642), { y: 0.1 }));
+  slab.add(mesh(box(0.09, 0.06, 0.24), mat(0x4a4642), { y: 0.16 }));
+  r.armL.elbow.add(slab);
+  mergeHumanoid(r);
+  return { ...r, magma: fire };
+}
+
+// Vesperine, the Ossuary Queen: the last abbess of the catacomb chapel, who would not leave her dead.
+// Gaunt and very tall, robed in bone-lace and black, a crown of candles burning green, a reaper's
+// scythe of a thighbone and a curved iron blade.
+export function buildOssuaryQueen() {
+  const robe = mat(0x1e1c22, { side: THREE.DoubleSide }), lace = mat(0xd8cdb0, { side: THREE.DoubleSide });
+  const bone = mat(0xe0d6bc), iron = mat(0x4a4a50, { metalness: 0.6, roughness: 0.4 });
+  const flame = mat(0xe8ffc0, { unique: true, emissive: 0x80f050, emissiveIntensity: 2.2 });
+  const r = buildHumanoid({ skin: bone, body: robe, arms: robe, legs: robe, boots: robe, hands: bone },
+    { chestW: 0.46, waistW: 0.32, shoulderW: 0.32, armW: 0.1, headW: 0.2, headH: 0.26 });
+  r.head.add(mesh(box(0.14, 0.06, 0.04), mat(0x101010), { y: 0.06, z: 0.11 }));
+  for (const x of [-0.045, 0.045]) r.head.add(mesh(box(0.03, 0.025, 0.02), flame, { x, y: 0.15, z: 0.115, shadow: false }));
+  // The crown of candles.
+  r.head.add(mesh(cyl(0.14, 0.15, 0.06, 8), iron, { y: 0.3 }));
+  const flames = group({ y: 0.3 });
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    flames.add(mesh(cyl(0.02, 0.02, 0.12 + (i % 2) * 0.06, 5), mat(0xe8e0c8), { x: Math.sin(a) * 0.13, y: 0.08, z: Math.cos(a) * 0.13 }));
+    flames.add(mesh(cone(0.02, 0.06, 4), flame, { x: Math.sin(a) * 0.13, y: 0.18 + (i % 2) * 0.06, z: Math.cos(a) * 0.13, shadow: false }));
+  }
+  r.head.add(flames);
+  // Bone-lace collar and skirts over a long black robe.
+  r.torso.add(mesh(cyl(0.3, 0.26, 0.08, 10), lace, { y: 0.56 }));
+  for (let i = 0; i < 4; i++) r.hips.add(mesh(cyl(0.24 + i * 0.08, 0.36 + i * 0.09, 0.4, 9, true), i % 2 ? lace : robe, { y: -0.16 - i * 0.3 }));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    r.hips.add(mesh(box(0.04, 0.2, 0.02), bone, { x: Math.sin(a) * 0.62, y: -1.18, z: Math.cos(a) * 0.62, ry: a }));
+  }
+  // The scythe.
+  const scythe = group();
+  scythe.add(mesh(cyl(0.03, 0.035, 2.2, 6), bone, { rx: Math.PI / 2, z: 0.4 }));
+  scythe.add(mesh(box(0.06, 0.06, 0.14), iron, { z: 1.5 }));
+  scythe.add(mesh(box(0.03, 0.7, 0.12), iron, { z: 1.55, y: 0.35, rx: 0.25 }));
+  scythe.add(mesh(box(0.02, 0.6, 0.03), flame, { z: 1.6, y: 0.35, rx: 0.25, shadow: false }));
+  r.armR.hand.add(scythe);
+  const glow = glowSprite(0x90f060, 1.6, 0.55);
+  glow.position.set(0, 0.42, 0);
+  r.head.add(glow);
+  r.root.scale.setScalar(1.0);
+  mergeHumanoid(r, [flames, scythe, glow]);
+  return { ...r, flame, glow };
+}
+
+// Dorn, the castle's old gravedigger: stooped, mud to the knees, a spade over his shoulder and a hooded
+// lantern at his belt.
+export function buildDorn() {
+  const coat = mat(0x4a4236, { side: THREE.DoubleSide }), mud = mat(0x3a2e22);
+  const r = buildHumanoid({ skin: mat(0xc0a08a), body: coat, arms: coat, legs: mud, boots: mud }, { chestW: 0.5, waistW: 0.44 });
+  r.head.add(mesh(box(0.28, 0.1, 0.28), mat(0x3a3028), { y: 0.3 }));
+  r.head.add(mesh(box(0.4, 0.03, 0.4), mat(0x3a3028), { y: 0.25 })); // a wide-brimmed hat
+  r.head.add(mesh(box(0.18, 0.1, 0.05), mat(0x9a9488), { y: 0.03, z: 0.12 })); // stubble
+  const spade = group({ y: 0.42, z: -0.2, rz: 0.6 });
+  spade.add(mesh(box(0.04, 1.2, 0.04), mat(0x5a3e28)));
+  spade.add(mesh(box(0.2, 0.26, 0.03), mat(0x6a6660, { metalness: 0.4 }), { y: -0.7 }));
+  r.torso.add(spade);
+  const lamp = group({ x: 0.26, y: 0.0, z: 0.06 });
+  lamp.add(mesh(box(0.1, 0.14, 0.1), mat(0x2a2620)));
+  lamp.add(mesh(box(0.06, 0.08, 0.11), mat(0xffd080, { emissive: 0xffa040, emissiveIntensity: 1.6 }), { y: 0.0, shadow: false }));
+  r.hips.add(lamp);
+  mergeHumanoid(r);
+  return r;
+}

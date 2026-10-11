@@ -13,7 +13,7 @@ const SCALES = [0.25, 0.5, 1, 2];
 // Bosses outside the arena that run their own fights (Game.startFoeFight), by enemy tag.
 const FOE_BOSSES = [['matriarch', 'Vharra, Mother of the Mire'], ['troll', 'Grimhorn, the Howling Field\'s troll'], ['saelith', 'Saelith, the Winter Lantern'],
   ['drake', 'Ashmaw, the Cinder Drake'], ['captain_drowned', 'Captain Morrow, the Drowned'], ['witch', 'Sylvara, the Bloom Witch'],
-  ['scarab', 'Solkar, the Sun Scarab'], ['herald', 'Vaelor, the Storm Herald'], ['bellringer', 'The Bell-Ringer'], ['antlerking', 'Hornwood, the Antlered King'], ['colossus', 'Corundel, the Glass Colossus']];
+  ['scarab', 'Solkar, the Sun Scarab'], ['herald', 'Vaelor, the Storm Herald'], ['bellringer', 'The Bell-Ringer'], ['antlerking', 'Hornwood, the Antlered King'], ['colossus', 'Corundel, the Glass Colossus'], ['ossuaryqueen', 'Vesperine, the Ossuary Queen']];
 const BOSS_HP = [0.75, 0.5, 0.25, 0.1];
 const NEARBY = 30; // metres, for "kill all nearby"
 

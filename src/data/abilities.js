@@ -456,6 +456,44 @@ export const ARTS = {
     ],
   },
 
+  // Gravedigger's Spade: bones come up through the floor in a ring.
+  unearth: {
+    name: 'Unearth',
+    desc: 'Drive the spade into the ground and heave. The bones under it burst up as spears in a ring around you, through any guard.',
+    focus: 18, stamina: 22, cooldown: 4.5,
+    time: 1.2, track: 0.4, cancel: 0.9,
+    keys: [[0, 'rest'], [0.3, 'quakeRaise'], [0.5, 'quakeRaise'], [0.62, 'quakeSlam'], [0.95, 'quakeSlam'], [1.2, 'rest']],
+    events: [
+      [0.62, (p) => {
+        const g = p.game;
+        const f = front(p, 1.6, 0.6);
+        g.combat.sphere(p, f, 1.8, { dmg: 30 * p.dmgMult, poise: 40, heavy: true }, new Set());
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2;
+          g.effects.iceSpike(p, p.pos.x + Math.sin(a) * 3.6, p.pos.z + Math.cos(a) * 3.6, 0.2 + i * 0.04, { look: 'bone', radius: 1.6, count: 4, hit: { dmg: 26 * p.dmgMult, poise: 30, knock: 3, unblockable: true } });
+        }
+        g.audio.play('slam');
+        g.cameraShake(0.3);
+        dust(g, f.x, f.z, 24, 0x6a5a48, 0xa89880);
+      }],
+    ],
+  },
+
+  // Queen's Scythe: the dead answer.
+  ossuary_call: {
+    name: 'Call of the Ossuary',
+    desc: "Raise the Queen's scythe and call: two skeletons of the old watch climb out of the ground and fight beside you for forty seconds.",
+    focus: 32, stamina: 10, cooldown: 45,
+    time: 1.2, track: 0, cancel: 1.0,
+    keys: [[0, 'rest'], [0.3, 'castRaise'], [0.9, 'castRaise'], [1.2, 'rest']],
+    events: [
+      [0.5, (p) => {
+        p.game.summonAllies('skeleton', 2, 40);
+        p.game.audio.play('bellSmall');
+      }],
+    ],
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',
@@ -745,6 +783,24 @@ export const RITES = {
           });
         }
         g.audio.play('crack');
+      }],
+    ],
+  },
+  grave_chill: {
+    name: 'Grave Chill',
+    type: 'Frost rite',
+    desc: 'Found in the forgotten reliquary: the cold of a sealed tomb, breathed out in a cone before you. It bites deep and leaves frost in whatever it touches.',
+    focus: 24, cooldown: 6,
+    time: 0.9, keys: CAST, overlay: true, walk: 0.7, cancel: 0.7,
+    events: [
+      [0.36, (p) => {
+        const g = p.game;
+        g.combat.melee(p, { dmg: 28 * p.riteMult, poise: 24, reach: 6.5, arc: 0.55, frost: 60, height: 3 }, new Set());
+        for (let i = 1; i <= 5; i++) {
+          const f = front(p, i * 1.2, 1.0);
+          g.particles.emit({ x: f.x, y: f.y, z: f.z, count: 10, speed: 2.5, up: 0.4, color: 0xdff4ff, color2: 0x90f0c0, life: [0.3, 0.7], size: [0.12, 0.26], drag: 2, jitter: 0.3 * i, dir: { x: p.forwardX * 4, y: 0, z: p.forwardZ * 4 } });
+        }
+        g.audio.play('frostbite');
       }],
     ],
   },

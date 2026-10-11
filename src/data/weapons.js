@@ -539,6 +539,42 @@ export const WEAPONS = {
       rolling: { stamina: 26, dmg: 36, poise: 34, windup: 0.24, active: 0.16, recover: 0.58, lunge: 3.4, reach: 3.4, arc: 0.45, pose: 'gThrust', next: 'light2', sfx: 'heavySwing' },
     },
   },
+
+  gravedigger_spade: {
+    name: "Gravedigger's Spade",
+    type: 'Spade',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.2,
+    desc: "Dorn's spare spade, left on a catacomb shelf. A long ash haft and an iron blade worn sharp on a hundred years of graves. Its art drives it into the floor and the bones under it come up as spears.",
+    art: 'unearth',
+    riposte: { dmg: 30 },
+    guard: { name: 'glaive', absorb: 0.64, cost: 1.35, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 18, dmg: 25, poise: 22, windup: 0.28, active: 0.18, recover: 0.44, lunge: 2.2, reach: 3.6, arc: 1.3, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 16, dmg: 23, poise: 18, windup: 0.2, active: 0.14, recover: 0.4, lunge: 2.6, reach: 3.7, arc: 0.36, pose: 'sThrustHi', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 32, dmg: 50, poise: 50, windup: 0.58, active: 0.16, recover: 0.58, lunge: 4.0, reach: 3.9, arc: 0.4, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 16, dmg: 22, poise: 16, windup: 0.16, active: 0.14, recover: 0.4, lunge: 3.2, reach: 3.6, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
+
+  queens_scythe: {
+    name: "Queen's Scythe",
+    type: 'Reaper',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.45,
+    desc: "Vesperine's scythe: a thighbone haft and an iron blade that still burns faintly green. The dead of the Undercroft remember it; its art calls two of them up to fight beside you for a while.",
+    art: 'ossuary_call',
+    riposte: { dmg: 34 },
+    guard: { name: 'glaive', absorb: 0.68, cost: 1.3, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 30, poise: 24, windup: 0.3, active: 0.2, recover: 0.46, lunge: 2.2, reach: 4.0, arc: 1.4, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 20, dmg: 30, poise: 24, windup: 0.28, active: 0.2, recover: 0.46, lunge: 2.2, reach: 4.0, arc: 1.4, pose: 'sSweep', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 58, poise: 52, windup: 0.6, active: 0.18, recover: 0.6, lunge: 4.0, reach: 4.2, arc: 1.0, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 26, poise: 18, windup: 0.16, active: 0.16, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 1.2, pose: 'sSweep', next: 'light1', sfx: 'swing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.
@@ -580,6 +616,12 @@ export const SHIELDS = {
     type: 'Small shield',
     desc: 'A disc of clear crystal ground smooth by Pell\'s crew. It catches the light, and the eye, and a blow timed just so slides off it as if it had never been aimed.',
     guard: { name: 'buckler', absorb: 0.78, cost: 1.0, parryWindow: 0.3, raiseTime: 0.07, arc: 1.75 },
+  },
+  bone_ward: {
+    name: 'Bone Ward',
+    type: 'Medium shield',
+    desc: 'A shield of a Gravewarden\'s, cut down from a grave-slab and bound with bone. Heavy for its size and almost nothing gets through it; the dead\'s cold doesn\'t either.',
+    guard: { name: 'shield', absorb: 0.96, cost: 0.78, parryWindow: 0.18, raiseTime: 0.09, arc: 1.8 },
   },
   gatewarden_greatshield: {
     name: 'Gatewarden Greatshield',

@@ -617,4 +617,53 @@ export const DIALOGUE = {
     if (q.status('corundel') === 'active') return { name, lines: ['South, the Heart. Mind the beam. My lads called it the light that cuts.'] };
     return { name, lines: [dead ? 'Quiet out there now. Good quiet.' : 'Hear them? The Spires. They never stop.'] };
   },
+
+  dorn(g) {
+    const q = g.quests;
+    const name = 'Dorn, Gravedigger of Dunmarrow';
+    const dead = g.state.flags.vesperineDead;
+    if (q.status('gravewardens') === 'active' && q.state.gravewardens.stage === 1) {
+      return {
+        name,
+        lines: ['Both of them? I heard the second one go down from here. Like a cupboard full of pans.', 'Here. Stones. The dead don\'t need them and I can\'t lift them.'],
+        effect: () => q.complete('gravewardens'),
+      };
+    }
+    if (q.status('undercroft') === 'inactive') {
+      return {
+        name,
+        lines: dead
+          ? ['You\'ve been to the chapel. I can tell; the bones in the walls have stopped chattering.', 'Rest well, Mother Vesperine. Thank you, stranger.']
+          : [
+            'Don\'t step on the plates. Dorn. Gravedigger. Three hundred years the watch has buried its dead down here, and I\'m the last one with a spade.',
+            'Lately they won\'t stay buried. It\'s her doing: Mother Vesperine, the last abbess. She stayed down here with them when everyone else left, and she\'s still here. In a way.',
+            'Her chapel is at the far north end, past the ossuary. Light the lantern by the stair before you go. And when you find her... let them all rest.',
+          ],
+        effect: () => {
+          q.start('undercroft');
+          if (dead) q.complete('undercroft');
+        },
+      };
+    }
+    if (q.status('undercroft') === 'active' && dead) {
+      return {
+        name,
+        lines: ['She\'s gone? Then they\'ll lie still. I\'ll go round with the spade tomorrow and put them back where they belong.', 'Take this. It was for my own funeral. Don\'t think I\'ll need it now.'],
+        effect: () => q.complete('undercroft'),
+      };
+    }
+    if (q.status('gravewardens') === 'inactive') {
+      return {
+        name,
+        lines: [
+          'One more thing. Two Gravewardens walk these halls, the watch\'s grave-keepers in black iron. One in the catacombs, one by the cistern.',
+          'They hit like a falling tomb. But I can\'t dig with them about. Would you?',
+        ],
+        effect: () => q.start('gravewardens'),
+      };
+    }
+    if (q.status('undercroft') === 'active') return { name, lines: ['North, past the ossuary. Mind the vents; they still breathe fire, after all this time.'] };
+    if (q.status('gravewardens') === 'active') return { name, lines: ['The catacombs are west, the cistern is east. Mind the blades in the east passage.'] };
+    return { name, lines: [dead ? 'Quiet down here now. The right kind of quiet.' : 'Listen. They\'re moving about in the walls again.'] };
+  },
 };

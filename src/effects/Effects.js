@@ -20,6 +20,8 @@ const SPIKE_LOOKS = {
   ice: { ring: 0xbfe8ff, disc: 0x7cc8ff, color: 0xcfefff, emissive: 0x3a90d8, ei: 0.8, rough: 0.15, sound: 'frostbite', p1: 0xdff4ff, p2: 0x7cc8ff },
   thorn: { ring: 0xf080e0, disc: 0x9a3a8a, color: 0x4a3a58, emissive: 0x7a2a8a, ei: 0.6, rough: 0.8, sound: 'spore', p1: 0x9ae070, p2: 0xd070f0 },
   root: { ring: 0xffb050, disc: 0x8a4a1a, color: 0x5a3e28, emissive: 0x8a4a10, ei: 0.4, rough: 0.9, sound: 'slam', p1: 0xc8742e, p2: 0x6a4a2a },
+  bone: { ring: 0xe8f0c0, disc: 0x6a7a4a, color: 0xe0d6bc, emissive: 0x4a5a2a, ei: 0.3, rough: 0.8, sound: 'slam', p1: 0xe0d6bc, p2: 0x90f060 },
+  iron: { ring: 0xffb090, disc: 0x8a3a2a, color: 0x5a5a60, emissive: 0x000000, ei: 0, rough: 0.4, sound: 'slam', p1: 0xc8c0b8, p2: 0x8a8480 },
   crystal: { ring: 0xd8c0ff, disc: 0x8a60e0, color: 0xe0d8ff, emissive: 0x7a50e0, ei: 1.0, rough: 0.1, sound: 'crack', p1: 0xe8f4ff, p2: 0xb890ff },
 };
 

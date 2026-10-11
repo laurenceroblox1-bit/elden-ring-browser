@@ -18,6 +18,10 @@
 //   amber   The Amberwood (south-east): an old forest in endless autumn, red and gold, leaf litter
 //           ankle-deep, the Amber Mere, the Huntsman's Lodge, and the Antlered Glade where the king of
 //           the wood holds court.
+//   crypt   The Undercroft (under Castle Dunmarrow, reached by the keep's stair): catacombs of the old
+//           watch's dead, built off the map's edge as a hidden lobe (no pass, no rim) with walls and a
+//           ceiling of its own. Skeletons that pull themselves back together, ghouls, traps, and the
+//           Ossuary Queen in the bone chapel at its far end.
 //   shard   The Shardlands (south-west): a pale stone steppe split by ridges of living crystal that hum
 //           in the wind, the Singing Spires, Pell's Dig, and the Heart of Glass where the Colossus stands.
 
@@ -33,7 +37,44 @@ export const LOBES = {
   bell: { x: 500, z: -170, r: 75, gate: [440, -124], gap: 7 },
   amber: { x: 420, z: 420, r: 150, gate: [312, 312], gap: 10 },
   shard: { x: -420, z: 420, r: 150, gate: [-312, 312], gap: 10 },
+  // Hidden: off the map, reached only by the keep's stair (Game.descend), walled and roofed by World.
+  crypt: { x: -700, z: -700, r: 95, gate: [-700, -605], gap: 0, hidden: true },
 };
+
+// The Undercroft's floor plan, in metres from its centre (u east, v south). Cells of CRYPT.cell metres
+// whose centres fall in a room or passage are open; every closed cell touching one is a wall.
+export const CRYPT = {
+  x: -700, z: -700, cell: 6, half: 66, floor: 4, ceiling: 9.6,
+  rooms: [
+    { r: [-10, 38, 10, 62] }, // the stair hall (you arrive here)
+    { r: [-3, 20, 3, 38] }, // the long stair passage
+    { c: [0, 6, 15] }, // the ossuary
+    { r: [-42, 3, -14, 9] }, // the west passage (spike plates)
+    { r: [-60, -24, -36, 30] }, // the catacombs
+    { r: [-45, -36, -39, -24] }, // a gap in the catacomb wall...
+    { r: [-48, -48, -30, -36] }, // ...to a forgotten reliquary
+    { r: [14, 3, 42, 9] }, // the east passage (blades)
+    { r: [36, -24, 60, 30] }, // the cistern
+    { r: [-3, -30, 3, -9] }, // the north passage (fire vents)
+    { c: [0, -46, 16] }, // the bone chapel
+  ],
+  arrive: { u: 0, v: 54, yaw: Math.PI },
+  stair: { u: 0, v: 58 },
+  keepDoor: { x: -5.2, z: -354, yaw: Math.PI / 2 }, // the keep's door in Castle Dunmarrow's courtyard
+  blades: [{ u: 22, v: 6 }, { u: 30, v: 6 }],
+  spikes: [{ u: -22, v: 6 }, { u: -30, v: 6 }, { u: -38, v: 6 }],
+  // Fire vents in a wall at (u, v), breathing along (du, dv) for `len` metres.
+  vents: [{ u: -6, v: -24, du: 1, dv: 0, len: 9 }, { u: 6, v: -15, du: -1, dv: 0, len: 9 }, { u: 36, v: -12, du: 1, dv: 0, len: 6 }, { u: 60, v: 12, du: -1, dv: 0, len: 6 }],
+};
+export const cryptW = (u, v) => [CRYPT.x + u, CRYPT.z + v];
+export function cryptOpen(u, v) {
+  for (const rm of CRYPT.rooms) {
+    if (rm.r && u >= rm.r[0] && u <= rm.r[2] && v >= rm.r[1] && v <= rm.r[3]) return true;
+    if (rm.c && Math.hypot(u - rm.c[0], v - rm.c[1]) <= rm.c[2]) return true;
+  }
+  return false;
+}
+export const CHAPEL = { x: -700, z: -746, r: 15, trigger: 12, leash: 30 };
 
 // The coast: the sea's surface level, and how far west you can wade before the water is too deep.
 export const SEA = { level: -9, shoreX: -575, walkX: -598 };
@@ -118,6 +159,13 @@ export const BIOME_ZONES = {
   lodge: { name: "The Huntsman's Lodge", x: 362, z: 468, r: 20, flat: 18 },
   mere: { name: 'The Amber Mere', x: MERE.x, z: MERE.z, r: 26, flat: null },
   glade: { name: 'The Antlered Glade', x: GLADE.x, z: GLADE.z, r: 32, flat: 38 },
+  // The Undercroft
+  stairhall: { name: 'The Undercroft', x: -700, z: -650, r: 14, flat: null },
+  ossuary: { name: 'The Ossuary', x: -700, z: -694, r: 14, flat: null },
+  catacombs: { name: 'The Catacombs', x: -748, z: -697, r: 18, flat: null },
+  reliquary: { name: 'The Forgotten Reliquary', x: -739, z: -742, r: 9, flat: null },
+  cistern: { name: 'The Cistern', x: -652, z: -697, r: 18, flat: null },
+  bonechapel: { name: 'The Bone Chapel', x: CHAPEL.x, z: CHAPEL.z, r: 16, flat: null },
   // The Shardlands
   glassgate: { name: 'The Glass Gate', x: -312, z: 312, r: 20, flat: null },
   prismwatch: { name: 'Prismwatch Shrine', x: -356, z: 340, r: 12, flat: 10 },
@@ -168,6 +216,7 @@ export const BIOME_SHRINES = [
   { id: 'gladesedge', name: "Glade's Edge Shrine", x: 446, z: 452 },
   { id: 'prismwatch', name: 'Prismwatch Shrine', x: -356, z: 340 },
   { id: 'glasslight', name: 'Glasslight Shrine', x: -446, z: 452 },
+  { id: 'undercroft', name: 'Undercroft Shrine', x: -692, z: -648 },
 ];
 
 export const BIOME_NPCS = [
@@ -178,6 +227,7 @@ export const BIOME_NPCS = [
   { id: 'aldous', name: 'Brother Aldous', title: 'Last Monk of the Spire', x: 326, z: -404, yaw: 1.0 },
   { id: 'edda', name: 'Edda', title: 'Huntress of the Lodge', x: 366, z: 462, yaw: 0.6 },
   { id: 'pell', name: 'Pell', title: 'Glass-Cutter', x: -466, z: 364, yaw: -0.6 },
+  { id: 'dorn', name: 'Dorn', title: 'Gravedigger of Dunmarrow', x: -706, z: -652, yaw: 1.4 },
 ];
 
 export const BIOME_SPAWNS = [
@@ -271,6 +321,22 @@ export const BIOME_SPAWNS = [
   { kind: 'prismgolem', x: -420, z: 400, yaw: 2.4 },
   { kind: 'prismgolem', x: -510, z: 460, yaw: 2.6 },
   { kind: 'colossus', x: HEART.x - 6, z: HEART.z + 6, yaw: 2.4 },
+  // The Undercroft
+  { kind: 'skeleton', x: -697, z: -676, yaw: 0 },
+  { kind: 'skeleton', x: -706, z: -690, yaw: 0.6 },
+  { kind: 'skeleton', x: -692, z: -700, yaw: -0.6 },
+  { kind: 'ghoul', pack: 'crypt1', x: -745, z: -680, yaw: 1.2 },
+  { kind: 'ghoul', pack: 'crypt1', x: -750, z: -676, yaw: 1.4 },
+  { kind: 'skeleton', x: -752, z: -710, yaw: 0.4 },
+  { kind: 'skeleton', x: -742, z: -716, yaw: 0.2 },
+  { kind: 'gravewarden', x: -748, z: -694, yaw: 1.6 },
+  { kind: 'ghoul', pack: 'crypt2', x: -654, z: -710, yaw: -1.4 },
+  { kind: 'ghoul', pack: 'crypt2', x: -648, z: -706, yaw: -1.2 },
+  { kind: 'ghoul', pack: 'crypt2', x: -656, z: -682, yaw: -1.6 },
+  { kind: 'skeleton', x: -646, z: -692, yaw: -1.6 },
+  { kind: 'gravewarden', x: -652, z: -716, yaw: -1.0 },
+  { kind: 'skeleton', x: -697, z: -720, yaw: 0 },
+  { kind: 'ossuaryqueen', x: CHAPEL.x, z: CHAPEL.z - 6, yaw: 0 },
 ];
 
 export const BIOME_PICKUPS = [
@@ -296,6 +362,9 @@ export const BIOME_LOOT = [
   { gear: 'prism_blade', x: -380, z: 392 }, // stuck in a crystal on the road
   { gear: 'glass_aegis', x: -476.5, z: 361 }, // propped against Pell's cart
   { gear: 'shard_volley', x: -530, z: 420 }, // in a crystal hollow under the western ridge
+  { gear: 'gravedigger_spade', x: -756, z: -700 }, // on a catacomb shelf
+  { gear: 'bone_ward', x: -652, z: -680 }, // in the cistern's shallows
+  { gear: 'grave_chill', x: -739, z: -742 }, // in the forgotten reliquary
 ];
 
 export const BIOME_KEEP_CLEAR = [
@@ -323,4 +392,5 @@ export const STONES = [
   { x: 350, z: -350 }, { x: 430, z: -400 }, { x: 300, z: -440 }, { x: 460, z: -500 },
   { x: 330, z: 400 }, { x: 440, z: 480 }, { x: 520, z: 380 }, { x: 400, z: 520 },
   { x: -330, z: 400 }, { x: -440, z: 480 }, { x: -520, z: 380 }, { x: -400, z: 520 },
+  { x: -755, z: -720 }, { x: -645, z: -715 }, { x: -735, z: -738 },
 ];

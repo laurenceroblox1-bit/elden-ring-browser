@@ -33,6 +33,10 @@ import { Shardback } from './Shardback.js';
 import { PrismWraith } from './PrismWraith.js';
 import { PrismGolem } from './PrismGolem.js';
 import { Colossus } from './Colossus.js';
+import { Skeleton } from './Skeleton.js';
+import { Ghoul } from './Ghoul.js';
+import { Gravewarden } from './Gravewarden.js';
+import { OssuaryQueen } from './OssuaryQueen.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -82,6 +86,11 @@ const KINDS = {
   prismwraith: PrismWraith,
   prismgolem: PrismGolem, // an elite
   colossus: Colossus, // Corundel, the Shardlands' boss, in the Heart of Glass
+  // The Undercroft.
+  skeleton: Skeleton, // the sentry's moveset, and it gets back up once unless finished properly
+  ghoul: Ghoul,
+  gravewarden: Gravewarden, // an elite
+  ossuaryqueen: OssuaryQueen, // Vesperine, the Undercroft's boss, in the Bone Chapel
 };
 
 export function createEnemy(game, spawn) {

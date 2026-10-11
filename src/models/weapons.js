@@ -347,6 +347,24 @@ const BUILD = {
     g.add(mesh(box(0.08, 0.07, 0.4), M.violet(), { z: 1.6, x: 0.04 }));
     return { right: g };
   },
+  // Gravedigger's Spade: a long ash haft, a worn iron blade.
+  gravedigger_spade() {
+    const g = group();
+    g.add(mesh(cyl(0.028, 0.03, 1.9, 6), M.wood(), { rx: Math.PI / 2, z: 0.45 }));
+    g.add(mesh(box(0.16, 0.04, 0.05), M.wood(), { z: -0.5 }));
+    g.add(mesh(box(0.28, 0.025, 0.36), M.iron(), { z: 1.55 }));
+    g.add(mesh(box(0.24, 0.026, 0.06), M.steel(), { z: 1.74 }));
+    return { right: g };
+  },
+  // Queen's Scythe: a thighbone haft and a curved iron blade, faintly green.
+  queens_scythe() {
+    const g = group();
+    g.add(mesh(cyl(0.03, 0.035, 2.2, 6), M.bone(), { rx: Math.PI / 2, z: 0.4 }));
+    g.add(mesh(box(0.06, 0.06, 0.14), M.iron(), { z: 1.5 }));
+    g.add(mesh(box(0.03, 0.7, 0.12), M.iron(), { z: 1.55, y: 0.35, rx: 0.25 }));
+    g.add(mesh(box(0.02, 0.6, 0.03), mat(0xe8ffc0, { emissive: 0x80f050, emissiveIntensity: 1.4 }), { z: 1.6, y: 0.35, rx: 0.25, shadow: false }));
+    return { right: g };
+  },
   // Ringer's Hammer: an iron haft with a bronze bell for its head.
   ringers_hammer() {
     const g = group();
@@ -382,6 +400,14 @@ const BUILD_SHIELD = {
     const g = group({ x: 0.08, y: -0.17 });
     g.add(mesh(cyl(0.26, 0.26, 0.04, 8), M.glass(), { rz: Math.PI / 2 }));
     g.add(mesh(cyl(0.1, 0.1, 0.05, 6), M.violet(), { rz: Math.PI / 2, x: 0.01 }));
+    return g;
+  },
+  // Bone Ward: a slab of grave-stone bound with bone.
+  bone_ward() {
+    const g = group({ x: 0.09, y: -0.15 });
+    g.add(mesh(box(0.07, 0.66, 0.44), mat(0x6a6660, { roughness: 0.95 })));
+    for (const y of [-0.22, 0.22]) g.add(mesh(box(0.08, 0.05, 0.46), M.bone(), { y }));
+    g.add(mesh(box(0.08, 0.2, 0.05), M.bone(), { y: 0.02 }));
     return g;
   },
   // Thornguard: a kite shield of grey cap-flesh bristling with violet thorns.

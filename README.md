@@ -13,7 +13,8 @@ Dunmarrow open onto the **Rimewold**, a frozen highland where a troll owns the H
 around the Vale lie seven more regions, each with its own weather, enemies, people and boss: the
 volcanic **Cinderfall Wastes**, the **Drowned Coast**, the **Glowcap Hollows**, the **Gilded Dunes**,
 the **Stormspire Heights**, the autumn **Amberwood** and the crystal **Shardlands** (see *The outer
-regions*). Fell all five of their great ones and the
+regions*). Under Castle Dunmarrow, the keep's stair goes down into **the Undercroft**, a torch-lit
+catacomb where the dead won't stay buried. Fell all five of their great ones and the
 mist lifts from the **Hollow Bell**, where the **Bell-Ringer** waits under the last spire. Play
 alone, or with friends in a shared Vale (see *Multiplayer*).
 
@@ -327,6 +328,33 @@ and the compass. Click anywhere on the map to set your own waypoint: a pale blue
 the compass, and a pillar of light in the world. Click it again to clear it; it clears itself when you
 arrive.
 
+## The Undercroft
+
+Once the castle is open, the door in the keep's east wall (in Castle Dunmarrow's courtyard) leads down
+into the Undercroft: the watch's catacombs, roofed and walled, lit only by torches. It is built off the
+edge of the map as a hidden lobe (`data/biomes.js` CRYPT holds its floor plan as rooms and passages on a
+6 m grid; `world/Biomes.js` raises a wall round every open cell and a vault over it), so the camera is
+kept inside its walls and under its roof (`World.camBlocked`), and the sun and most of the sky light
+are shut out (the `crypt` weather's `cave` setting). Four lights follow the torches nearest you.
+
+- **The stair hall**, with Dorn the gravedigger and the Undercroft Shrine; **the ossuary**, a ring of
+  pillars round a heap of bones, walls full of skulls; **the catacombs** to the west, and a forgotten
+  reliquary off them; **the cistern** to the east, black water between stone piers; and **the Bone
+  Chapel** at the far north end.
+- **Traps**: blades swinging across the east passage from the vault, iron spikes under the plates of the
+  west passage, and vents breathing fire across the north passage and the cistern. They strike
+  anything in the way, foes included.
+- **Skeletons of the Watch** fight like the sentries, and get back up a few seconds after you cut them
+  down, once, unless the last blow was heavy, a riposte or a backstab, or fire was in their bones.
+  **Ghouls** run in packs and their bite festers. **Gravewardens** (elites) carry a grave-slab shield,
+  send bone spikes up round their slams and charge across the room.
+- **Vesperine, the Ossuary Queen**, the chapel's last abbess: long scythe sweeps (parryable) and a
+  spinning dance, bone spears in lines and under your feet, a blink through her candle-smoke, and her
+  dead called up from the floor. At half health the candles flare green and everything doubles.
+- **Gear**: the Gravedigger's Spade (bone spears in a ring), the Bone Ward shield, the Grave Chill rite
+  (a cone of tomb-cold that builds frost), and the Queen's Scythe, whose art calls two spectral
+  skeletons to fight beside you.
+
 ## Backstabs, appearance and New Game+
 
 - **Backstabs**: get right behind an ordinary foe that isn't mid-swing (and hasn't noticed you, for
@@ -402,6 +430,7 @@ src/data/biomes.js         the outer regions' layout: lobes, zones, roads, shrin
 src/data/smithing.js       weapon levels and their costs
 src/entities/BellRinger.js the Hollow Bell's boss
 src/entities/AntlerKing.js, Colossus.js  the Amberwood's and the Shardlands' bosses
+src/entities/OssuaryQueen.js, Skeleton.js  the Undercroft's boss, and its dead that get back up
 src/world/Biomes.js        the outer regions' set pieces, lava, sea, oasis, glowcaps, storms, scenery
 src/models/creatures.js    the outer regions' creatures, bosses and traders
 src/ui/ShopPanel.js        Tamsin's wares

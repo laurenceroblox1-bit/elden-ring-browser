@@ -253,10 +253,11 @@ export class Sky {
     u.uStars.value = p.stars;
 
     this.sun.color.copy(p.light);
-    this.sun.intensity = p.lightI * k * (1 - w.dim * 0.85);
+    const cave = w.cave ?? 0; // underground: the sun is gone and the sky barely reaches
+    this.sun.intensity = p.lightI * k * (1 - w.dim * 0.85) * (1 - cave);
     this.hemi.color.copy(p.hemiSky);
     this.hemi.groundColor.copy(p.hemiGround);
-    this.hemi.intensity = p.hemiI * (1 - w.dim * 0.25);
+    this.hemi.intensity = p.hemiI * (1 - w.dim * 0.25) * (1 - cave * 0.75);
 
     // Clouds take the light of the hour: warm by day, slate at night, grey under rain.
     const cm = this.clouds.material;
@@ -285,7 +286,7 @@ export class Sky {
 
   _envKey() {
     const w = this.weather;
-    return `${Math.round(this.hours * 4)}|${Math.round(w.haze * 8)}|${Math.round(w.dim * 8)}`;
+    return `${Math.round(this.hours * 4)}|${Math.round(w.haze * 8)}|${Math.round(w.dim * 8)}|${Math.round((w.cave ?? 0) * 4)}`;
   }
 
   // ---------- per frame ----------

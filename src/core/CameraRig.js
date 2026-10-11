@@ -81,6 +81,10 @@ export class CameraRig {
       const f = (i / STEPS) * this.dist;
       const x = this.focus.x + ox * f, y = this.focus.y + oy * f, z = this.focus.z + oz * f;
       const gap = y - (g.world.getHeight(x, z) + 0.45);
+      if (gap >= 0 && g.world.camBlocked(x, y, z)) {
+        d = Math.max(1.2, ((i - 1) / STEPS) * this.dist - 0.15);
+        break;
+      }
       if (gap < 0) {
         const u = prevGap > 0 ? prevGap / (prevGap - gap) : 0;
         d = Math.max(1.2, ((i - 1 + u) / STEPS) * this.dist - 0.15);
@@ -106,6 +110,7 @@ export class CameraRig {
     cam.position.y += Math.min(1.2, squeeze * 0.25);
     const ahead = Math.min(4, squeeze * 0.6);
     cam.position.y = Math.max(cam.position.y, g.world.getHeight(cam.position.x, cam.position.z) + 0.4);
+    if (g.world.camBlocked(cam.position.x, cam.position.y, cam.position.z)) cam.position.y = Math.min(cam.position.y, g.world.getHeight(cam.position.x, cam.position.z) + 8.6);
     if (this.shakeT > 0) {
       this.shakeT -= dt;
       const s = this.shakeAmp * Math.max(0, this.shakeT / 0.35);

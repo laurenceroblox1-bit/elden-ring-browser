@@ -99,6 +99,14 @@ export class AudioFx {
         this._bell(f, 0.018, 3.5, this.amb);
         if (Math.random() < 0.4) this._bell(f * 1.5, 0.01, 3, this.amb);
       }, 2200);
+    } else if (r === 'crypt') {
+      this.croakTimer = setInterval(() => {
+        if (this.muted || Math.random() < 0.35) return;
+        // Water dripping somewhere in the dark, and now and then a long low groan through the stone.
+        if (Math.random() < 0.25) { this._tone({ freq: 55, to: 48, type: 'sawtooth', dur: 2.2, gain: 0.03, attack: 0.8, dest: this.amb }); return; }
+        const f = 700 + Math.random() * 600;
+        for (let i = 0; i < 3; i++) this._tone({ freq: f, to: f * 1.5, type: 'sine', dur: 0.1, gain: 0.05 / (1 + i * 2.5), delay: i * 0.33, dest: this.amb });
+      }, 1500);
     } else if (r === 'glow') {
       this.croakTimer = setInterval(() => {
         if (this.muted || Math.random() < 0.3) return;
@@ -558,6 +566,12 @@ export class AudioFx {
         this._bell(196, 0.05, 4, this.music);
         this._bell(233, 0.035, 4, this.music);
       }, 3800],
+      crypt: [() => {
+        // A slow funeral bell and a choir-like drone.
+        this._bell(110, 0.1, 5, this.music);
+        this._tone({ freq: 220, to: 220, type: 'triangle', dur: 3.2, gain: 0.04, attack: 1.0, dest: this.music });
+        this._tone({ freq: 262, to: 262, type: 'triangle', dur: 3.2, gain: 0.03, attack: 1.2, dest: this.music });
+      }, 4800],
       hunt: [() => {
         // A hunting horn over a heartbeat drum.
         this._tone({ freq: 147, to: 147, type: 'sawtooth', dur: 1.4, gain: 0.07, attack: 0.25, dest: this.music });

@@ -22,6 +22,8 @@ export const WEATHER = {
   storm: { fogMul: 2.0, dim: 0.78, haze: 0.62, tint: 0x767c88, cover: 1, wind: 2.4, fall: 'rain' },
   bellmist: { fogMul: 2.8, dim: 0.3, haze: 0.72, tint: 0xc8b49a, cover: 0.7, wind: 0.4, fall: 'motes' },
   autumn: { fogMul: 1.4, dim: 0.08, haze: 0.4, tint: 0xd8aa7a, cover: 0.45, wind: 1.2, fall: 'leaves' },
+  // Underground: no sun, little sky light, close dark fog (the torches do the rest).
+  crypt: { fogMul: 3.2, dim: 1, haze: 0.9, tint: 0x2a2420, cover: 1, wind: 0, fall: 'dust', cave: 1 },
   glint: { fogMul: 1.3, dim: 0.05, haze: 0.45, tint: 0xc8bce0, cover: 0.3, wind: 0.9, fall: 'glints' },
 };
 
@@ -36,6 +38,7 @@ const FALL = {
   motes: { count: 800, speed: 0.12, size: 0.1, color: 0xffd890, opacity: 0.75, sway: 1.3, streak: 0 },
   sandstorm: { count: 2600, speed: 1.4, size: 0.14, color: 0xd8b070, opacity: 0.8, sway: 4.2, streak: 0 },
   leaves: { count: 700, speed: 0.8, size: 0.2, color: 0xd87a30, opacity: 0.9, sway: 1.8, streak: 0 },
+  dust: { count: 500, speed: 0.06, size: 0.07, color: 0xc8b8a0, opacity: 0.5, sway: 0.6, streak: 0 },
   glints: { count: 900, speed: 0.1, size: 0.08, color: 0xe8f0ff, opacity: 0.85, sway: 0.9, streak: 0 },
 };
 const MAX = 2600;
@@ -90,7 +93,7 @@ export class Weather {
     this.sky = sky;
     this.name = 'clear';
     const p = WEATHER.clear;
-    this.cur = { fogMul: p.fogMul, dim: p.dim, haze: p.haze, cover: p.cover, wind: p.wind, tint: new THREE.Color(p.tint) };
+    this.cur = { fogMul: p.fogMul, dim: p.dim, haze: p.haze, cover: p.cover, wind: p.wind, cave: p.cave ?? 0, tint: new THREE.Color(p.tint) };
     this.target = WEATHER.clear;
     this.mode = null; // falling particle mode now shown
     this.amount = 0; // 0..1 fade of the falling particles
@@ -150,9 +153,10 @@ export class Weather {
       c.haze += (t.haze - c.haze) * k;
       c.cover += (t.cover - c.cover) * k;
       c.wind += (t.wind - c.wind) * k;
+      c.cave += ((t.cave ?? 0) - c.cave) * k;
       c.tint.lerp(tmpTint.setHex(t.tint), k);
-      if (Math.abs(t.fogMul - c.fogMul) < 0.01 && Math.abs(t.haze - c.haze) < 0.005 && Math.abs(t.dim - c.dim) < 0.005) {
-        Object.assign(c, { fogMul: t.fogMul, dim: t.dim, haze: t.haze, cover: t.cover, wind: t.wind });
+      if (Math.abs(t.fogMul - c.fogMul) < 0.01 && Math.abs(t.haze - c.haze) < 0.005 && Math.abs(t.dim - c.dim) < 0.005 && Math.abs((t.cave ?? 0) - c.cave) < 0.005) {
+        Object.assign(c, { fogMul: t.fogMul, dim: t.dim, haze: t.haze, cover: t.cover, wind: t.wind, cave: t.cave ?? 0 });
         c.tint.setHex(t.tint);
         this.settled = true;
       }

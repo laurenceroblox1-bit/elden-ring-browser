@@ -3,10 +3,10 @@
 // arena ring and Castle Dunmarrow. Live markers sit on top as DOM elements and are placed each
 // time the map opens (the game is paused while it's open). Lit lanterns are buttons: fast travel.
 import { WORLD, ZONES, ROADS, ARENA, LAKE, RIME } from '../data/world.js';
-import { LOBES, SEA, OASIS, MERE } from '../data/biomes.js';
+import { LOBES, SEA, OASIS, MERE, CRYPT } from '../data/biomes.js';
 
 // Metres from the centre to each edge of the map: far enough for every lobe of the play area.
-const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z, ...Object.values(LOBES).map((L) => Math.hypot(L.x, L.z) + L.r)) + 14;
+const EXTENT = Math.max(WORLD.playRadius, RIME.r - RIME.z, ...Object.values(LOBES).filter((L) => !L.hidden).map((L) => Math.hypot(L.x, L.z) + L.r)) + 14;
 const RES = 900; // canvas pixels per side (sharp enough to zoom in a little)
 const LIGHT = norm([-0.55, 0.75, -0.55]); // hill shading from the north-west, as on old survey maps
 
@@ -141,7 +141,8 @@ export class MapScreen {
   }
 
   centreOnPlayer(z = this.z) {
-    const p = this.game.player.pos, W = this.view.clientWidth, H = this.view.clientHeight;
+    const pp = this.game.player.pos, W = this.view.clientWidth, H = this.view.clientHeight;
+    const p = this.game.world.biomeAt(pp.x, pp.z) === 'crypt' ? CRYPT.keepDoor : pp;
     this.z = z;
     this.ox = W / 2 - (pctX(p.x) / 100) * W * z;
     this.oy = H / 2 - (pctZ(p.z) / 100) * H * z;
@@ -158,7 +159,9 @@ export class MapScreen {
 
   show() {
     if (!this.drawn) this.draw();
-    this.status.textContent = this.game.bossFight ? 'The mist holds you in the arena: no travel until the fight ends.' : '';
+    const g = this.game, pp = g.player.pos;
+    this.status.textContent = g.bossFight ? 'The mist holds you in the arena: no travel until the fight ends.'
+      : g.world.biomeAt(pp.x, pp.z) === 'crypt' ? 'You are in the Undercroft, under Castle Dunmarrow.' : '';
     this.refresh();
     this.root.hidden = false;
     // Open close in on where you are; the whole world is a zoom-out (or two) away.
@@ -220,8 +223,11 @@ export class MapScreen {
       const q = gh.model.root.position;
       parts.push(`<span class="mk friend" style="${at(q.x, q.z)};background:#${gh.cloak.toString(16).padStart(6, '0')}" title="${esc(gh.name)}"><i>${esc(gh.name)}</i></span>`);
     }
-    // The player last, on top: an arrow along their facing (map up is north, -Z).
-    parts.push(`<span class="mk player" style="${at(p.pos.x, p.pos.z)};transform:translate(-50%,-50%) rotate(${(Math.PI - p.yaw).toFixed(3)}rad)" title="You"></span>`);
+    // The player last, on top: an arrow along their facing (map up is north, -Z). Down in the
+    // Undercroft (off the map's edge) the arrow stands at the keep's stair.
+    const under = g.world.biomeAt(p.pos.x, p.pos.z) === 'crypt';
+    const px = under ? CRYPT.keepDoor.x : p.pos.x, pz = under ? CRYPT.keepDoor.z : p.pos.z;
+    parts.push(`<span class="mk player" style="${at(px, pz)};transform:translate(-50%,-50%) rotate(${(Math.PI - p.yaw).toFixed(3)}rad)" title="You"></span>`);
     this.marks.innerHTML = parts.join('');
 
     this.travel.innerHTML = lit.length

@@ -9,7 +9,7 @@ import { Water } from './Water.js';
 import { Weather, WEATHER } from './Weather.js';
 import { Ambient } from './Ambient.js';
 import { WIND } from './Wind.js';
-import { LOBES, SEA, LAVA, VOLCANO, OASIS, MERE, SPIRE_AT } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, OASIS, MERE, SPIRE_AT, CRYPT, cryptOpen } from '../data/biomes.js';
 import { buildBiomes, updateBiomes } from './Biomes.js';
 
 const SIZE = WORLD.size;
@@ -51,6 +51,8 @@ const COL = {
   // The Shardlands.
   shardStone: C(0xa8a0b4), shardLit: C(0xcac4d4), shardDark: C(0x6e6680), shardSalt: C(0xe4e0ea), shardCyan: C(0x6ad0d8),
   shardViolet: C(0x9a6ad0), shardRoad: C(0x9890a0),
+  // The Undercroft.
+  cryptStone: C(0x4a4642), cryptStone2: C(0x5a5650), cryptMoss: C(0x3e4a36),
   // The Stormspire Heights.
   slate: C(0x5c6068), slateDark: C(0x3c4048), stormMoss: C(0x4e5e48), stormLichen: C(0x8a8e6a), stormRoad: C(0x6e6a64),
 };
@@ -218,6 +220,10 @@ export class World {
       const flat = fbm(this.noise2, x * 0.004 + 3, z * 0.004 - 9, 2) * 6;
       big = lerp(big, 8 + flat + smoothstep(0.72, 0.95, rn) * 14, B.shard);
     }
+    if (B.crypt > 0) {
+      // The Undercroft's floor: dead level flagstones (its walls and roof are blocks, see Biomes.js).
+      big = lerp(big, CRYPT.floor, B.crypt);
+    }
     if (B.storm > 0) {
       // A high, broken plateau of crags: ridged noise, sharp and grey.
       const rn = 1 - Math.abs(fbm(this.noise2, x * 0.009 + 77, z * 0.009 - 21, 3));
@@ -236,7 +242,7 @@ export class World {
       const c = 1 - vd / VOLCANO.r;
       big += Math.pow(c, 1.4) * VOLCANO.h - smoothstep(VOLCANO.crater + 6, VOLCANO.crater - 8, vd) * 34;
     }
-    const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2 * (1 - B.coast * 0.6);
+    const detail = fbm(this.noise2, x * 0.02 + 40, z * 0.02 - 17, 3) * 3.2 * (1 - B.coast * 0.6) * (1 - B.crypt * 0.95);
     return { big, h: big + detail };
   }
 
@@ -490,6 +496,12 @@ export class World {
           tmpC.lerp(COL.shardDark, smoothstep(0.4, 0.8, slope));
           tmpC.lerp(COL.shardRoad, rw * 0.8);
           c.lerp(tmpC, B.shard);
+        }
+        if (B.crypt > 0) {
+          // Old flagstones: dark grey, a little moss in the cracks, a lighter stone here and there.
+          const fl = (this.noise(Math.floor(x / 2.2) * 1.7, Math.floor(z / 2.2) * 1.3) + 1) / 2;
+          tmpC.copy(COL.cryptStone).lerp(COL.cryptStone2, smoothstep(0.3, 0.7, fl)).lerp(COL.cryptMoss, smoothstep(0.75, 0.95, t) * 0.5);
+          c.lerp(tmpC, B.crypt);
         }
         if (B.bell > 0) {
           // Pale ash with a violet cast, and a green-bronze crust where old bells have rotted into it.
@@ -1246,6 +1258,15 @@ export class World {
   }
 
   // Inside the walkable area (with `pad` metres to spare)?
+  // True where the camera can't be: inside the Undercroft's walls or above its roof.
+  camBlocked(x, y, z) {
+    const u = x - CRYPT.x, v = z - CRYPT.z;
+    if (Math.abs(u) > CRYPT.half + 30 || Math.abs(v) > CRYPT.half + 30) return false;
+    if (y > CRYPT.floor + CRYPT.ceiling - 0.5) return true;
+    const i = Math.floor((u + CRYPT.half) / CRYPT.cell), j = Math.floor((v + CRYPT.half) / CRYPT.cell);
+    return !cryptOpen(-CRYPT.half + CRYPT.cell * (i + 0.5), -CRYPT.half + CRYPT.cell * (j + 0.5));
+  }
+
   inPlay(x, z, pad = 0) {
     if (Math.hypot(x, z) < WORLD.playRadius - pad || Math.hypot(x - RIME.x, z - RIME.z) < RIME.r - pad) return true;
     for (const k in LOBES) {

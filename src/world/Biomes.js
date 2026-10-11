@@ -11,7 +11,7 @@
 // plants and rocks; updateBiomes(world, dt, time) animates lava, sea, glow, smoke and the lighthouse.
 import * as THREE from '../lib/three.js';
 import { mulberry32, smoothstep } from '../core/math.js';
-import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, MERE, GLADE, HEART, BELLYARD, GREAT_ONES, BIOME_ZONES as Z } from '../data/biomes.js';
+import { LOBES, SEA, LAVA, VOLCANO, CALDERA, WRECK, GROVE, SANCTUM, SUMMIT, OASIS, MERE, GLADE, HEART, BELLYARD, GREAT_ONES, CRYPT, CHAPEL, cryptOpen, BIOME_ZONES as Z } from '../data/biomes.js';
 import { WORLD } from '../data/world.js';
 import { mat, mesh, box, cyl, cone, glowSprite, glowTexture } from '../models/kit.js';
 import * as P from '../models/props.js';
@@ -187,6 +187,7 @@ export function buildBiomes(w) {
   bell(w, B);
   amber(w, B);
   shard(w, B);
+  crypt(w, B);
 }
 
 // ---------- the Hollow Bell ----------
@@ -912,6 +913,189 @@ function shard(w, B) {
   B.crystals = list;
 }
 
+// ---------- the Undercroft ----------
+
+// A hazard with no body: the Undercroft's traps strike whoever is in the way, the living and the dead.
+const TRAP = { team: 'trap', pos: new THREE.Vector3(), alive: true, yaw: 0, onParried() {} };
+
+function crypt(w, B) {
+  const rng = mulberry32(3131);
+  const C = CRYPT, F = C.floor, N = Math.round((2 * C.half) / C.cell);
+  const WALL = [0x4e4a46, 0x45413e, 0x524c44], CEIL = 0x2e2a28;
+  const cellOpen = (i, j) => i >= 0 && j >= 0 && i < N && j < N && cryptOpen(-C.half + C.cell * (i + 0.5), -C.half + C.cell * (j + 0.5));
+  const at = (u, v) => [C.x + u, C.z + v];
+  B.torches = [];
+  // Walls round every open cell, a roof over them, and torches on the walls of the passages.
+  for (let i = 0; i < N; i++) {
+    for (let j = 0; j < N; j++) {
+      const u = -C.half + C.cell * (i + 0.5), v = -C.half + C.cell * (j + 0.5);
+      const [x, z] = at(u, v);
+      if (cellOpen(i, j)) {
+        w.block(x, z, C.cell + 0.02, 1.2, C.cell + 0.02, 0, { y: F + C.ceiling, color: CEIL, collide: false });
+        if ((i + j) % 3 === 0) w.block(x, z, C.cell + 0.04, 0.5, 0.6, 0, { y: F + C.ceiling - 0.4, color: 0x3a3632, collide: false }); // a rib of the vault
+        continue;
+      }
+      let edge = false;
+      for (let di = -1; di <= 1 && !edge; di++) for (let dj = -1; dj <= 1; dj++) if (cellOpen(i + di, j + dj)) { edge = true; break; }
+      if (!edge) continue;
+      w.block(x, z, C.cell + 0.02, C.ceiling + 1.6, C.cell + 0.02, 0, { y: F - 0.6, color: WALL[(i * 7 + j * 3) % 3] });
+      // A torch on each wall face that looks onto a passage, now and then.
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        if (!cellOpen(i + di, j + dj) || rng() > 0.28) continue;
+        const tx = x + di * (C.cell / 2 + 0.2), tz = z + dj * (C.cell / 2 + 0.2);
+        w.block(tx, tz, 0.25, 0.25, 0.5, Math.atan2(di, dj), { y: F + 2.6, color: 0x2a2620, collide: false });
+        B.torches.push({ x: tx + di * 0.25, z: tz + dj * 0.25, y: F + 3.15 });
+      }
+      // Catacomb niches: rows of skulls in the walls of the catacombs and the ossuary.
+      if ((u < -30 && v > -30 && v < 36) || Math.hypot(u, v - 6) < 22) {
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          if (!cellOpen(i + di, j + dj)) continue;
+          const nx = x + di * (C.cell / 2 + 0.01), nz = z + dj * (C.cell / 2 + 0.01), ry = Math.atan2(di, dj);
+          for (let row = 0; row < 2; row++) {
+            w.block(nx, nz, di ? 0.05 : 4.4, 1.1, dj ? 0.05 : 4.4, 0, { y: F + 0.9 + row * 1.8, color: 0x1e1c1a, collide: false });
+            for (let k = 0; k < 4; k++) {
+              const off = (k - 1.5) * 1.0;
+              w.block(nx + (dj ? off : 0) + di * 0.15, nz + (di ? off : 0) + dj * 0.15, 0.36, 0.34, 0.36, ry + (rng() - 0.5), { y: F + 1.0 + row * 1.8, color: 0xd8cdb0, collide: false });
+            }
+          }
+        }
+      }
+    }
+  }
+  // The stair up to the castle: steps climbing into the north... south wall, lit from above.
+  const [sx, sz] = at(C.stair.u, C.stair.v);
+  for (let k = 0; k < 6; k++) w.block(sx, sz + 1 + k * 0.6, 5, 0.5 + k * 0.6, 0.6, 0, { y: F - 0.2, color: 0x5a5650, collide: false });
+  const shaft = glowSprite(0xffe8c0, 9, 0.35);
+  shaft.position.set(sx, F + 6, sz + 3);
+  w.scene.add(shaft);
+  // The ossuary: a ring of pillars round a heap of bones.
+  const [ox, oz] = at(0, 6);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + 0.5;
+    w.block(ox + Math.sin(a) * 8.5, oz + Math.cos(a) * 8.5, 1.4, C.ceiling, 1.4, a, { y: F - 0.3, color: 0x5a5650 });
+  }
+  for (let k = 0; k < 40; k++) {
+    const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * 3;
+    w.block(ox + Math.sin(a) * d, oz + Math.cos(a) * d, 0.4 + rng() * 0.3, 0.3 + rng() * 0.6 * (1 - d / 3), 0.3, rng() * 3, { y: F - 0.1 + (1 - d / 3) * 0.6, rx: rng(), color: rng() < 0.3 ? 0xc8bc9c : 0xd8cdb0, collide: false });
+  }
+  w.addCircle(ox, oz, 2.6);
+  // The cistern: still black water over its floor, between stone piers.
+  const [cx, cz] = at(48, 3);
+  B.cistern = new Water(w.scene, { x: cx, z: cz, r: 30 }, F + 0.25, (x, z) => (Math.abs(x - cx) < 12.5 && Math.abs(z - cz) < 27.5 ? 0.25 + Math.max(0, 2 - Math.abs(x - cx) * 0.2) : -1), { step: 2 });
+  B.cistern.uniforms.uShallow.value.setHex(0x2a3a34);
+  B.cistern.uniforms.uDeep.value.setHex(0x0e1614);
+  B.cistern.uniforms.uFoam.value.setHex(0x6a7a6a);
+  for (const pv of [-12, 0, 12, 24]) for (const pu of [42, 54]) {
+    const [px, pz] = at(pu, pv);
+    w.block(px, pz, 1.2, C.ceiling, 1.2, 0, { y: F - 0.3, color: 0x4a4642 });
+  }
+  // The bone chapel: pillars of stacked skulls, a dais and the queen's chair of bones.
+  const Ch = CHAPEL;
+  for (let k = 0; k < 10; k++) {
+    const a = (k / 10) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a), Math.cos(a))) < 0.35) continue; // the way in, from the south (+v)
+    const px = Ch.x + Math.sin(a) * (Ch.r - 1.5), pz = Ch.z + Math.cos(a) * (Ch.r - 1.5);
+    for (let h = 0; h < 8; h++) w.block(px, pz, 0.9 - (h % 2) * 0.15, 0.9, 0.9 - (h % 2) * 0.15, a + h, { y: F - 0.2 + h * 0.9, color: h % 2 ? 0xc8bc9c : 0xd8cdb0, collide: h === 0 });
+    w.addCircle(px, pz, 0.6);
+  }
+  w.block(Ch.x, Ch.z - 10, 8, 0.6, 4, 0, { y: F - 0.3, color: 0x3a3632 });
+  w.block(Ch.x, Ch.z - 11.4, 2.4, 3.6, 0.8, 0, { y: F + 0.2, color: 0xd8cdb0 });
+  for (const sd of [-1, 1]) w.block(Ch.x + sd * 1.3, Ch.z - 11, 0.4, 2.4, 0.4, 0, { y: F + 0.2, color: 0xc8bc9c, collide: false });
+  for (let k = 0; k < 24; k++) B.torches.push({ x: Ch.x + Math.sin(k / 24 * Math.PI * 2) * (Ch.r - 3.2), z: Ch.z + Math.cos(k / 24 * Math.PI * 2) * (Ch.r - 3.2), y: F + 0.6, candle: true, green: true });
+  // Torch flames: one batched set of sprites; four lights follow the torches nearest you.
+  const flameGeo = new THREE.BufferGeometry();
+  const pts = [];
+  for (const t of B.torches) pts.push(t.x, t.y, t.z);
+  flameGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  B.torchMat = new THREE.PointsMaterial({ map: glowTexture(), color: 0xffa040, size: 1.6, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: true });
+  const flames = new THREE.Points(flameGeo, B.torchMat);
+  flames.renderOrder = 4;
+  w.scene.add(flames);
+  B.cryptLights = [];
+  for (let k = 0; k < 4; k++) {
+    const l = new THREE.PointLight(0xff9a50, 0, 18, 1.6);
+    w.scene.add(l);
+    B.cryptLights.push(l);
+  }
+  // Traps. Blades swing across the east passage from the vault; spike plates wait in the west passage;
+  // vents breathe fire across the north passage and the cistern.
+  B.blades = C.blades.map((b, k) => {
+    const [x, z] = at(b.u, b.v);
+    const pivot = new THREE.Group();
+    pivot.position.set(x, F + C.ceiling - 0.4, z);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 7, 0.12), mat(0x3a3836, { metalness: 0.6 }));
+    arm.position.y = -3.5;
+    const blade = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.08, 12, 1, false, 0, Math.PI), mat(0x9a9894, { metalness: 0.8, roughness: 0.3 }));
+    blade.rotation.set(0, 0, Math.PI / 2);
+    blade.rotation.order = 'ZXY';
+    blade.position.y = -7.2;
+    pivot.add(arm, blade);
+    w.scene.add(pivot);
+    return { pivot, x, z, phase: k * 1.6, hitSet: new Set(), side: 0 };
+  });
+  B.spikePlates = C.spikes.flatMap((s) => [-4, 0, 4].map((dv) => {
+    const [x, z] = at(s.u, s.v + dv);
+    w.block(x, z, 2.4, 0.08, 3.8, 0, { y: F - 0.02, color: 0x6a5a4a, collide: false });
+    return { x, z, cd: 0 };
+  }));
+  B.vents = C.vents.map((vt, k) => {
+    const [x, z] = at(vt.u, vt.v);
+    w.block(x, z, 1.0, 1.0, 1.0, 0, { y: F + 0.3, color: 0x2a2624, collide: false });
+    return { x, z, dx: vt.du, dz: vt.dv, len: vt.len, t: k * 1.3, hitSet: new Set() };
+  });
+}
+
+function updateCrypt(w, B, dt, time, region) {
+  const g = w.game, cam = g.camera.position;
+  const inside = region === 'crypt';
+  // Torches flicker; the four lights go to the torches nearest the camera.
+  B.torchMat.opacity = 0.8 + Math.sin(time * 11) * 0.06 + Math.sin(time * 7.3) * 0.05;
+  if (inside) {
+    const near = B.torches.map((t) => [t, (t.x - cam.x) ** 2 + (t.z - cam.z) ** 2]).sort((a, b) => a[1] - b[1]);
+    B.cryptLights.forEach((l, k) => {
+      const t = near[k]?.[0];
+      if (!t) { l.intensity = 0; return; }
+      l.position.set(t.x, t.y + 0.4, t.z);
+      l.color.setHex(t.green ? 0x90f060 : 0xff9a50);
+      l.intensity = (t.candle ? 14 : 22) * (0.85 + Math.sin(time * 13 + k) * 0.08 + Math.sin(time * 7.7 + k * 2) * 0.07);
+    });
+  } else B.cryptLights.forEach((l) => { l.intensity = 0; });
+  B.cistern.update(time, g.sky, 0);
+  if (!inside || g.mode !== 'playing') return;
+  const p = g.player;
+  // Blades: a long swing across the passage; anything the blade passes through is struck once a swing.
+  for (const b of B.blades) {
+    const a = Math.sin(time * 1.4 + b.phase) * 1.05;
+    b.pivot.rotation.x = a;
+    const side = Math.sign(Math.cos(time * 1.4 + b.phase));
+    if (side !== b.side) { b.side = side; b.hitSet.clear(); g.audio.playAt('heavySwing', { x: b.x, z: b.z }, 30); }
+    const tipY = b.pivot.position.y - Math.cos(a) * 7.2, tipZ = b.z - Math.sin(a) * 7.2;
+    TRAP.pos.set(b.x, tipY, tipZ);
+    if (Math.abs(Math.cos(time * 1.4 + b.phase)) > 0.35) g.combat.sphere(TRAP, new THREE.Vector3(b.x, tipY, tipZ), 1.5, { dmg: 34, poise: 40, knock: 6, unblockable: false }, b.hitSet);
+  }
+  // Spike plates: step on one and iron spikes punch up a moment later.
+  for (const s of B.spikePlates) {
+    if (s.cd > 0) { s.cd -= dt; continue; }
+    if (Math.hypot(p.pos.x - s.x, p.pos.z - s.z) < 1.3 && p.onGround) {
+      s.cd = 2.5;
+      g.audio.playAt('ui', s, 30);
+      TRAP.pos.set(s.x, w.getHeight(s.x, s.z), s.z);
+      g.effects.iceSpike(TRAP, s.x, s.z, 0.45, { look: 'iron', radius: 1.9, count: 9, hit: { dmg: 30, poise: 30, knock: 3, unblockable: true } });
+    }
+  }
+  // Fire vents: a puff of smoke, then a gout of flame across the passage, on a slow cycle.
+  for (const v of B.vents) {
+    v.t = (v.t + dt) % 5;
+    if (v.t > 2.6 && v.t < 3.2 && Math.random() < dt * 10) g.particles.emit({ x: v.x, y: CRYPT.floor + 0.8, z: v.z, count: 2, speed: 0.6, up: 1, color: 0x3a3632, color2: 0x6a625a, life: [0.6, 1.2], size: [0.15, 0.3], jitter: 0.2 });
+    if (v.t >= 3.2 && v.t < 4.4) {
+      if (v.t - dt < 3.2) { v.hitSet.clear(); g.audio.playAt('ignite', v, 40); }
+      g.particles.emit({ x: v.x + v.dx * 0.5, y: CRYPT.floor + 0.8, z: v.z + v.dz * 0.5, count: 5, speed: v.len * 1.6, up: 0.4, color: 0xff7a2a, color2: 0xffd060, life: [0.3, 0.6], size: [0.2, 0.45], drag: 1.2, dir: { x: v.dx * v.len * 1.6, y: 0.2, z: v.dz * v.len * 1.6 } });
+      TRAP.pos.set(v.x, CRYPT.floor, v.z);
+      for (let k = 1; k <= Math.round(v.len / 1.6); k++) g.combat.sphere(TRAP, new THREE.Vector3(v.x + v.dx * k * 1.6, CRYPT.floor + 0.8, v.z + v.dz * k * 1.6), 1.0, { dmg: 8, poise: 6, burn: 26, unblockable: true }, v.hitSet);
+    }
+  }
+}
+
 // ---------- scenery (batched by world/Scenery.js) ----------
 
 const sg = () => P.sceneryGeometries();
@@ -1422,6 +1606,7 @@ export function updateBiomes(w, dt, time) {
   }
   B.oasis.update(time, sky, w.weather.rain);
   B.mere?.update(time, sky, w.weather.rain);
+  updateCrypt(w, B, dt, time, region);
   // The Shardlands' crystals gather light by day and give it back after dark, slowly pulsing.
   if (B.crystalMat) B.crystalMat.emissiveIntensity = 0.3 + night * 0.9 + Math.sin(time * 0.7) * 0.08;
   if (region === 'shard' && Math.random() < dt * 10) {
