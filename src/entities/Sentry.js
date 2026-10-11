@@ -124,6 +124,20 @@ export class Sentry extends Actor {
     this.vel.set((dx / d) * 2.2, 0, (dz / d) * 2.2);
   }
 
+  canBackstab() {
+    return this.alive && !this.ally && !this.netPuppet && !['riposted', 'knockdown', 'dead', 'attack', 'broken'].includes(this.state);
+  }
+
+  onBackstab(by) {
+    if (!this.canBackstab()) return false;
+    this.state = 'riposted';
+    this.t = 0;
+    this.openT = 0;
+    this.vel.set(0, 0, 0);
+    this.yaw = yawTo(by.pos.x, by.pos.z, this.pos.x, this.pos.z); // still facing away
+    return true;
+  }
+
   onRiposte(by) {
     if (!this.isOpen()) return false;
     this.state = 'riposted';

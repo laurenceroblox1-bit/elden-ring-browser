@@ -354,6 +354,8 @@ export class Player extends Actor {
   _light(mi, name = 'light1') {
     const foe = this.findRiposteTarget();
     if (foe) return this.startRiposte(foe);
+    const back = this.findBackstabTarget();
+    if (back) return this.startRiposte(back, true);
     return this.startAttack(name, mi);
   }
 
@@ -374,12 +376,29 @@ export class Player extends Actor {
     return best;
   }
 
-  startRiposte(foe) {
-    if (!(foe.netPuppet ? this.game.net.coop.riposte(foe) : foe.onRiposte(this))) return false;
+  // A foe we stand right behind, close and facing it, that isn't mid-swing: a critical blow from behind.
+  findBackstabTarget() {
+    if (this.mounted) return null;
+    const lock = this.game.lockTarget;
+    let best = null, bestD = Infinity;
+    for (const e of this.game.combat.targetsFor(this)) {
+      if (!e.canBackstab?.()) continue;
+      const dx = e.pos.x - this.pos.x, dz = e.pos.z - this.pos.z;
+      const d = Math.hypot(dx, dz) - e.radius;
+      if (d > R.reach * 0.85 || Math.abs(e.pos.y - this.pos.y) > 1.2) continue;
+      if (Math.abs(angleDiff(e.yaw, Math.atan2(-dx, -dz))) < 2.35) continue; // not behind it
+      if (e !== lock && Math.abs(angleDiff(this.yaw, Math.atan2(dx, dz))) > 0.9) continue;
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  startRiposte(foe, back = false) {
+    if (back ? !foe.onBackstab(this) : !(foe.netPuppet ? this.game.net.coop.riposte(foe) : foe.onRiposte(this))) return false;
     this.state = 'riposte';
     this.t = 0;
     this.atk = null;
-    this.rip = { target: foe, stabbed: false, struck: false };
+    this.rip = { target: foe, stabbed: false, struck: false, back };
     this.yaw = yawTo(this.pos.x, this.pos.z, foe.pos.x, foe.pos.z);
     this.vel.set(0, 0, 0);
     this.invuln = true;
@@ -667,7 +686,7 @@ export class Player extends Actor {
         break;
     }
     const s = this.state;
-    this.riposteCandidate = s === 'move' || s === 'guard' || s === 'attack' ? this.findRiposteTarget() : null;
+    this.riposteCandidate = s === 'move' || s === 'guard' || s === 'attack' ? this.findRiposteTarget() ?? this.findBackstabTarget() : null;
 
     if (this.state !== 'mounted') this.integrate(dt);
     const speed = Math.hypot(this.vel.x, this.vel.z);
@@ -866,11 +885,13 @@ export class Player extends Actor {
       r.struck = true;
       // The foe may have died or vanished mid-animation (a rest, a reset): then the blow simply misses.
       const wr = this.weapon.riposte ?? {};
-      if (foe.alive && g.combat.strike(this, foe, { dmg: (wr.dmg ?? R.dmg) * (wr.crit ?? R.crit) * this.dmgMult, poise: 0, heavy: true, riposte: true })) {
+      const k = r.back ? 0.85 : 1; // from behind: a little less than a riposte
+      if (foe.alive && g.combat.strike(this, foe, { dmg: (wr.dmg ?? R.dmg) * (wr.crit ?? R.crit) * k * this.dmgMult, poise: 0, heavy: true, riposte: true })) {
         g.audio.play('riposte');
         g.cameraShake(0.5);
         g.hitstop = Math.max(g.hitstop, 0.14);
-        this.stats.ripostes++;
+        if (r.back) this.stats.backstabs = (this.stats.backstabs ?? 0) + 1;
+        else this.stats.ripostes++;
       }
     }
     if (t >= R.time) {

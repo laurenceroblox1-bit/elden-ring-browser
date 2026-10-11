@@ -79,6 +79,7 @@ export class MapScreen {
             <li><i class="lg gate"></i>The mist gate</li>
             <li><i class="lg remnant"></i>Your lost ash</li>
             <li><i class="lg friend"></i>Another player</li>
+            <li><i class="lg waypoint"></i>Your waypoint (click the map to set or clear it)</li>
           </ul>
         </div>
       </div>`;
@@ -91,7 +92,8 @@ export class MapScreen {
     el.addEventListener('click', (ev) => {
       if (this.dragged) return; // the end of a drag isn't a click on whatever it ended over
       const b = ev.target.closest('button[data-shrine]');
-      if (b) this.travelTo(b.dataset.shrine);
+      if (b) return this.travelTo(b.dataset.shrine);
+      if (ev.target.closest('.map-zoom') && !ev.target.closest('button')) this._waypointAt(ev.clientX, ev.clientY);
     });
     // Zoom (wheel, buttons) and pan (drag). The canvas and markers scale together; markers keep
     // their size (see --mz in style.css).
@@ -178,6 +180,17 @@ export class MapScreen {
     g.closeModal();
   }
 
+  // A click on the map sets your waypoint there, or clears it if you click on it again.
+  _waypointAt(cx, cy) {
+    const r = this.canvas.getBoundingClientRect();
+    const x = -EXTENT + ((cx - r.left) / r.width) * 2 * EXTENT, z = -EXTENT + ((cy - r.top) / r.height) * 2 * EXTENT;
+    const g = this.game, w = g.state.waypoint;
+    const near = (12 * 2 * EXTENT) / r.width; // a dozen pixels, in metres
+    g.setWaypoint(w && Math.hypot(w.x - x, w.z - z) < near ? null : { x: Math.round(x), z: Math.round(z) });
+    g.audio.play('ui');
+    this.refresh();
+  }
+
   // ---------- markers ----------
 
   refresh() {
@@ -195,6 +208,7 @@ export class MapScreen {
     if (fog.active) parts.push(`<span class="mk gate" style="${at(fog.x, fog.z)}" title="The mist gate"></span>`);
     for (const n of g.npcs) parts.push(`<span class="mk npc" style="${at(n.def.x, n.def.z)}" title="${esc(n.def.name)}"></span>`);
     for (const m of g.quests.markers()) parts.push(`<span class="mk quest${m.main ? ' main' : ''}" style="${at(m.x, m.z)}" title="${esc(m.label)}"></span>`);
+    if (st.waypoint) parts.push(`<span class="mk waypoint" style="${at(st.waypoint.x, st.waypoint.z)}" title="Your waypoint"></span>`);
     if (g.remnant) parts.push(`<span class="mk remnant" style="${at(g.remnant.x, g.remnant.z)}" title="Your lost ash (${g.remnant.amount})"></span>`);
     const lit = [...g.world.shrines.values()].filter((s) => s.lit);
     for (const s of lit) {

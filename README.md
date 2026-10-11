@@ -40,7 +40,7 @@ Google Fonts fall back to system serif faces when offline.
 | Shift | Sprint; gallop when riding |
 | Space | Roll (with a direction), backstep (without), jump on horseback |
 | G | Jump. Attack in the air for a plunging blow (A while sprinting on a gamepad) |
-| Left click | Light attack; press again to chain (2 to 4 hits, by weapon). Riposte a reeling foe |
+| Left click | Light attack; press again to chain (2 to 4 hits, by weapon). Riposte a reeling foe, or stab an unaware one in the back |
 | Hold right click | Guard. Raise it just as a blow lands to parry |
 | F | Heavy attack |
 | C | Weapon art (costs focus and some stamina) |
@@ -55,6 +55,7 @@ Google Fonts fall back to system serif faces when offline.
 | N | Multiplayer: join a shared Vale, see who's there, read the chat |
 | Enter | Chat (when connected): Enter sends, Esc cancels |
 | Z / X / B / T | Emotes: wave, bow, sit (until you move), cheer. Other players see them |
+| Y | Mark the spot you're looking at (or the foe you're locked on to). Other players see the mark in your cloak colour, on the ground and on their compass |
 | Esc / P | Pause (graphics quality and sound toggles are here) |
 | ` (backquote) | Test menu (also in the pause menu) |
 
@@ -322,7 +323,22 @@ it doesn't count as resting, so enemies stay as they are and your flask isn't re
 travel during a boss fight or while you're down. The fen pools show on the map in black.
 
 Scroll (or the + and - buttons) to zoom, and drag to pan. Friends in a shared Vale show on the map
-and the compass.
+and the compass. Click anywhere on the map to set your own waypoint: a pale blue pin on the map and
+the compass, and a pillar of light in the world. Click it again to clear it; it clears itself when you
+arrive.
+
+## Backstabs, appearance and New Game+
+
+- **Backstabs**: get right behind an ordinary foe that isn't mid-swing (and hasn't noticed you, for
+  the elites) and a light attack becomes a critical stab, a little weaker than a riposte. The riposte
+  marker shows when one is ready. Bosses can't be stabbed in the back.
+- **Appearance** (pause menu): ten cloak colours, six armour finishes (steel, blackened, gilded,
+  verdigris, bone white, rusted) and six helm ornaments (plain, plume, horns, wings, antlers, a halo).
+  It's kept between journeys, and other players in a shared Vale see you as you chose.
+- **New Game+**: the ending card offers the next journey. You keep your level, gear, smithing, ash,
+  items and flasks; every foe and great one comes back, takes 60% more killing and hits 35% harder for
+  each journey past the first, and gives half again as much ash. The level screen shows which journey
+  you're on.
 
 ## Test menu
 
@@ -491,24 +507,22 @@ position; the test menu toggles it any time), plus these keys:
 | --- | --- |
 | 1–6 | Teleport to First Light, Brannoc's camp, the ruins, the lake, the moor, the Gatehouse |
 | 7 | Teleport to the mist gate |
-| G | God mode |
+| 0 | God mode |
 | U | Unlock Wisp |
 | L | Gain 5000 ash |
 | K | Kill the boss you're fighting |
-| Y | Give every weapon, shield and rite |
+| 9 | Give every weapon, shield and rite |
 
 `window.game` is exposed in the console.
 
 ## Known gaps and next steps
 
-- **Combat depth**: backstabs on ordinary attacks (only Ghoststep has one today). Ripostes use the
-  sword's animation for every weapon. Smithing raises damage only, not scaling.
+- **Combat depth**: ripostes and backstabs use the sword's animation for every weapon. Smithing raises damage only, not scaling.
 - **Camera**: it avoids terrain and stays inside the arena, but it can still clip through ruins and
   castle walls.
 - **Performance**: characters are merged into a few skinned meshes and distant things are culled
   (about 150 to 250 draw calls in open areas). Vegetation has no level of detail (LOD).
 - **Input**: keyboard, mouse and gamepad; no touch controls yet, and no key rebinding screen.
-- **Map**: no custom waypoints.
 - **World**: the castle keep's interior is a hook for a later region. Beaten outer bosses clear
   their region's sky, but their land doesn't otherwise change (the Rimewold's thaw does).
 - **Multiplayer**: other players show on the compass and the map, and the Multiplayer panel's

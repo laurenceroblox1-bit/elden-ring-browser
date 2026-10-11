@@ -9,6 +9,9 @@
 import { Actor } from './Actor.js';
 import { damp, yawTo } from '../core/math.js';
 
+// States in which a foe can't be stabbed in the back: already reeling, mid-attack, or gone.
+const NO_BACKSTAB = new Set(['riposted', 'knockdown', 'dead', 'attack', 'lunge', 'hop', 'wake', 'phase', 'blink', 'cast']);
+
 // States the shared code drives (the AI doesn't steer in them).
 const REELING = new Set(['hurt', 'parried', 'riposted', 'knockdown']);
 // Past this distance from the camera a foe is a few fogged pixels: it isn't drawn (saving its draw calls
@@ -72,6 +75,21 @@ export class Foe extends Actor {
     const dx = this.pos.x - by.pos.x, dz = this.pos.z - by.pos.z;
     const d = Math.hypot(dx, dz) || 1;
     this.vel.set((dx / d) * 2.4, 0, (dz / d) * 2.4);
+  }
+
+  canBackstab() {
+    if (!this.alive || this.ally || this.netPuppet || (this.isBoss && !this.elite)) return false;
+    return !NO_BACKSTAB.has(this.state);
+  }
+
+  onBackstab(by) {
+    if (!this.canBackstab()) return false;
+    this._setState('riposted');
+    this.openT = 0;
+    this.move = null;
+    this.vel.set(0, 0, 0);
+    this.yaw = yawTo(by.pos.x, by.pos.z, this.pos.x, this.pos.z); // still facing away
+    return true;
   }
 
   onRiposte(by) {

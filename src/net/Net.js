@@ -14,6 +14,7 @@
 //  - Anywhere else: server.js relays the same presence objects over WebSocket.
 import { Ghost, playerJoints, horseJoints } from './Ghost.js';
 import { Coop } from './Coop.js';
+import { lookCode, DEFAULT_LOOK } from '../models/look.js';
 
 const SEND_RATE = 1 / 15;
 const EV_KEEP = 2.5; // seconds an event stays in the list
@@ -127,6 +128,9 @@ export class Net {
       if (type === 'chat') {
         const text = clean(data?.text, 200);
         if (text) this._chat(this.ghosts.get(key)?.name ?? clean(this.present.get(key)?.n, 20) ?? 'Someone', text, false);
+      } else if (type === 'ping') {
+        const gh = this.ghosts.get(key);
+        if (gh && Number.isFinite(data?.x) && Number.isFinite(data?.z)) this.game.ping(data.x, data.z, { color: gh.cloak, who: gh.name, foe: !!data.f });
       } else this.coop.receive(type, data, key);
     }
     this.lastSeq.set(key, max);
@@ -448,7 +452,7 @@ export class Net {
       p: [r2(root.position.x), r2(root.position.y), r2(root.position.z)],
       r: [r3(root.rotation.x), r3(root.rotation.y), r3(root.rotation.z)],
       py: r3(r.pivot.position.y), hy: r3(r.hips.position.y),
-      b, w: p.weaponId, s: p.shieldId ?? null,
+      b, w: p.weaponId, s: p.shieldId ?? null, lk: lookCode(g.look ?? DEFAULT_LOOK),
       v: g.mode === 'playing' && root.visible ? 1 : 0,
       a: p.alive ? 1 : 0, st: p.state, as: p.atkSeq ?? 0, iv: p.invuln ? 1 : 0,
     };

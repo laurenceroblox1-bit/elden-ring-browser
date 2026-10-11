@@ -131,6 +131,10 @@ export class Actor {
   onParried() {}
   // onRiposte(by): a riposte has started on this actor; hold still until the blow lands. Return false to refuse.
   onRiposte() { return false; }
+  // canBackstab(): true while a critical blow from behind can start on this actor (unaware or busy
+  // elsewhere, not mid-swing); onBackstab(by) starts it, like onRiposte.
+  canBackstab() { return false; }
+  onBackstab() { return false; }
 
   get forwardX() { return Math.sin(this.yaw); }
   get forwardZ() { return Math.cos(this.yaw); }

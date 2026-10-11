@@ -1,5 +1,7 @@
 // Game: owns the renderer, the loop and the glue between systems (deaths, shrines, the boss fight, saves).
 import * as THREE from '../lib/three.js';
+import { AppearancePanel } from '../ui/AppearancePanel.js';
+import { applyLook, cleanLook, cloakHex } from '../models/look.js';
 import { Events } from './Events.js';
 import { Input } from './Input.js';
 import { AudioFx } from './Audio.js';
@@ -116,7 +118,9 @@ export class Game {
     this.debugViews = new DebugViews(this);
     // Full-screen menus that build their own DOM (the others live in HUD's template).
     this.net = new Net(this);
-    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this), multiplayer: new NetPanel(this.hud.root, this), shop: new ShopPanel(this.hud.root, this) };
+    this.panels = { testmenu: new TestMenu(this.hud.root, this), map: new MapScreen(this.hud.root, this), multiplayer: new NetPanel(this.hud.root, this), shop: new ShopPanel(this.hud.root, this), appearance: new AppearancePanel(this.hud.root, this) };
+    this.look = cleanLook(Save.pref('look'));
+    applyLook(this.player.model, this.look);
     this.input.pad.onChange = (on, id) => this._onPad(on, id);
     this._registerInteractables();
     this._combatTips();
@@ -242,6 +246,35 @@ export class Game {
     this.save();
   }
 
+  // New Game+: the next journey through the Vale. You keep your level, gear, upgrades, ash, items and
+  // flasks; every foe and boss is back, tougher, and worth more ash; the quests start over.
+  newGamePlus() {
+    const old = this.state, st = newGameState();
+    for (const k of ['stats', 'ash', 'flasksMax', 'inventory', 'upgrades', 'gear', 'discovered']) st[k] = old[k];
+    st.flags.horse = !!old.flags.horse;
+    st.flags.metTamsin = !!old.flags.metTamsin;
+    st.journey = (old.journey ?? 1) + 1;
+    this.state = st;
+    this.endingShown = false;
+    this.endFoeFight();
+    this.dismissAllies?.();
+    document.querySelector('.ending-screen')?.remove();
+    this.quests.load(null);
+    this.weatherRegion = null;
+    this.boss.reset?.();
+    this._enterWorld();
+    this.hud.banner(`Journey ${st.journey}`, 'The Vale stirs again', 'area', 5200);
+    this.zone = 'firstlight';
+    this.after(1.5, () => this.quests.start('warden'));
+    this.save();
+  }
+
+  // Damage and ash multipliers for New Game+ (null on the first journey).
+  get journeyMul() {
+    const j = this.state?.journey ?? 1;
+    return j > 1 ? { hp: 1 + 0.6 * (j - 1), dmg: 1 + 0.35 * (j - 1), ash: 1 + 0.5 * (j - 1) } : null;
+  }
+
   continueGame() {
     const saved = Save.load();
     if (!saved) return this.newGame();
@@ -283,12 +316,14 @@ export class Game {
           <li><b>${st.gear.owned.length}</b><span>pieces of gear</span></li>
           <li><b>${st.discovered.length}</b><span>places found</span></li>
         </ul>
-        <div class="test-btns"><button class="btn primary ending-go">Keep exploring</button></div>
+        <p class="ending-ngp">Or begin Journey ${(st.journey ?? 1) + 1}: the Vale wakes again, every foe and great one with it, tougher and richer in ash. You keep your strength, your gear and your ash.</p>
+        <div class="test-btns"><button class="btn primary ending-go">Keep exploring</button><button class="btn ending-ngplus">Begin Journey ${(st.journey ?? 1) + 1}</button></div>
       </div>`;
     this.hud.root.appendChild(el);
     this.input.exitLock?.();
     const close = () => { el.remove(); if (this.mode === 'playing' && !this.input.usingPad) this.input.requestLock?.(); };
     el.querySelector('.ending-go').addEventListener('click', close);
+    el.querySelector('.ending-ngplus').addEventListener('click', () => { el.remove(); this.newGamePlus(); });
     this.audio.play('victory');
   }
 
@@ -321,6 +356,7 @@ export class Game {
       if (this.quests.status('winter') === 'inactive') this.after(1, () => this.quests.start('winter'));
     }
     this.resetWorld();
+    this._syncWaypoint();
     this._spawnAtShrine();
     if (!this.input.usingPad) this.input.requestLock();
   }
@@ -802,7 +838,7 @@ export class Game {
 
   onEnemyKilled(e) {
     if (e.ally) return; // a spirit ally fading is not a kill
-    this.addAsh(e.ash);
+    this.addAsh(Math.round(e.ash * (this.journeyMul?.ash ?? 1)));
     this.events.emit('enemyKilled', e);
     if (this.lockTarget === e) this.lockTarget = null;
     const drop = e.spawn.drop;
@@ -956,6 +992,7 @@ export class Game {
       case 'map': shut('map', 'pause', 'back'); break;
       case 'multiplayer': shut('multiplayer', 'pause', 'back'); break;
       case 'shop': shut('interact', 'pause', 'back'); break;
+      case 'appearance': shut('pause', 'back'); break;
       case null:
         if (i.pressed('pause')) this.openModal('pause', true);
         else if (i.pressed('journal')) this.openModal('journal');
@@ -964,6 +1001,7 @@ export class Game {
         else if (i.pressed('testMenu')) this.openMenu('testmenu');
         else if (i.pressed('multiplayer')) this.openMenu('multiplayer');
         else if (i.pressed('chat')) this.panels.multiplayer.openChat();
+        else if (i.pressed('ping')) this.pingAhead();
         break;
     }
     // The key that closes a menu or dialogue must not also act in the world this frame.
@@ -1100,9 +1138,118 @@ export class Game {
       this._zones(dt);
       this._pickupFx(dt);
       this._ambient(dt, this.player.pos);
+      this._waypointCheck();
     }
+    this._updatePings(dt);
     this.cam.update(dt, !this.modal || this.modal === 'dialogue');
     this.debugViews.update(dt);
+  }
+
+  // ---------- appearance ----------
+
+  setLook(l) {
+    this.look = applyLook(this.player.model, l);
+    Save.pref('look', this.look);
+  }
+
+  // ---------- pings ----------
+
+  // Y: mark the foe you're locked on to, or the spot you're looking at, for a few seconds. In a shared
+  // Vale everyone sees it (in your cloak colour) on the ground and on their compass.
+  pingAhead() {
+    const t = this.lockTarget, c = this.camera;
+    let x, z, foe = false;
+    if (t?.alive) {
+      ({ x, z } = t.pos);
+      foe = true;
+    } else {
+      const d = new THREE.Vector3();
+      c.getWorldDirection(d);
+      const o = c.position;
+      x = this.player.pos.x + this.player.forwardX * 25;
+      z = this.player.pos.z + this.player.forwardZ * 25;
+      for (let s = 2; s < 160; s += 1.5) {
+        const px = o.x + d.x * s, py = o.y + d.y * s, pz = o.z + d.z * s;
+        if (py <= this.world.getHeight(px, pz)) { x = px; z = pz; break; }
+      }
+    }
+    this.ping(x, z, { color: cloakHex(this.look), who: null, foe });
+    this.net?.online && this.net.send('ping', { x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, f: foe ? 1 : 0 });
+  }
+
+  ping(x, z, { color = 0xf2d58f, who = null, foe = false } = {}) {
+    this.pings ??= [];
+    while (this.pings.length >= 6) this._removePing(this.pings[0]);
+    const y = this.world.getHeight(x, z);
+    const g = new THREE.Group();
+    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.2, 24).rotateX(-Math.PI / 2), m);
+    ring.position.y = 0.15;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.25, 18, 6, 1, true).translate(0, 9, 0), m);
+    g.add(ring, beam);
+    g.position.set(x, y, z);
+    g.renderOrder = 6;
+    this.scene.add(g);
+    const p = { x, z, t: 0, mesh: g, mat: m, ring, color, label: who ? `${who}'s mark` : 'Your mark' };
+    this.pings.push(p);
+    this.audio.play('bellSmall');
+    if (who) this.hud.toast(foe ? `${who} marks a foe.` : `${who} marks a place.`);
+    return p;
+  }
+
+  _removePing(p) {
+    this.scene.remove(p.mesh);
+    p.mesh.traverse((o) => o.geometry?.dispose());
+    p.mat.dispose();
+    this.pings.splice(this.pings.indexOf(p), 1);
+  }
+
+  _updatePings(dt) {
+    if (!this.pings?.length) return;
+    for (const p of [...this.pings]) {
+      p.t += dt;
+      const s = 1 + (p.t % 1.2) * 1.5;
+      p.ring.scale.set(s, 1, s);
+      p.mat.opacity = 0.8 * Math.min(1, (10 - p.t) / 2);
+      if (p.t > 10) this._removePing(p);
+    }
+  }
+
+  // ---------- waypoint ----------
+
+  // Your own marker, set from the map: a pin on the compass and a pillar of light in the world.
+  setWaypoint(w) {
+    this.state.waypoint = w;
+    this._syncWaypoint();
+    this.save();
+  }
+
+  _syncWaypoint() {
+    const w = this.state?.waypoint;
+    if (!this.waypointBeam) {
+      const g = new THREE.Group();
+      const m = new THREE.MeshBasicMaterial({ color: 0x9fe8ff, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+      g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 70, 6, 1, true).translate(0, 35, 0), m));
+      const core = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 70, 4, 1, true).translate(0, 35, 0), m.clone());
+      core.material.opacity = 0.7;
+      g.add(core);
+      g.renderOrder = 6;
+      this.scene.add(g);
+      this.waypointBeam = g;
+    }
+    this.waypointBeam.visible = !!w;
+    if (w) this.waypointBeam.position.set(w.x, this.world.getHeight(w.x, w.z), w.z);
+  }
+
+  _waypointCheck() {
+    const w = this.state.waypoint;
+    if (!w) return;
+    if (this.waypointBeam && !this.waypointBeam.visible) this._syncWaypoint();
+    const p = this.player.pos;
+    if (Math.hypot(w.x - p.x, w.z - p.z) < 6) {
+      this.setWaypoint(null);
+      this.hud.toast('Waypoint reached');
+    }
   }
 
   // Keeps the HUD's key glyphs and control lists in step with the device in use.
@@ -1447,11 +1594,11 @@ export class Game {
     const jumps = { Digit1: ZONES.firstlight, Digit2: ZONES.camp, Digit3: ZONES.ruins, Digit4: ZONES.lake, Digit5: ZONES.moor, Digit6: ZONES.gatehouse };
     for (const [code, z] of Object.entries(jumps)) if (i.justDown.has(code)) go(z.x + 3, z.z + 3);
     if (i.justDown.has('Digit7')) go(ARENA.x, ARENA.z + ARENA.r + 4);
-    if (i.justDown.has('KeyG')) { this.player.god = !this.player.god; this.hud.toast(`God mode ${this.player.god ? 'on' : 'off'}`); }
+    if (i.justDown.has('Digit0')) { this.player.god = !this.player.god; this.hud.toast(`God mode ${this.player.god ? 'on' : 'off'}`); }
     if (i.justDown.has('KeyU')) { this.state.flags.horse = true; this.hud.toast('Wisp unlocked'); }
     if (i.justDown.has('KeyK') && this.activeBoss) this.activeBoss.takeHit({ dmg: 9999, poise: 0, dirX: 0, dirZ: 1 });
     if (i.justDown.has('KeyL')) { this.state.ash += 5000; }
-    if (i.justDown.has('KeyY')) { for (const id of ALL_GEAR) this.giveGear(id); }
+    if (i.justDown.has('Digit9')) { for (const id of ALL_GEAR) this.giveGear(id); }
   }
 }
 

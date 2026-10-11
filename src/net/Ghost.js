@@ -8,6 +8,7 @@ import { buildHorse } from '../models/horse.js';
 import { equipModel } from '../models/weapons.js';
 import { damp, dampAngle } from '../core/math.js';
 import { WEAPONS, SHIELDS } from '../data/weapons.js';
+import { applyLook, parseLook, cloakHex, CLOAKS as LOOK_CLOAKS } from '../models/look.js';
 
 // Messages come from other players: anything malformed is dropped rather than drawn.
 const nums = (a, n) => Array.isArray(a) && a.length >= n && a.length <= 200 && a.every((v) => typeof v === 'number' && Number.isFinite(v));
@@ -17,8 +18,6 @@ function valid(m) {
   return true;
 }
 
-// Cloak colours handed out by player id.
-const CLOAKS = [0x8a3a30, 0x3a5a8a, 0x7a6a2a, 0x5a3a7a, 0x2a6a4a, 0x8a5a2a, 0x6a6a6a, 0x2a2a3a];
 
 // The joints a pose moves, in a fixed order shared by sender and receiver.
 export const playerJoints = (r) => [
@@ -54,8 +53,9 @@ export class Ghost {
     this.id = id;
     this.name = name;
     this.model = buildPlayer();
-    this.cloak = CLOAKS[id % CLOAKS.length];
-    this._tint(this.cloak);
+    // Until their look arrives, a cloak colour by player id.
+    this.lookCode = null;
+    this._setLook({ cloak: LOOK_CLOAKS[(id % (LOOK_CLOAKS.length - 1)) + 1][0] });
     this.joints = playerJoints(this.model);
     this.tag = nameTag(name);
     this.tag.position.y = 2.35;
@@ -69,18 +69,10 @@ export class Ghost {
     this.seen = 0; // seconds since the last message
   }
 
-  // Their cloak and tabard in their own colour (the shared cloth material is swapped for a copy).
-  _tint(hex) {
-    const copies = new Map();
-    this.model.root.traverse((o) => {
-      if (!o.isMesh) return;
-      const swap = (m) => {
-        if (!m?.color || m.color.getHex() !== 0x2d4a4c) return m;
-        if (!copies.has(m)) copies.set(m, Object.assign(m.clone(), { color: new THREE.Color(hex) }));
-        return copies.get(m);
-      };
-      o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
-    });
+  // Their cloak, armour and helm as they chose them (models/look.js).
+  _setLook(l) {
+    const look = applyLook(this.model, l);
+    this.cloak = cloakHex(look);
   }
 
   setName(name) {
@@ -98,6 +90,11 @@ export class Ghost {
     const first = !this.target;
     this.target = m;
     this.seen = 0;
+    if (typeof m.lk === 'string' && m.lk !== this.lookCode) {
+      const l = parseLook(m.lk);
+      if (l) this._setLook(l);
+      this.lookCode = m.lk;
+    }
     const w = Object.hasOwn(WEAPONS, m.w) ? m.w : null;
     const sh = Object.hasOwn(SHIELDS, m.s) ? m.s : null;
     if (w && (w !== this.weapon || sh !== this.shield)) {

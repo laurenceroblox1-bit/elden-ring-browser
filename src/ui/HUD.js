@@ -14,7 +14,7 @@ export const CONTROLS = [
   ['Shift', 'Sprint, or gallop on Wisp'],
   ['Space', 'Roll · backstep (no direction) · horse jump'],
   ['G', 'Jump · attack in the air for a plunging blow'],
-  ['Left click', 'Light attack, press again to chain · riposte a reeling foe'],
+  ['Left click', 'Light attack, press again to chain · riposte a reeling foe · stab an unaware foe in the back'],
   ['Hold right click', 'Guard · raise it just as a blow lands to parry'],
   ['F', 'Heavy attack'],
   ['C', 'Weapon art (spends focus)'],
@@ -28,6 +28,7 @@ export const CONTROLS = [
   ['M', 'Map · fast travel between lit lanterns'],
   ['N', 'Multiplayer · Enter to chat'],
   ['Z X B T', 'Emotes: wave, bow, sit, cheer'],
+  ['Y', 'Mark the spot you look at (or your locked foe) for other players'],
   ['Esc / P', 'Pause'],
   ['`', 'Test menu'],
 ];
@@ -118,6 +119,7 @@ const TEMPLATE = `
     <div class="menu">
       <button class="btn primary" id="btn-resume">Resume</button>
       <button class="btn" id="btn-equipment">Equipment</button>
+      <button class="btn" id="btn-look">Appearance</button>
       <button class="btn" id="btn-map">Map</button>
       <button class="btn" id="btn-multiplayer">Multiplayer</button>
       <button class="btn" id="btn-quality"></button>
@@ -156,7 +158,7 @@ const TEMPLATE = `
       <button class="btn" id="btn-leave">Leave the lantern</button>
     </div>
     <div class="shrine-right">
-      <div class="level-head"><span>Level <b class="lv"></b></span><span>Ash <b class="lv-ash"></b></span><span>Next level <b class="lv-cost"></b></span></div>
+      <div class="level-head"><span class="lv-journey" hidden>Journey <b class="lv-j"></b></span><span>Level <b class="lv"></b></span><span>Ash <b class="lv-ash"></b></span><span>Next level <b class="lv-cost"></b></span></div>
       <div class="stats"></div>
     </div>
   </div>
@@ -232,6 +234,7 @@ export class HUD {
     $('#btn-resume').addEventListener('click', () => game.closeModal());
     $('#btn-equipment').addEventListener('click', () => game.openEquipment());
     $('#btn-map').addEventListener('click', () => game.openMenu('map'));
+    $('#btn-look').addEventListener('click', () => game.openMenu('appearance'));
     $('#btn-testmenu').addEventListener('click', () => game.openMenu('testmenu'));
     $('#btn-multiplayer').addEventListener('click', () => game.openMenu('multiplayer'));
     // One delegated handler for the whole equipment screen: slot tabs and gear rows carry data attributes.
@@ -425,6 +428,9 @@ export class HUD {
     const lv = levelOf(s);
     const cost = levelCost(lv);
     this.$('.lv').textContent = lv;
+    const j = g.state.journey ?? 1;
+    this.$('.lv-journey').hidden = j < 2;
+    this.$('.lv-j').textContent = j;
     this.$('.lv-ash').textContent = g.state.ash;
     this.$('.lv-cost').textContent = cost;
     const box = this.$('.stats');
@@ -675,6 +681,9 @@ export class HUD {
     const p = g.player.pos;
     const marks = g.quests.markers();
     for (const s of g.world.shrines.values()) if (s.lit) marks.push({ x: s.x, z: s.z, shrine: true, label: s.name });
+    const wp = g.state?.waypoint;
+    if (wp) marks.push({ x: wp.x, z: wp.z, waypoint: true, label: 'Your waypoint' });
+    for (const pg of g.pings ?? []) marks.push({ x: pg.x, z: pg.z, friend: pg.color, label: pg.label });
     // Other players, in their own cloak colour.
     for (const gh of g.net?.ghosts.values() ?? []) {
       if (gh.model.root.visible) marks.push({ x: gh.model.root.position.x, z: gh.model.root.position.z, friend: gh.cloak, label: gh.name });
@@ -687,7 +696,7 @@ export class HUD {
     this.pins.forEach((e, i) => {
       const m = marks[i];
       if (!m) { e.style.opacity = '0'; return; }
-      e.className = 'pin' + (m.main ? ' main' : '') + (m.shrine ? ' shrine' : '') + (m.friend !== undefined ? ' friend' : '');
+      e.className = 'pin' + (m.main ? ' main' : '') + (m.shrine ? ' shrine' : '') + (m.waypoint ? ' waypoint' : '') + (m.friend !== undefined ? ' friend' : '');
       e.style.background = m.friend !== undefined ? `#${m.friend.toString(16).padStart(6, '0')}` : '';
       e.title = m.label;
       const d = Math.hypot(m.x - p.x, m.z - p.z);

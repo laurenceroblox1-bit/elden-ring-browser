@@ -477,3 +477,16 @@ kbd {
 .ending-stats span { font-size: 0.8rem; color: var(--muted); }
 .ending-panel .test-btns { justify-content: center; }
 @media (max-width: 520px) { .ending-stats { grid-template-columns: repeat(2, 1fr); } }
+.ending-ngp { font-size: 0.9rem; }
+.mk.waypoint { width: 12px; height: 12px; transform: translate(-50%, -50%) rotate(45deg); background: #9fe8ff; border: 2px solid #1c3440; box-shadow: 0 0 10px #9fe8ff; z-index: 2; }
+.lg.waypoint::before { content: ''; position: absolute; inset: 4px; transform: rotate(45deg); background: #9fe8ff; }
+.pin.waypoint { background: #9fe8ff; box-shadow: 0 0 8px rgba(159, 232, 255, 0.9); }
+.map-zoom { cursor: crosshair; }
+.look-panel { width: min(560px, 94vw); display: grid; gap: 0.5rem; }
+.look-h { margin: 0.4rem 0 0; font: 600 0.85rem/1 var(--font-body); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.look-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.look-opt { min-width: 0; padding: 0.4rem 0.7rem; font-size: 0.9rem; }
+.look-opt.on { outline: 2px solid var(--gold-hi); outline-offset: 1px; color: var(--gold-hi); }
+.look-cloak .look-opt { width: 2.2rem; height: 2.2rem; padding: 0; background: var(--sw); border-color: rgba(239, 226, 192, 0.35); }
+.look-armour-opt i { display: inline-block; width: 0.9rem; height: 0.9rem; margin-right: 0.4rem; vertical-align: -0.1rem; border: 1px solid rgba(0, 0, 0, 0.5); }
+.look-note { margin: 0.3rem 0 0; font-size: 0.8rem; color: var(--muted); }

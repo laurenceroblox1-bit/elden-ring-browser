@@ -29,6 +29,7 @@ export const BINDINGS = {
   emoteBow: ['KeyX'],
   emoteSit: ['KeyB'],
   emoteCheer: ['KeyT'],
+  ping: ['KeyY'],
   chat: ['Enter', 'NumpadEnter'],
   pause: ['Escape', 'KeyP', 'Pad9'], // Start
   back: ['Pad1'], // B closes menus

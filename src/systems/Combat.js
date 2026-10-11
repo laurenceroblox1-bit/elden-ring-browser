@@ -95,6 +95,12 @@ export class Combat {
       ...hit, attacker, parryable, unblockable: !!hit.unblockable,
       dirX: len > 1e-3 ? dx / len : -target.forwardX, dirZ: len > 1e-3 ? dz / len : -target.forwardZ,
     };
+    // New Game+: foes are tougher (your blows land for less) and hit harder.
+    const J = this.game.journeyMul;
+    if (J && h.dmg) {
+      if (attacker.team === 'player' && target.team !== 'player') h.dmg /= J.hp;
+      else if (attacker.team !== 'player' && target.team === 'player') h.dmg *= J.dmg;
+    }
     if (attacker === this.game.player && this.game.cheats?.oneHit) h.dmg = 99999; // test menu
     // Multiplayer: an enemy another player's game is running. The blow goes to that game (net/Coop.js).
     if (target.netPuppet) {
