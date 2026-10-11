@@ -5,6 +5,7 @@ import { ITEMS } from '../data/items.js';
 import { WEAPONS, SHIELDS, speedLabel } from '../data/weapons.js';
 import { ARTS, RITES } from '../data/abilities.js';
 import { levelOf, levelCost } from '../systems/Save.js';
+import { BESTIARY, FEATS } from '../data/bestiary.js';
 import { wrapAngle } from '../core/math.js';
 import { EnemyBars } from './EnemyBars.js';
 
@@ -234,6 +235,13 @@ export class HUD {
     $('#btn-resume').addEventListener('click', () => game.closeModal());
     $('#btn-equipment').addEventListener('click', () => game.openEquipment());
     $('#btn-map').addEventListener('click', () => game.openMenu('map'));
+    $('.journal-body').addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-jtab]');
+      if (!b) return;
+      this.jTab = b.dataset.jtab;
+      game.audio.play('ui');
+      this.renderJournal();
+    });
     $('#btn-look').addEventListener('click', () => game.openMenu('appearance'));
     $('#btn-testmenu').addEventListener('click', () => game.openMenu('testmenu'));
     $('#btn-multiplayer').addEventListener('click', () => game.openMenu('multiplayer'));
@@ -315,6 +323,10 @@ export class HUD {
 
   renderJournal() {
     const g = this.game;
+    const tab = (this.jTab ??= 'quests');
+    const tabs = `<div class="jtabs" role="tablist">${[['quests', 'Quests'], ['bestiary', 'Bestiary'], ['feats', 'Feats']].map(([id, label]) => `<button class="btn small jtab${tab === id ? ' on' : ''}" data-jtab="${id}" role="tab" aria-selected="${tab === id}">${label}</button>`).join('')}</div>`;
+    if (tab === 'bestiary') return this._renderBestiary(tabs);
+    if (tab === 'feats') return this._renderFeats(tabs);
     const entries = g.quests.journal();
     const items = Object.entries(g.state.inventory).filter(([, n]) => n > 0);
     const quest = (q) => `
@@ -324,9 +336,31 @@ export class HUD {
         <p class="jq-summary">${q.summary}</p>
         <p class="jq-obj">${q.status === 'done' ? q.doneText ?? '' : q.objective}</p>
       </article>`;
-    this.$('.journal-body').innerHTML = `
+    this.$('.journal-body').innerHTML = `${tabs}
       <div class="jcol">${entries.length ? entries.map(quest).join('') : '<p class="empty">No quests yet. Talk to the people of the Vale, and read the notice by the first shrine.</p>'}</div>
       <div class="jcol items"><h3>Key items</h3>${items.length ? items.map(([id]) => `<div class="item"><b>${ITEMS[id]?.name ?? id}</b><p>${ITEMS[id]?.desc ?? ''}</p></div>`).join('') : '<p class="empty">Nothing yet.</p>'}</div>`;
+  }
+
+  _renderBestiary(tabs) {
+    const st = this.game.state, k = st.kills ?? {};
+    let known = 0, total = 0;
+    const groups = BESTIARY.map(([region, list]) => {
+      const rows = list.map(([tag, name, desc, flag]) => {
+        total++;
+        const n = k[tag] ?? 0, felled = flag ? st.flags[flag] : n > 0;
+        if (felled || n > 0) known++;
+        if (!felled && !n) return `<div class="beast unknown"><b>???</b><span>Not yet met</span></div>`;
+        return `<div class="beast${flag ? ' boss' : ''}"><b>${name}</b><span>${flag ? 'Felled' : `${n} slain`}</span><p>${desc}</p></div>`;
+      }).join('');
+      return `<section class="bgroup"><h3>${region}</h3>${rows}</section>`;
+    }).join('');
+    this.$('.journal-body').innerHTML = `${tabs}<p class="jcount">${known} of ${total} known</p><div class="bestiary">${groups}</div>`;
+  }
+
+  _renderFeats(tabs) {
+    const got = this.game.state.feats ?? [];
+    const rows = FEATS.map(([id, name, how]) => `<div class="feat${got.includes(id) ? ' got' : ''}"><b>${name}</b><span>${how}</span></div>`).join('');
+    this.$('.journal-body').innerHTML = `${tabs}<p class="jcount">${got.length} of ${FEATS.length}</p><div class="feats">${rows}</div>`;
   }
 
   // Equipment: the three slots on the left, everything owned for the chosen slot on the right.

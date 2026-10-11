@@ -37,6 +37,7 @@ import { Skeleton } from './Skeleton.js';
 import { Ghoul } from './Ghoul.js';
 import { Gravewarden } from './Gravewarden.js';
 import { OssuaryQueen } from './OssuaryQueen.js';
+import { Mimic } from './Mimic.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -91,6 +92,7 @@ const KINDS = {
   ghoul: Ghoul,
   gravewarden: Gravewarden, // an elite
   ossuaryqueen: OssuaryQueen, // Vesperine, the Undercroft's boss, in the Bone Chapel
+  mimic: Mimic, // a chest with teeth (Game.openChest)
 };
 
 export function createEnemy(game, spawn) {

@@ -1132,3 +1132,47 @@ export function buildDorn() {
   mergeHumanoid(r);
   return r;
 }
+
+// ---------- chests ----------
+
+// Mimics: a treasure chest that grew legs and a tongue. The lid is its head (and its upper jaw), the box
+// its body, rows of teeth along both lips, four long spindly legs folded under it until it stands up.
+export function buildMimic() {
+  const wood = mat(0x5a4330), dark = mat(0x3a2b1f), iron = mat(0x3a3836, { metalness: 0.6, roughness: 0.5 });
+  const tooth = mat(0xe8e0c8), tongue = mat(0xa83a4a), eye = mat(0xffe070, { emissive: 0xffa020, emissiveIntensity: 2.2 });
+  const root = new THREE.Group();
+  const body = group({ y: 0.95 });
+  root.add(body);
+  body.add(mesh(box(1.1, 0.6, 0.7), wood, { y: -0.1 }));
+  for (const x of [-0.42, 0.42]) body.add(mesh(box(0.08, 0.62, 0.72), iron, { x, y: -0.1 }));
+  for (let i = 0; i < 6; i++) body.add(mesh(cone(0.04, 0.12, 4), tooth, { x: -0.4 + i * 0.16, y: 0.24, z: 0.32 }));
+  const neck = group({ y: 0.2, z: -0.35 });
+  body.add(neck);
+  const head = group({});
+  neck.add(head);
+  // The lid: hinged at the back, it lifts like a jaw.
+  head.add(mesh(box(1.1, 0.26, 0.7), dark, { y: 0.13, z: 0.35 }));
+  for (const x of [-0.42, 0.42]) head.add(mesh(box(0.08, 0.28, 0.72), iron, { x, y: 0.13, z: 0.35 }));
+  for (let i = 0; i < 6; i++) head.add(mesh(cone(0.04, 0.12, 4), tooth, { x: -0.4 + i * 0.16, y: -0.02, z: 0.67, rx: Math.PI }));
+  for (const x of [-0.2, 0.2]) head.add(mesh(box(0.08, 0.06, 0.04), eye, { x, y: 0.2, z: 0.71, shadow: false }));
+  const jaw = group({ y: -0.05, z: 0.35 });
+  head.add(jaw);
+  jaw.add(mesh(box(0.3, 0.05, 0.6), tongue, { y: -0.1, z: 0.1, rx: 0.3 }));
+  const tail = group({ y: -0.2, z: -0.36 });
+  body.add(tail);
+  tail.add(mesh(box(0.1, 0.1, 0.1), iron));
+  const legs = [];
+  const mkLeg = (x, z, front) => {
+    const hip = group({ x, y: -0.35, z });
+    body.add(hip);
+    hip.add(mesh(box(0.07, 0.42, 0.07), dark, { y: -0.2 }));
+    const knee = group({ y: -0.4 });
+    hip.add(knee);
+    knee.add(mesh(box(0.05, 0.42, 0.05), dark, { y: -0.2 }));
+    knee.add(mesh(cone(0.05, 0.12, 4), tooth, { y: -0.44, rx: Math.PI }));
+    legs.push({ hip, knee, front, side: Math.sign(x) });
+  };
+  mkLeg(0.4, 0.22, true); mkLeg(-0.4, 0.22, true); mkLeg(0.4, -0.22, false); mkLeg(-0.4, -0.22, false);
+  mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
+  return { root, body, neck, head, jaw, tail, legs, materials: { ember: eye } };
+}

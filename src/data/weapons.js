@@ -575,6 +575,46 @@ export const WEAPONS = {
       rolling: { stamina: 18, dmg: 26, poise: 18, windup: 0.16, active: 0.16, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 1.2, pose: 'sSweep', next: 'light1', sfx: 'swing' },
     },
   },
+
+  mimic_fang: {
+    name: "Mimic's Teeth",
+    type: 'Paired daggers',
+    hands: 2,
+    stance: 'fangs',
+    scale: 0.9,
+    poison: 10,
+    desc: 'Two teeth pulled from a mimic\'s lid and bound to grips of chest-oak. Quick, and the bites fester like the mimic\'s did.',
+    art: 'ghoststep',
+    riposte: { dmg: 24, crit: 3.4 },
+    guard: { name: 'fangs', absorb: 0.42, cost: 1.7, parryWindow: 0.26, raiseTime: 0.06, arc: 1.6 },
+    moves: {
+      light1: { stamina: 7, dmg: 10, poise: 7, windup: 0.09, active: 0.1, recover: 0.22, lunge: 2.4, reach: 2.0, arc: 0.85, pose: 'fStabR', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 7, dmg: 10, poise: 7, windup: 0.09, active: 0.1, recover: 0.22, lunge: 2.4, reach: 2.0, arc: 0.85, pose: 'fStabL', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 7, dmg: 11, poise: 8, windup: 0.09, active: 0.1, recover: 0.22, lunge: 2.4, reach: 2.0, arc: 0.85, pose: 'fStabR', next: 'light4', sfx: 'swing' },
+      light4: { stamina: 10, dmg: 16, poise: 14, windup: 0.15, active: 0.12, recover: 0.32, lunge: 3.0, reach: 2.2, arc: 1.2, pose: 'fCross', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 20, dmg: 29, poise: 26, windup: 0.32, active: 0.14, recover: 0.42, lunge: 3.4, reach: 2.2, arc: 0.7, pose: 'fRend', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 7, dmg: 12, poise: 8, windup: 0.07, active: 0.1, recover: 0.24, lunge: 3.4, reach: 2.0, arc: 0.85, pose: 'fStabL', next: 'light3', sfx: 'swing' },
+    },
+  },
+
+  gilded_rapier: {
+    name: 'Gilded Rapier',
+    type: 'Thrusting sword',
+    hands: 1,
+    stance: 'blade',
+    scale: 1.0,
+    desc: 'A slender sword with a basket hilt of gold, from a chest the Sanctum\'s priests hid behind their columns. Light, fast and wicked on the point; its art is a long lunge.',
+    art: 'lunging_pierce',
+    riposte: { dmg: 28, crit: 3.3 },
+    guard: { name: 'blade', absorb: 0.55, cost: 1.5, parryWindow: 0.24, raiseTime: 0.09, arc: 1.75 },
+    moves: {
+      light1: { stamina: 12, dmg: 17, poise: 10, windup: 0.13, active: 0.12, recover: 0.3, lunge: 3.0, reach: 2.6, arc: 0.4, pose: 'thrust', next: 'light2', sfx: 'swing' },
+      light2: { stamina: 12, dmg: 17, poise: 10, windup: 0.12, active: 0.12, recover: 0.3, lunge: 3.0, reach: 2.6, arc: 0.4, pose: 'thrust', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 15, dmg: 22, poise: 16, windup: 0.18, active: 0.12, recover: 0.38, lunge: 3.6, reach: 2.8, arc: 0.9, pose: 'slashR', next: 'light1', sfx: 'swing' },
+      heavy: { stamina: 26, dmg: 40, poise: 34, windup: 0.42, active: 0.14, recover: 0.46, lunge: 5.0, reach: 3.0, arc: 0.35, pose: 'thrust', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 12, dmg: 16, poise: 8, windup: 0.1, active: 0.12, recover: 0.3, lunge: 3.4, reach: 2.7, arc: 0.4, pose: 'thrust', next: 'light2', sfx: 'swing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.

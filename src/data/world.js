@@ -1,7 +1,7 @@
 // World layout data. North is -Z. Everything that places content in the Vale lives here,
 // so new areas start as data before they need code. The outer regions (the Cinderfall Wastes, the
 // Drowned Coast, the Glowcap Hollows) keep their own lists in data/biomes.js; they are merged in below.
-import { BIOME_ZONES, BIOME_ROADS, BIOME_SHRINES, BIOME_NPCS, BIOME_SPAWNS, BIOME_PICKUPS, BIOME_KEEP_CLEAR, BIOME_FIRES } from './biomes.js';
+import { BIOME_ZONES, BIOME_ROADS, BIOME_SHRINES, BIOME_NPCS, BIOME_SPAWNS, BIOME_PICKUPS, BIOME_KEEP_CLEAR, BIOME_FIRES, CHESTS } from './biomes.js';
 
 export const WORLD = {
   size: 1640, // terrain square edge, metres
@@ -195,5 +195,5 @@ SHRINES.push(...BIOME_SHRINES);
 NPCS.push(...BIOME_NPCS);
 ENEMY_SPAWNS.push(...BIOME_SPAWNS);
 PICKUPS.push(...BIOME_PICKUPS);
-KEEP_CLEAR.push(...BIOME_KEEP_CLEAR);
+KEEP_CLEAR.push(...BIOME_KEEP_CLEAR, ...CHESTS.map((c) => ({ x: c.x, z: c.z, r: 2.5 })));
 FIRES.push(...BIOME_FIRES);

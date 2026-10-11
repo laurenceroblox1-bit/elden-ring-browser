@@ -510,3 +510,21 @@ export function fallenBellParts(rng) {
     { geo: G.box, matrix: xform(0.1, 1.0, 1.02, 0.2, 0, 0.9, 0.06, 0.9, 0.03), color: tone(0x3a3226, rng) },
   ];
 }
+
+// A treasure chest: an iron-banded wooden box whose lid (its own group, hinged at the back) swings open.
+export function buildChest() {
+  const g = new THREE.Group();
+  const iron = mat(0x3a3836, { metalness: 0.6, roughness: 0.5 }), gold = mat(0xb08d4a, { metalness: 0.7, roughness: 0.35 });
+  g.add(mesh(box(1.1, 0.6, 0.7), wood(), { y: 0.3 }));
+  for (const x of [-0.42, 0.42]) g.add(mesh(box(0.08, 0.62, 0.72), iron, { x, y: 0.3 }));
+  const lid = group({ y: 0.6, z: -0.35 });
+  lid.add(mesh(box(1.1, 0.26, 0.7), darkWood(), { y: 0.13, z: 0.35 }));
+  for (const x of [-0.42, 0.42]) lid.add(mesh(box(0.08, 0.28, 0.72), iron, { x, y: 0.13, z: 0.35 }));
+  lid.add(mesh(box(0.16, 0.16, 0.05), gold, { y: 0.02, z: 0.71 })); // the lock plate
+  g.add(lid);
+  // The glint of what's inside, seen only once it opens.
+  const shine = glowSprite(0xffd890, 1.2, 0);
+  shine.position.set(0, 0.7, 0);
+  g.add(shine);
+  return { group: g, lid, shine };
+}

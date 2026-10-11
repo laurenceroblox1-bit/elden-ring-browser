@@ -528,6 +528,7 @@ export class Player extends Actor {
     this.parryT = 0;
     this.guardRecoil = 0.16;
     this.stats.parries++;
+    this.game.tally?.('parries');
     if (hit.attacker?.netPuppet) this.game.net.coop.parried(hit.attacker);
     else hit.attacker?.onParried(this, hit);
     this.game.events.emit('parry', hit.attacker);
@@ -932,7 +933,7 @@ export class Player extends Actor {
         g.audio.play('riposte');
         g.cameraShake(0.5);
         g.hitstop = Math.max(g.hitstop, 0.14);
-        if (r.back) this.stats.backstabs = (this.stats.backstabs ?? 0) + 1;
+        if (r.back) { this.stats.backstabs = (this.stats.backstabs ?? 0) + 1; g.tally?.('backstabs'); }
         else this.stats.ripostes++;
       }
     }

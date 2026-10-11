@@ -355,6 +355,17 @@ are shut out (the `crypt` weather's `cave` setting). Four lights follow the torc
   (a cone of tomb-cold that builds frost), and the Queen's Scythe, whose art calls two spectral
   skeletons to fight beside you.
 
+## Chests, the bestiary and feats
+
+- **Chests**: 23 iron-banded chests sit in every region and the Undercroft (`data/biomes.js` CHESTS).
+  Press E to open one: ash, smithing stones, or (in two of them) gear you won't find anywhere else, the
+  Gilded Rapier and the Mimic's Teeth. Six of them are **mimics**: the chest stands up on four long legs
+  and bites very hard. Kill it and the loot is yours; rest before you do and it settles back down as a
+  chest. Opened chests stay open (`state.chests`).
+- **The journal** (J) has three tabs now: *Quests*, *Bestiary* (every kind of foe by region, with how
+  many you've slain and what you've learned about it; unknown until you kill one) and *Feats* (eighteen
+  milestones, from kindling your first lantern to felling every great foe, announced as you earn them).
+
 ## Backstabs, appearance and New Game+
 
 - **Backstabs**: get right behind an ordinary foe that isn't mid-swing (and hasn't noticed you, for
@@ -431,6 +442,7 @@ src/data/smithing.js       weapon levels and their costs
 src/entities/BellRinger.js the Hollow Bell's boss
 src/entities/AntlerKing.js, Colossus.js  the Amberwood's and the Shardlands' bosses
 src/entities/OssuaryQueen.js, Skeleton.js  the Undercroft's boss, and its dead that get back up
+src/systems/Chests.js      chests and mimics; data/bestiary.js the bestiary and feats
 src/world/Biomes.js        the outer regions' set pieces, lava, sea, oasis, glowcaps, storms, scenery
 src/models/creatures.js    the outer regions' creatures, bosses and traders
 src/ui/ShopPanel.js        Tamsin's wares

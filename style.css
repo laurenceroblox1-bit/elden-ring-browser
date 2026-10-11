@@ -490,3 +490,19 @@ kbd {
 .look-cloak .look-opt { width: 2.2rem; height: 2.2rem; padding: 0; background: var(--sw); border-color: rgba(239, 226, 192, 0.35); }
 .look-armour-opt i { display: inline-block; width: 0.9rem; height: 0.9rem; margin-right: 0.4rem; vertical-align: -0.1rem; border: 1px solid rgba(0, 0, 0, 0.5); }
 .look-note { margin: 0.3rem 0 0; font-size: 0.8rem; color: var(--muted); }
+.jtabs { grid-column: 1 / -1; display: flex; gap: 0.4rem; }
+.jtab.on { outline: 2px solid var(--gold-hi); outline-offset: 1px; color: var(--gold-hi); }
+.jcount { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 0.85rem; }
+.bestiary, .feats { grid-column: 1 / -1; display: grid; gap: 0.8rem; }
+.bgroup h3 { margin: 0.2rem 0 0.4rem; font-size: 0.95rem; color: var(--gold-hi); }
+.beast { display: grid; grid-template-columns: 1fr auto; gap: 0.1rem 0.8rem; padding: 0.45rem 0.6rem; border: 1px solid var(--panel-edge); margin-bottom: 0.35rem; }
+.beast b { font-weight: 600; }
+.beast span { color: var(--muted); font-size: 0.8rem; text-align: right; }
+.beast p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.4; }
+.beast.boss b { color: var(--gold-hi); }
+.beast.unknown { opacity: 0.5; }
+.feats { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.feat { display: grid; gap: 0.2rem; padding: 0.5rem 0.6rem; border: 1px solid var(--panel-edge); opacity: 0.45; }
+.feat.got { opacity: 1; border-color: var(--gold); }
+.feat.got b::before { content: '\2726  '; color: var(--gold-hi); }
+.feat span { color: var(--muted); font-size: 0.82rem; }

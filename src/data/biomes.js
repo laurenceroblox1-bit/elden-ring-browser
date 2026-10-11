@@ -394,3 +394,41 @@ export const STONES = [
   { x: -330, z: 400 }, { x: -440, z: 480 }, { x: -520, z: 380 }, { x: -400, z: 520 },
   { x: -755, z: -720 }, { x: -645, z: -715 }, { x: -735, z: -738 },
 ];
+
+// Treasure chests, in every region. `loot`: { ash } | { stones } | { gear }. A `mimic` is a chest with
+// teeth: open it and it fights (entities/Mimic.js); its loot drops when it dies.
+export const CHESTS = [
+  // The Vale.
+  { x: 126, z: 20, yaw: 0.4, loot: { ash: 400 } },
+  { x: -126, z: 90, yaw: 2.6, loot: { stones: 1 } },
+  { x: -238, z: -174, yaw: 1.2, loot: { ash: 500 } },
+  { x: 302, z: -14, yaw: -1.0, loot: { ash: 900 }, mimic: true },
+  { x: 22, z: -340, yaw: -1.6, loot: { stones: 2 } },
+  // The Rimewold.
+  { x: -112, z: -418, yaw: 0.8, loot: { ash: 700 } },
+  { x: 92, z: -478, yaw: 2.0, loot: { gear: 'mimic_fang' }, mimic: true },
+  // The Cinderfall Wastes.
+  { x: -70, z: 548, yaw: -1.6, loot: { stones: 2 } },
+  { x: 30, z: 500, yaw: -2.6, loot: { ash: 1000 } },
+  // The Drowned Coast.
+  { x: -488, z: 120, yaw: 1.4, loot: { ash: 800 } },
+  { x: -514, z: -128, yaw: 0.6, loot: { ash: 1400 }, mimic: true },
+  // The Glowcap Hollows.
+  { x: -318, z: -452, yaw: 2.2, loot: { stones: 2 } },
+  { x: -410, z: -452, yaw: 1.0, loot: { ash: 900 } },
+  // The Gilded Dunes.
+  { x: 530, z: 174, yaw: -2.0, loot: { ash: 1600 }, mimic: true },
+  { x: 632, z: 96, yaw: -0.8, loot: { gear: 'gilded_rapier' } },
+  // The Stormspire Heights.
+  { x: 326, z: -414, yaw: 0, loot: { stones: 2 } },
+  // The Amberwood.
+  { x: 346, z: 480, yaw: 1.2, loot: { ash: 900 } },
+  { x: 506, z: 520, yaw: -2.4, loot: { ash: 1600 }, mimic: true },
+  // The Shardlands.
+  { x: -488, z: 382, yaw: -1.0, loot: { stones: 2 } },
+  { x: -378, z: 492, yaw: 2.4, loot: { ash: 1100 } },
+  // The Undercroft.
+  { x: -756, z: -716, yaw: 1.6, loot: { stones: 2 } },
+  { x: -744, z: -744, yaw: 0.0, loot: { ash: 2000 }, mimic: true },
+  { x: -646, z: -720, yaw: -1.6, loot: { ash: 1200 } },
+];

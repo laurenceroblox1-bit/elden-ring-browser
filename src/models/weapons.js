@@ -365,6 +365,25 @@ const BUILD = {
     g.add(mesh(box(0.02, 0.6, 0.03), mat(0xe8ffc0, { emissive: 0x80f050, emissiveIntensity: 1.4 }), { z: 1.6, y: 0.35, rx: 0.25, shadow: false }));
     return { right: g };
   },
+  // Mimic's Teeth: two long yellowed teeth on grips of chest-oak.
+  mimic_fang() {
+    const one = () => {
+      const g = group();
+      g.add(mesh(box(0.05, 0.05, 0.18), M.wood(), { z: -0.02 }));
+      g.add(mesh(box(0.1, 0.04, 0.04), M.iron(), { z: 0.09 }));
+      g.add(mesh(cone(0.045, 0.5, 4), mat(0xe8dcb0), { z: 0.35, rx: Math.PI / 2 }));
+      return g;
+    };
+    return { right: one(), left: one() };
+  },
+  // Gilded Rapier: a needle blade and a basket hilt of gold.
+  gilded_rapier() {
+    const g = group();
+    g.add(mesh(box(0.04, 0.04, 0.2), M.leather(), { z: -0.02 }));
+    g.add(mesh(cyl(0.09, 0.07, 0.1, 8), M.sunBronze(), { rx: Math.PI / 2, z: 0.1 }));
+    g.add(mesh(box(0.025, 0.025, 1.05), M.steel(), { z: 0.66 }));
+    return { right: g };
+  },
   // Ringer's Hammer: an iron haft with a bronze bell for its head.
   ringers_hammer() {
     const g = group();

@@ -1,6 +1,8 @@
 // Game: owns the renderer, the loop and the glue between systems (deaths, shrines, the boss fight, saves).
 import * as THREE from '../lib/three.js';
 import { Trails, weaponReach, trailA, trailB } from '../effects/Trails.js';
+import { Chests } from '../systems/Chests.js';
+import { FEATS } from '../data/bestiary.js';
 import { AppearancePanel } from '../ui/AppearancePanel.js';
 import { applyLook, cleanLook, cloakHex } from '../models/look.js';
 import { Events } from './Events.js';
@@ -125,6 +127,7 @@ export class Game {
     applyLook(this.player.model, this.look);
     this.input.pad.onChange = (on, id) => this._onPad(on, id);
     this._registerInteractables();
+    this.chests = new Chests(this);
     this._combatTips();
 
     this.input.onLockChange = (locked) => this._onLockChange(locked);
@@ -395,6 +398,7 @@ export class Game {
     // Multiplayer host: enemies another player is fighting right now carry on (they aren't yours to reset).
     const busy = (e) => this.net.coop.host && this.net.coop.othersNear(e, 60);
     this.despawnExtras((e) => !busy(e));
+    this.chests?.sync();
     for (const e of this.enemies) if (!busy(e)) e.reset();
     this.effects.clear();
     this.projectiles.clear();
@@ -854,6 +858,9 @@ export class Game {
   onEnemyKilled(e) {
     if (e.ally) return; // a spirit ally fading is not a kill
     this.addAsh(Math.round(e.ash * (this.journeyMul?.ash ?? 1)));
+    const k = (this.state.kills ??= {});
+    k[e.tag] = (k[e.tag] ?? 0) + 1;
+    if (e.chest !== undefined) this.chests.onMimicKilled(e);
     this.events.emit('enemyKilled', e);
     if (this.lockTarget === e) this.lockTarget = null;
     const drop = e.spawn.drop;
@@ -1200,6 +1207,8 @@ export class Game {
       this._timers(sdt);
       this._zones(dt);
       this._pickupFx(dt);
+      this.chests.update(sdt);
+      this._checkFeats(dt);
       this._ambient(dt, this.player.pos);
       this._waypointCheck();
     } else if (this.modal === 'dialogue') {
@@ -1235,6 +1244,26 @@ export class Game {
   setLook(l) {
     this.look = applyLook(this.player.model, l);
     Save.pref('look', this.look);
+  }
+
+  // ---------- tallies and feats ----------
+
+  tally(key) {
+    const t = (this.state.tally ??= {});
+    t[key] = (t[key] ?? 0) + 1;
+  }
+
+  // Milestones (data/bestiary.js FEATS): checked every couple of seconds, announced once.
+  _checkFeats(dt) {
+    if ((this.featT = (this.featT ?? 0) - dt) > 0) return;
+    this.featT = 2;
+    const st = this.state, got = (st.feats ??= []);
+    for (const [id, name, how, test] of FEATS) {
+      if (got.includes(id) || !test(st)) continue;
+      got.push(id);
+      this.hud.toast(`Feat: ${name}. ${how}`, 'item');
+      this.audio.play('bellSmall');
+    }
   }
 
   // ---------- swing trails ----------
