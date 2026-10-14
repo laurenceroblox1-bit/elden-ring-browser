@@ -25,11 +25,30 @@ export function mixPose(out, a, b, t) {
   return out;
 }
 
-// Three-key attack curve: rest -> wind (windup) -> strike (active) -> rest (recover).
-export function attackPose(out, rest, wind, strike, t, windup, active, recover, ease = (x) => x) {
-  if (t < windup) return mixPose(out, rest, wind, ease(t / windup));
-  if (t < windup + active) return mixPose(out, wind, strike, (t - windup) / active);
-  return mixPose(out, strike, rest, ease(Math.min(1, (t - windup - active) / recover)));
+// Three-key attack curve: rest -> wind (windup) -> strike (active) -> rest (recover), shaped the way a
+// blow reads best: the wind-up eases in and coils a little past the wind pose just before it lets go
+// (anticipation), the strike snaps out fast and carries a touch past the strike pose (follow-through),
+// settles back onto it, then eases home. Timing is unchanged: hits are judged by time, not by pose.
+const _coil = {}, _over = {};
+const easeInOut = (x) => x * x * (3 - 2 * x);
+const snap = (x) => 1 - (1 - x) * (1 - x) * (1 - x);
+export function attackPose(out, rest, wind, strike, t, windup, active, recover) {
+  const COIL = 0.07, OVER = 0.12;
+  if (t < windup) {
+    const u = t / windup;
+    mixPose(out, rest, wind, easeInOut(Math.min(1, u * 1.08)));
+    const c = COIL * easeInOut(Math.max(0, (u - 0.7) / 0.3));
+    for (const j of JOINTS) out[j] += (wind[j] - rest[j]) * c;
+    return out;
+  }
+  for (const j of JOINTS) {
+    _coil[j] = wind[j] + (wind[j] - rest[j]) * COIL;
+    _over[j] = strike[j] + (strike[j] - wind[j]) * OVER;
+  }
+  if (t < windup + active) return mixPose(out, _coil, _over, snap((t - windup) / active));
+  const u = Math.min(1, (t - windup - active) / Math.max(recover, 1e-3));
+  if (u < 0.25) return mixPose(out, _over, strike, easeInOut(u / 0.25));
+  return mixPose(out, strike, rest, easeInOut((u - 0.25) / 0.75));
 }
 
 // Keyframed pose track for scripted moves (ripostes, recoils): keys are [time, pose] in ascending time.

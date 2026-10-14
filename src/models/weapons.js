@@ -384,6 +384,15 @@ const BUILD = {
     g.add(mesh(box(0.025, 0.025, 1.05), M.steel(), { z: 0.66 }));
     return { right: g };
   },
+  // Ashen Halberd: a dark haft, an axe-blade and spike, the edge still smouldering.
+  ashen_halberd() {
+    const g = group();
+    g.add(mesh(cyl(0.026, 0.03, 2.3, 6), mat(0x2a2220), { rx: Math.PI / 2, z: 0.45 }));
+    g.add(mesh(box(0.035, 0.36, 0.3), M.ashSteel(), { z: 1.55, y: 0.1 }));
+    g.add(mesh(cone(0.05, 0.34, 4), M.ashSteel(), { z: 1.78, rx: Math.PI / 2 }));
+    g.add(mesh(box(0.04, 0.26, 0.22), M.ember(), { z: 1.55, y: 0.12, shadow: false }));
+    return { right: g };
+  },
   // Ringer's Hammer: an iron haft with a bronze bell for its head.
   ringers_hammer() {
     const g = group();

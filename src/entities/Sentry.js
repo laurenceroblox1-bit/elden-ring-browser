@@ -402,6 +402,13 @@ export class Sentry extends Actor {
         }
       }
     }
+    // Once it has seen you, its head follows you.
+    const tp = this.game.player;
+    if (this.alive && tp && this.state !== 'idle' && this.state !== 'return' && this.state !== 'knockdown' && this.state !== 'riposted') {
+      const look = clamp(angleDiff(this.yaw, yawTo(this.pos.x, this.pos.z, tp.pos.x, tp.pos.z)), -1.0, 1.0);
+      p.headY += look * (this.state === 'attack' ? 0.3 : 0.8);
+      p.torsoY += look * 0.15;
+    }
     if (this.flinch > 0 && this.alive) { p.torsoX -= this.flinch * 0.9; p.headX -= this.flinch * 0.8; k = Math.max(k, 0.5); }
     applyPose(this.model, p, k);
     this._sync();

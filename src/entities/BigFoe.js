@@ -14,7 +14,8 @@
 // fight, no bar, leashed to its post, back on its feet after you rest.
 import { Foe } from './Foe.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
-import { clamp, damp, dampK, easeOut } from '../core/math.js';
+import { clamp, damp, dampK, easeOut, angleDiff } from '../core/math.js';
+import { glowSprite } from '../models/kit.js';
 
 export class BigFoe extends Foe {
   constructor(game, spawn) {
@@ -70,6 +71,8 @@ export class BigFoe extends Foe {
     if (this.state === 'idle' && !this.hitWhileIdle && !this.elite) return false;
     if (!this.elite && (this.state === 'idle' || this.state === 'return')) this.game.startFoeFight(this, { cutscene: false });
     const before = this.hp;
+    // Which side the blow came from, for the flinch (+1 from the right).
+    if (Number.isFinite(hit.dirX)) this.hitSide = Math.sign(hit.dirX * Math.cos(this.yaw) - hit.dirZ * Math.sin(this.yaw)) || 0;
     // Bosses shrug off ordinary flinches mid-move: only poise breaks (or ripostes) stagger them.
     const r = super.takeHit(hit);
     const d = before - Math.max(0, this.hp);
@@ -98,7 +101,10 @@ export class BigFoe extends Foe {
     this.invuln = false;
     const r = super._die(hit);
     this.lockable = false;
-    if (!this.elite) this.game.onFoeBossDefeated(this);
+    if (!this.elite) {
+      this.game.slowMo?.(1.4); // the killing blow, savoured
+      this.game.onFoeBossDefeated(this);
+    }
     return r;
   }
 
@@ -107,6 +113,54 @@ export class BigFoe extends Foe {
   update(dt) {
     if (this.recentT > 0) this.recentT -= dt;
     super.update(dt);
+    this._tell(dt);
+    this._footfalls();
+    // A felled great foe comes apart into rising motes of light (elites into ash, as other foes do).
+    if (this.state === 'dead' && !this.elite && this.t > 1.4 && this.t < 3.6 && this.shown) {
+      const h = (this.height ?? 2) * 0.9;
+      this.game.particles.emit({ x: this.pos.x + (Math.random() - 0.5) * this.radius * 2, y: this.pos.y + Math.random() * h * 0.6, z: this.pos.z + (Math.random() - 0.5) * this.radius * 2, count: 3, speed: 0.4, up: 2.2, color: 0xffe0a0, color2: 0xfff6e0, life: [1.0, 2.0], size: [0.08, 0.16], drag: 0.6, jitter: 0.4 });
+    }
+  }
+
+  // The tell: a glint in the striking hand just before a blow lands, gold if it can be parried and red
+  // if it can't (roll it). Only for blows struck with a hand; spells and summons have their own tells.
+  _tell(dt) {
+    const M = this.move, hand = this.model.armR?.hand;
+    if (!hand) return;
+    if (!this.tellGlint) {
+      this.tellGlint = glowSprite(0xffffff, 1.6, 0);
+      this.tellGlint.renderOrder = 6;
+      this.tellGlint.position.z = (this.trailLen ?? 0.6) * 0.8;
+      hand.add(this.tellGlint);
+    }
+    const g = this.tellGlint;
+    const lead = M?.melee && this.state === 'attack' ? M.windup - this.t : -1;
+    if (lead > 0 && lead < 0.32) {
+      if (!this.told) {
+        this.told = true;
+        g.material.color.setHex(M.parry ? 0xffe08a : 0xff5a3a);
+      }
+      const k = 1 - lead / 0.32;
+      g.material.opacity = Math.sin(k * Math.PI) * 0.95;
+      g.scale.setScalar((1.2 + k * 1.4) / (this.size ?? 1));
+    } else {
+      if (lead <= 0) this.told = false;
+      g.material.opacity = damp(g.material.opacity, 0, 18, dt);
+    }
+  }
+
+  // Big bosses shake the ground a little at each footfall while they walk or run.
+  _footfalls() {
+    if (!Number.isFinite(this.gait)) return;
+    if ((this.size ?? 1) < 1.5 || !this.alive || this.state === 'attack' || this.state === 'idle') return;
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    const step = Math.sign(Math.sin(this.gait));
+    if (sp > 1.2 && step !== this.lastStep) {
+      const g = this.game, d = Math.hypot(g.player.pos.x - this.pos.x, g.player.pos.z - this.pos.z);
+      if (d < 22) g.cameraShake(0.06 * (this.size / 2) * (1 - d / 22));
+      g.particles.emit({ x: this.pos.x - this.forwardX * 0.4, y: this.pos.y + 0.1, z: this.pos.z - this.forwardZ * 0.4, count: 4, speed: 1.2, up: 0.8, gravity: 2, color: 0x9a8d78, color2: 0xd0c4a8, life: [0.4, 0.8], size: [0.12, 0.24], drag: 2, jitter: 0.4 * this.size });
+    }
+    this.lastStep = step;
   }
 
   _engage() {
@@ -250,8 +304,26 @@ export class BigFoe extends Foe {
         p.torsoX += Math.sin(this.game.time * 1.3 + this.spawn.x) * 0.03;
       }
     }
-    // A blow that lands snaps the head and shoulders back for a moment.
-    if (this.flinch > 0 && this.alive) { p.torsoX -= this.flinch * 0.9; p.headX -= this.flinch * 0.8; k = Math.max(k, 0.5); }
+    // Alive and awake: the head follows you (and the shoulders a little), and the chest breathes.
+    const tgt = this.game.player;
+    if (this.alive && tgt && this.state !== 'idle' && this.state !== 'dead' && this.state !== 'knockdown') {
+      const look = clamp(angleDiff(this.yaw, Math.atan2(tgt.pos.x - this.pos.x, tgt.pos.z - this.pos.z)), -1.0, 1.0);
+      const follow = this.state === 'attack' ? (this.t < (this.move?.windup ?? 0) ? 0.6 : 0.15) : 0.85;
+      p.headY += look * follow;
+      p.torsoY += look * follow * 0.25;
+      const br = Math.sin(this.game.time * (this.phase === 2 ? 3.2 : 2.1) + this.spawn.x);
+      p.torsoX += br * 0.025;
+      p.sRz -= br * 0.03;
+      p.sLz += br * 0.03;
+    }
+    // A blow that lands rocks the head and shoulders back, and twists away from the side it came from.
+    if (this.flinch > 0 && this.alive) {
+      p.torsoX -= this.flinch * 0.9;
+      p.headX -= this.flinch * 0.8;
+      p.torsoZ += this.flinch * (this.hitSide ?? 0) * 0.8;
+      p.headY += this.flinch * (this.hitSide ?? 0) * 0.6;
+      k = Math.max(k, 0.5);
+    }
     applyPose(this.model, p, k);
   }
 }

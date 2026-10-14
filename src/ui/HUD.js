@@ -124,6 +124,7 @@ const TEMPLATE = `
       <button class="btn" id="btn-map">Map</button>
       <button class="btn" id="btn-multiplayer">Multiplayer</button>
       <button class="btn" id="btn-quality"></button>
+      <button class="btn" id="btn-style"></button>
       <button class="btn" id="btn-sound"></button>
       <button class="btn" id="btn-testmenu">Test menu</button>
       <button class="btn danger" id="btn-quit">Quit to title</button>
@@ -258,6 +259,7 @@ export class HUD {
       this.renderEquipment();
     });    $('#btn-leave').addEventListener('click', () => game.closeModal());
     $('#btn-quality').addEventListener('click', () => { game.setQuality(game.quality === 'high' ? 'low' : 'high'); this.refreshPause(); });
+    $('#btn-style').addEventListener('click', () => { game.setStyle(game.style === 'clean' ? 'painterly' : 'clean'); this.refreshPause(); });
     $('#btn-sound').addEventListener('click', () => { game.setMuted(!game.audio.muted); this.refreshPause(); });
     const quit = $('#btn-quit');
     quit.addEventListener('click', () => {
@@ -318,6 +320,7 @@ export class HUD {
   refreshPause() {
     const g = this.game;
     this.$('#btn-quality').textContent = `Graphics: ${g.quality === 'high' ? 'High (shadows on)' : 'Low (faster)'}`;
+    this.$('#btn-style').textContent = `Style: ${g.style === 'clean' ? 'Clean (outlined)' : 'Painterly'}`;
     this.$('#btn-sound').textContent = `Sound: ${g.audio.muted ? 'Off' : 'On'}`;
   }
 

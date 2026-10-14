@@ -615,6 +615,26 @@ export const WEAPONS = {
       rolling: { stamina: 12, dmg: 16, poise: 8, windup: 0.1, active: 0.12, recover: 0.3, lunge: 3.4, reach: 2.7, arc: 0.4, pose: 'thrust', next: 'light2', sfx: 'swing' },
     },
   },
+
+  ashen_halberd: {
+    name: 'Ashen Halberd',
+    type: 'Halberd',
+    hands: 2,
+    stance: 'spear',
+    scale: 1.4,
+    burn: 10,
+    desc: "Sir Corvel's halberd, its blade still smouldering after all the years he rode the road with it. Every cut builds a burn; its art is a rider's charge on foot, leaving fire in your wake.",
+    art: 'ashen_charge',
+    riposte: { dmg: 34 },
+    guard: { name: 'glaive', absorb: 0.7, cost: 1.3, parryWindow: 0.15, raiseTime: 0.12, arc: 1.75, speed: 2.1 },
+    moves: {
+      light1: { stamina: 20, dmg: 30, poise: 26, windup: 0.3, active: 0.2, recover: 0.48, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light2', sfx: 'heavySwing' },
+      light2: { stamina: 18, dmg: 27, poise: 22, windup: 0.22, active: 0.14, recover: 0.42, lunge: 2.6, reach: 4.1, arc: 0.36, pose: 'sThrustHi', next: 'light3', sfx: 'swing' },
+      light3: { stamina: 22, dmg: 32, poise: 30, windup: 0.32, active: 0.2, recover: 0.52, lunge: 2.2, reach: 4.0, arc: 1.35, pose: 'sSweep', next: 'light1', sfx: 'heavySwing' },
+      heavy: { stamina: 34, dmg: 58, poise: 56, windup: 0.6, active: 0.16, recover: 0.6, lunge: 5.0, reach: 4.3, arc: 0.36, pose: 'sCharge', heavy: true, sfx: 'heavySwing' },
+      rolling: { stamina: 18, dmg: 26, poise: 18, windup: 0.16, active: 0.14, recover: 0.42, lunge: 3.2, reach: 4.0, arc: 0.36, pose: 'sThrustLo', next: 'light1', sfx: 'swing' },
+    },
+  },
 };
 
 // Shields go in the left hand, only with a one-handed weapon. Their `guard` replaces the weapon's.

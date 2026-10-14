@@ -566,6 +566,11 @@ export class AudioFx {
         this._bell(196, 0.05, 4, this.music);
         this._bell(233, 0.035, 4, this.music);
       }, 3800],
+      rider: [() => {
+        // Hoofbeats: a galloping triplet on the drum, and a low horn.
+        for (let i = 0; i < 6; i++) this._tone({ freq: 80, to: 50, type: 'sine', dur: 0.14, gain: i % 3 === 0 ? 0.26 : 0.16, delay: i * 0.16 + (i >= 3 ? 0.2 : 0), dest: this.music });
+        this._tone({ freq: 110, to: 104, type: 'sawtooth', dur: 1.6, gain: 0.05, attack: 0.4, delay: 1.2, dest: this.music });
+      }, 2600],
       crypt: [() => {
         // A slow funeral bell and a choir-like drone.
         this._bell(110, 0.1, 5, this.music);

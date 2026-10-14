@@ -38,6 +38,7 @@ import { Ghoul } from './Ghoul.js';
 import { Gravewarden } from './Gravewarden.js';
 import { OssuaryQueen } from './OssuaryQueen.js';
 import { Mimic } from './Mimic.js';
+import { AshenRider } from './AshenRider.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -93,6 +94,7 @@ const KINDS = {
   gravewarden: Gravewarden, // an elite
   ossuaryqueen: OssuaryQueen, // Vesperine, the Undercroft's boss, in the Bone Chapel
   mimic: Mimic, // a chest with teeth (Game.openChest)
+  ashenrider: AshenRider, // Sir Corvel, a night-only field boss on the Vale's old road
 };
 
 export function createEnemy(game, spawn) {

@@ -126,6 +126,7 @@ export class Combat {
     tmp.y -= target.lockHeight * 0.25;
     const playerHurt = target === g.player;
     const byPlayer = attacker === g.player;
+    if (result === true && !playerHurt) target.squashT = 0.16; // a quick squash on whatever takes the blow
     if (result === true) {
       g.particles.emit({
         x: tmp.x, y: tmp.y, z: tmp.z, count: playerHurt ? 18 : 14, speed: 5, up: 1.5,

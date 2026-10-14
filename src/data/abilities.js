@@ -494,6 +494,39 @@ export const ARTS = {
     ],
   },
 
+  // Ashen Halberd: a rider's charge on foot, fire left burning behind.
+  ashen_charge: {
+    name: 'Ashen Charge',
+    desc: 'Couch the halberd and charge like the Ashen Rider. Whatever you run into is thrown down and set burning, and the ground you crossed burns behind you.',
+    focus: 18, stamina: 26, cooldown: 4.5,
+    time: 1.0, track: 0.2, invuln: [0.18, 0.45], cancel: 0.8,
+    keys: [[0, 'rest'], [0.16, 'pierceCrouch'], [0.26, 'pierceDrive'], [0.66, 'pierceDrive'], [1.0, 'rest']],
+    events: [
+      [0.18, (p, act) => {
+        p.game.audio.play('ignite');
+        act.hit = { dmg: 44 * p.dmgMult, poise: 66, reach: 3.0, arc: 0.7, heavy: true, knock: 6, burn: 40 };
+        act.hitSet = new Set();
+        act.fireT = 0;
+      }],
+    ],
+    move(p, act, dt) {
+      const t = p.t, g = p.game;
+      let sp = 0;
+      if (act.hit && t < 0.62) {
+        sp = 16;
+        const lock = g.lockTarget;
+        if (lock && Math.hypot(lock.pos.x - p.pos.x, lock.pos.z - p.pos.z) < lock.radius + 1.4) sp = 0;
+        g.combat.melee(p, act.hit, act.hitSet);
+        if ((act.fireT -= dt) <= 0) {
+          act.fireT = 0.1;
+          g.effects.hazard(p, p.pos.x - p.forwardX * 1.4, p.pos.z - p.forwardZ * 1.4, { radius: 1.4, life: 3, look: 'fire', hit: { dmg: 4 * p.dmgMult, poise: 0, burn: 14 } });
+        }
+      }
+      p.vel.x = sp ? p.forwardX * sp : p.vel.x * Math.exp(-10 * dt);
+      p.vel.z = sp ? p.forwardZ * sp : p.vel.z * Math.exp(-10 * dt);
+    },
+  },
+
   // Pilgrim's Spear: a low crouch, then a long dash behind the spearpoint. Untouchable while it flies.
   lunging_pierce: {
     name: 'Lunging Pierce',

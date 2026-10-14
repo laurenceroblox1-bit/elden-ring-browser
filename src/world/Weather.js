@@ -178,7 +178,7 @@ export class Weather {
           u.uSize.value = f.size;
           u.uColor.value.setHex(f.color);
           u.uStreak.value = f.streak;
-          this.points.geometry.setDrawRange(0, f.count);
+          this.points.geometry.setDrawRange(0, Math.round(f.count * (this.clutter ?? 1)));
           if (instant) this.amount = 1;
         }
       }

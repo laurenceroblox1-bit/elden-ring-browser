@@ -5,6 +5,7 @@
 import * as THREE from '../lib/three.js';
 import { buildHumanoid, mergeHumanoid } from './humanoid.js';
 import { mat, mesh, box, cyl, cone, ico, group, glowSprite, mergeRig } from './kit.js';
+import { buildHorse } from './horse.js';
 
 // ---------- the Cinderfall Wastes ----------
 
@@ -1175,4 +1176,50 @@ export function buildMimic() {
   mkLeg(0.4, 0.22, true); mkLeg(-0.4, 0.22, true); mkLeg(0.4, -0.22, false); mkLeg(-0.4, -0.22, false);
   mergeRig(root, [body, neck, head, jaw, tail, ...legs.flatMap((l) => [l.hip, l.knee])]);
   return { root, body, neck, head, jaw, tail, legs, materials: { ember: eye } };
+}
+
+// ---------- the Ashen Rider ----------
+
+// The Ashen Rider: a knight of the old watch who rode out on the night the Gate fell and never came
+// back, in ash-grey plate with a ragged cloak, a halberd whose blade still smoulders, on a black horse
+// with an ember mane. The rider is a humanoid rig (the pose system drives it) seated on the horse's own
+// rig (entities/AshenRider.js runs its gait); both hang off one root.
+export function buildAshenRider() {
+  const horse = buildHorse();
+  const [coat, dark, spirit] = horse.materials;
+  coat.color.setHex(0x2a2624); coat.emissive.setHex(0x1a0a06); coat.opacity = 1; coat.transparent = false;
+  dark.color.setHex(0x1a1816); dark.emissive.setHex(0x120604);
+  spirit.color.setHex(0xffb070); spirit.emissive.setHex(0xff5a10); spirit.emissiveIntensity = 2.0;
+  const blanket = mat(0x4a1a14, { side: THREE.DoubleSide });
+  horse.root.traverse((o) => {
+    if (!o.isMesh) return;
+    const swap = (m) => (m?.color?.getHex() === 0x2d4a4c ? blanket : m);
+    o.material = Array.isArray(o.material) ? o.material.map(swap) : swap(o.material);
+  });
+  const plate = mat(0x6a6660, { metalness: 0.55, roughness: 0.5 }), plate2 = mat(0x3a3836, { metalness: 0.5, roughness: 0.55 });
+  const ember = mat(0xffc080, { unique: true, emissive: 0xff5a10, emissiveIntensity: 2.0 });
+  const rag = mat(0x2a2422, { side: THREE.DoubleSide });
+  const r = buildHumanoid({ skin: plate2, body: plate, arms: plate2, legs: plate2, boots: plate2, hands: plate2 }, { chestW: 0.56, shoulderW: 0.38 });
+  r.head.add(mesh(box(0.3, 0.36, 0.32), plate, { y: 0.17 }));
+  r.head.add(mesh(box(0.22, 0.03, 0.02), ember, { y: 0.2, z: 0.165, shadow: false }));
+  for (let i = 0; i < 4; i++) r.head.add(mesh(box(0.04, 0.2 + i * 0.05, 0.06), rag, { y: 0.4 + i * 0.02, z: -0.04 - i * 0.07, rx: -0.6 - i * 0.2 })); // a torn plume
+  for (const s of [-1, 1]) (s < 0 ? r.armR : r.armL).shoulder.add(mesh(box(0.28, 0.14, 0.3), plate, { y: 0.03 }));
+  const cloak = group({ y: 0.56, z: -0.17 });
+  for (let i = 0; i < 4; i++) cloak.add(mesh(box(0.15, 1.0 - (i % 2) * 0.2, 0.02), rag, { x: -0.22 + i * 0.15, y: -0.48, rx: 0.15 }));
+  r.torso.add(cloak);
+  const halberd = group();
+  halberd.add(mesh(cyl(0.03, 0.035, 2.6, 6), mat(0x2a2220), { rx: Math.PI / 2, z: 0.6 }));
+  halberd.add(mesh(box(0.04, 0.42, 0.34), plate, { z: 1.85, y: 0.12 }));
+  halberd.add(mesh(cone(0.06, 0.4, 4), plate, { z: 2.1, rx: Math.PI / 2 }));
+  halberd.add(mesh(box(0.045, 0.3, 0.26), ember, { z: 1.85, y: 0.14, shadow: false }));
+  const glow = glowSprite(0xff7a2a, 1.4, 0.6);
+  glow.position.set(0, 0.15, 1.85);
+  halberd.add(glow);
+  r.armR.hand.add(halberd);
+  mergeHumanoid(r, [cloak, halberd]);
+  // Seat the rider: the rig's hips at the saddle.
+  r.root.position.set(0, 1.1, 0.05);
+  const root = new THREE.Group();
+  root.add(horse.root, r.root);
+  return { ...r, root, rider: r.root, horse, ember, glow, cloak };
 }

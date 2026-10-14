@@ -337,6 +337,8 @@ export const BIOME_SPAWNS = [
   { kind: 'gravewarden', x: -652, z: -716, yaw: -1.0 },
   { kind: 'skeleton', x: -697, z: -720, yaw: 0 },
   { kind: 'ossuaryqueen', x: CHAPEL.x, z: CHAPEL.z - 6, yaw: 0 },
+  // The Vale's old road, after dark.
+  { kind: 'ashenrider', x: -10, z: 112, yaw: Math.PI },
 ];
 
 export const BIOME_PICKUPS = [

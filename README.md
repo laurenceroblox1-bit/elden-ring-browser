@@ -366,6 +366,29 @@ are shut out (the `crypt` weather's `cave` setting). Four lights follow the torc
   many you've slain and what you've learned about it; unknown until you kill one) and *Feats* (eighteen
   milestones, from kindling your first lantern to felling every great foe, announced as you earn them).
 
+## Clean style and animation
+
+- **Style** (pause menu): *Clean* (the default) draws a thin dark outline round every silhouette (a
+  depth-based edge pass in `core/PostFX.js` that ignores flat and evenly sloping ground), with a lighter
+  vignette and grade and fewer particles in the air. *Painterly* is the original look.
+- **Attacks** (`models/pose.js` attackPose, used by every foe, boss and the player): the wind-up eases
+  in and coils a touch past its pose just before the blow (anticipation), the strike snaps out fast and
+  carries a little past its pose (follow-through), then settles and eases home. Hit timing is unchanged.
+- **Bosses**: a glint in the striking hand just before each blow lands, gold if you can parry it and red
+  if you should roll; heads that follow you and chests that breathe; hit reactions that twist away from
+  the side you struck; footfalls that shake the ground under the big ones; and when a great foe falls,
+  a moment of slow motion before it breaks apart into rising motes of light.
+- **Everything you hit** squashes and springs back. Ordinary foes watch you as they circle.
+
+## Sir Corvel, the Ashen Rider
+
+A night-only field boss. After dark a knight in ash-grey plate walks a black horse with an ember mane up
+and down the Vale's old road between the first shrine and the Watch Ruins; at dawn he is gone. Get close
+and he fights at the gallop: charges with his halberd couched (you can't parry a horse; roll through),
+sweeps and chops from the saddle (parryable), the horse rearing and stamping fire out of the road, and
+burning javelins thrown at anyone who keeps away. At half health the mane catches fully alight and every
+charge leaves fire behind it. He drops the **Ashen Halberd**, whose art is a rider's charge on foot.
+
 ## Backstabs, appearance and New Game+
 
 - **Backstabs**: get right behind an ordinary foe that isn't mid-swing (and hasn't noticed you, for

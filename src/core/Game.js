@@ -133,6 +133,7 @@ export class Game {
     this.input.onLockChange = (locked) => this._onLockChange(locked);
     addEventListener('resize', () => this.resize());
     this.setQuality(this.quality);
+    this.setStyle(Save.pref('style') ?? 'clean');
 
     // Title backdrop: the first shrine, lit, with the Unbound standing by it.
     this.world.shrines.get('firstlight').lit = true;
@@ -233,6 +234,14 @@ export class Game {
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
     this.particles.setViewport(h * pr, this.camera.fov);
+  }
+
+  // The look: 'clean' (outlines, a lighter grade, less clutter in the air) or 'painterly' (the original).
+  setStyle(s) {
+    this.style = s;
+    this.post.setStyle(s);
+    this.world.weather.clutter = s === 'clean' ? 0.6 : 1;
+    Save.pref('style', s);
   }
 
   setQuality(q) {
@@ -1120,6 +1129,7 @@ export class Game {
     for (const e of this.enemies) {
       if (e.netPuppet) coop.updatePuppet(e, dt); // another player's game runs it
       else if (!(coop.nearestDist(e) > THINK_DIST && e.state === 'idle')) e.update(dt);
+      if (e.squashT > 0 || e.squashing) this._squash(e, dt);
       if (e.shown !== undefined) continue;
       const far = Math.hypot(e.pos.x - c.x, e.pos.z - c.z) > DRAW_DIST;
       const root = e.model.root;
@@ -1180,6 +1190,11 @@ export class Game {
     if (!this.modal) {
       // The test menu's time scale slows or speeds the whole simulation; hit-stop slows it further.
       let sdt = dt * this.timeScale;
+      if (this.slowT > 0) {
+        // Slow motion (a boss's death): eases back up to speed over its last half.
+        this.slowT -= dt;
+        sdt *= 0.25 + 0.75 * Math.max(0, 1 - this.slowT / (this.slowLen * 0.5));
+      }
       if (this.hitstop > 0) {
         this.hitstop -= sdt;
         sdt *= 0.12;
@@ -1244,6 +1259,20 @@ export class Game {
   setLook(l) {
     this.look = applyLook(this.player.model, l);
     Save.pref('look', this.look);
+  }
+
+  // Squash and stretch on a hit: wider and shorter for a moment, springing back.
+  _squash(e, dt) {
+    const r = e.model.root;
+    e.baseScale ??= r.scale.x;
+    e.squashT = Math.max(0, (e.squashT ?? 0) - dt);
+    const k = Math.sin((e.squashT / 0.16) * Math.PI) * 0.09;
+    r.scale.set(e.baseScale * (1 + k), e.baseScale * (1 - k * 1.2), e.baseScale * (1 + k));
+    e.squashing = e.squashT > 0;
+  }
+
+  slowMo(len) {
+    this.slowT = this.slowLen = len;
   }
 
   // ---------- tallies and feats ----------
