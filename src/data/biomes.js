@@ -339,6 +339,8 @@ export const BIOME_SPAWNS = [
   { kind: 'ossuaryqueen', x: CHAPEL.x, z: CHAPEL.z - 6, yaw: 0 },
   // The Vale's old road, after dark.
   { kind: 'ashenrider', x: -10, z: 112, yaw: Math.PI },
+  // Over the Western Moor.
+  { kind: 'moth', x: -266, z: -156, yaw: 0.8 },
 ];
 
 export const BIOME_PICKUPS = [

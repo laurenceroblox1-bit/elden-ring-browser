@@ -566,6 +566,12 @@ export class AudioFx {
         this._bell(196, 0.05, 4, this.music);
         this._bell(233, 0.035, 4, this.music);
       }, 3800],
+      moth: [() => {
+        // A slow, high, wavering arpeggio, like light on wings.
+        const base = [523, 587, 659, 784][Math.floor(Math.random() * 4)];
+        for (let i = 0; i < 4; i++) this._bell(base * [1, 1.25, 1.5, 2][i], 0.025, 3.5, this.music);
+        this._tone({ freq: 196, to: 196, type: 'triangle', dur: 2.8, gain: 0.035, attack: 1.0, dest: this.music });
+      }, 3000],
       rider: [() => {
         // Hoofbeats: a galloping triplet on the drum, and a low horn.
         for (let i = 0; i < 6; i++) this._tone({ freq: 80, to: 50, type: 'sine', dur: 0.14, gain: i % 3 === 0 ? 0.26 : 0.16, delay: i * 0.16 + (i >= 3 ? 0.2 : 0), dest: this.music });

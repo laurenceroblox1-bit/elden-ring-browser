@@ -10,6 +10,7 @@ export const BESTIARY = [
     ['knight', 'Dunmarrow Knight', 'Plate, a kite shield and a shield-bash. Patient, and harder to break than a sentry.'],
     ['matriarch', 'Vharra, Mother of the Mire', 'The mother of every Mire Hound, asleep in a ring of standing stones in the Ashen Fen.', 'motherDead'],
     ['ashenrider', 'Sir Corvel, the Ashen Rider', 'A knight of the old watch who rides the old road at night, and is gone by dawn. You can\'t parry a charging horse.', 'corvelDead'],
+    ['moth', 'Lumora, Mother of Moths', 'The moor-lights are her children. She fights on the wing; at half health the moon falls where she calls it.', 'lumoraDead'],
     ['warden', 'Odran, the Bell-Warden', 'The guardian of the Shattered Gate. Three parries in quick succession bring him to his knees.', 'wardenDead'],
   ]],
   ['The Rimewold', [
@@ -77,7 +78,7 @@ export const BESTIARY = [
 const lit = (s) => (s.shrinesLit ?? []).length;
 const kills = (s) => Object.values(s.kills ?? {}).reduce((a, b) => a + b, 0);
 const GREAT = ['ashmawDead', 'morrowDead', 'sylvaraDead', 'solkarDead', 'vaelorDead'];
-const ALL_BOSSES = ['corvelDead', 'wardenDead', 'motherDead', 'trollDead', 'saelithDead', ...GREAT, 'bellDead', 'hornwoodDead', 'corundelDead', 'vesperineDead'];
+const ALL_BOSSES = ['corvelDead', 'lumoraDead', 'wardenDead', 'motherDead', 'trollDead', 'saelithDead', ...GREAT, 'bellDead', 'hornwoodDead', 'corundelDead', 'vesperineDead'];
 export const FEATS = [
   ['firstlight', 'First Light', 'Kindle a lantern.', (s) => lit(s) >= 1],
   ['lamplighter', 'Lamplighter', 'Kindle fifteen lanterns.', (s) => lit(s) >= 15],

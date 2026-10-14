@@ -1321,6 +1321,13 @@ export class Game {
         T.track(e, on, h.localToWorld(trailA.set(0, 0, e.trailLen * 0.4)), h.localToWorld(trailB.set(0, 0, e.trailLen)), e.trailColor ?? 0xd8d0c8);
       }
     }
+    // The Warden's mace.
+    const w = this.boss, wm = w?.move;
+    if (w?.alive && w.model.armR) {
+      const on = w.state === 'attack' && wm?.reach && w.t >= wm.windup * 0.7 && w.t <= wm.windup + wm.active + 0.05;
+      const hnd = w.model.armR.hand;
+      T.track(w, !!on, hnd.localToWorld(trailA.set(0, 0, w.trailLen * 0.4)), hnd.localToWorld(trailB.set(0, 0, w.trailLen)), 0xbfe8ff);
+    }
     T.update(dt);
   }
 

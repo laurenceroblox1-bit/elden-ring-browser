@@ -389,6 +389,15 @@ sweeps and chops from the saddle (parryable), the horse rearing and stamping fir
 burning javelins thrown at anyone who keeps away. At half health the mane catches fully alight and every
 charge leaves fire behind it. He drops the **Ashen Halberd**, whose art is a rider's charge on foot.
 
+## Lumora, Mother of Moths
+
+Over the Western Moor (west of the moor road), the moor-lights people follow at night are her children.
+A moth the size of a cart, she fights on the wing, hovering above a short blade's comfortable reach
+(her body still counts as standing on the moor, so every weapon can find her): a wingbeat that throws
+you back, low fast dives, clouds of glittering scale-dust that poison, fans of slow orbs of moth-light,
+and at half health pillars of moonlight that fall on you and around you after a pale warning circle.
+Fire hurts her badly. She leaves the **Moonbeam** rite.
+
 ## Backstabs, appearance and New Game+
 
 - **Backstabs**: get right behind an ordinary foe that isn't mid-swing (and hasn't noticed you, for

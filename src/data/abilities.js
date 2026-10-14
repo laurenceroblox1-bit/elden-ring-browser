@@ -837,6 +837,28 @@ export const RITES = {
       }],
     ],
   },
+  moonbeam: {
+    name: 'Moonbeam',
+    type: 'Moon rite',
+    desc: "Lumora's last gift: raise a hand to the sky and the moon answers. A pillar of moonlight falls on your foe, and two more around it. Lock on to aim it.",
+    focus: 28, cooldown: 8,
+    time: 1.0, keys: RAISE, overlay: true, walk: 0.6, cancel: 0.8,
+    events: [
+      [0.45, (p) => {
+        const g = p.game;
+        const f = front(p, 0, 1.5);
+        const a = aim(p, f.x, f.y, f.z, 30, 0.5);
+        const t = a.target?.pos ?? front(p, 10, 0);
+        const hit = { dmg: 36 * p.riteMult, poise: 34, knock: 3 };
+        g.effects.moonbeam(p, t.x, t.z, 0.6, { radius: 2.4, hit });
+        for (let i = 0; i < 2; i++) {
+          const ang = Math.random() * Math.PI * 2;
+          g.effects.moonbeam(p, t.x + Math.sin(ang) * 3, t.z + Math.cos(ang) * 3, 0.9 + i * 0.2, { radius: 2, hit });
+        }
+        g.audio.play('cast');
+      }],
+    ],
+  },
   mending_light: {
     name: 'Mending Light',
     type: 'Healing rite',

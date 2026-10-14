@@ -351,12 +351,13 @@ export class Coop {
     const o = { ghostFx: true };
     for (const key of [...PROJ_KEYS, ...FX_KEYS]) if (d[key] !== undefined && (typeof d[key] === 'number' || typeof d[key] === 'string' || typeof d[key] === 'boolean')) o[key] = d[key];
     if (d.k === 'p') {
-      if (!['bolt', 'crescent', 'arrow', 'shard', 'boulder', 'fire', 'magma', 'spore', 'water', 'sand', 'spark'].includes(o.kind)) return;
+      if (!['bolt', 'crescent', 'arrow', 'shard', 'boulder', 'fire', 'magma', 'spore', 'water', 'sand', 'spark', 'leaf', 'crystal'].includes(o.kind)) return;
       g.projectiles.spawn(FX_OWNER, { ...o, x: n(o.x), y: n(o.y), z: n(o.z), dirX: n(o.dirX), dirY: n(o.dirY), dirZ: n(o.dirZ) });
     } else if (d.k === 'wave') g.effects.shockwave(FX_OWNER, n(d.x), n(d.z), o);
     else if (d.k === 'spike') g.effects.iceSpike(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
     else if (d.k === 'bell') g.effects.bellDrop(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
     else if (d.k === 'bolt') g.effects.lightning(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
+    else if (d.k === 'moon') g.effects.moonbeam(FX_OWNER, n(d.x), n(d.z), Math.min(3, n(d.delay)), o);
     else if (d.k === 'haz') g.effects.hazard(FX_OWNER, n(d.x), n(d.z), { ...o, life: Math.min(12, n(o.life)), radius: Math.min(12, n(o.radius)) });
   }
 }

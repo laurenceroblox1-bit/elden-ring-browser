@@ -9,6 +9,7 @@ import { ARENA } from '../data/world.js';
 import { pose, copyPose, applyPose, attackPose, addGait, mixPose } from '../models/pose.js';
 import { clamp, damp, dampK, yawTo, easeOut, easeInOut } from '../core/math.js';
 import * as THREE from '../lib/three.js';
+import { updateTell } from './tell.js';
 
 const MOVES = {
   sweep: { windup: 0.85, active: 0.26, recover: 0.75, dmg: 30, poise: 60, reach: 5.8, arc: 1.25, lunge: 6, track: 2.6, pose: 'sweep', range: [0, 6.5], weight: 3, follow: 'backsweep', followChance: [0.45, 0.7] },
@@ -91,6 +92,7 @@ export class Warden extends Actor {
     this.parryTimes = [];
     this.model.root.visible = true;
     this.model.root.scale.setScalar(2.15);
+    this.trailLen = 1.4; // the mace's reach from the hand (tell glint)
     this.model.pivot.rotation.x = 0;
     this._aura(0);
     copyPose(this.poseBuf, W.kneel);
@@ -204,6 +206,8 @@ export class Warden extends Actor {
   update(dt) {
     this.tickFrost(dt);
     if (this.state === 'gone') return;
+    const m = this.move;
+    updateTell(this, dt, this.state === 'attack' && m?.reach ? m.windup - this.t : null, m?.parryable !== false);
     this.t += dt;
     this.clock += dt;
     if (this.recentT > 0) this.recentT -= dt;

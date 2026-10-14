@@ -1223,3 +1223,53 @@ export function buildAshenRider() {
   root.add(horse.root, r.root);
   return { ...r, root, rider: r.root, horse, ember, glow, cloak };
 }
+
+// ---------- Lumora ----------
+
+// Lumora, Mother of Moths: a moth the size of a cart, pale and furred, with feathery antennae, great
+// eyes of soft light and two pairs of patterned wings. Built on the humanoid rig so the pose system
+// drives it: the arms are the forewings' spars (their shoulders beat), the hind wings hang off the
+// torso on groups of their own, the legs are folded little things under a long furred body.
+export function buildMoth() {
+  const fur = mat(0xe8e0d0, { roughness: 1 }), fur2 = mat(0xc8bca8, { roughness: 1 });
+  const wing = mat(0xf0e8d8, { side: THREE.DoubleSide, roughness: 0.9 }), wingDark = mat(0x8a7a9a, { side: THREE.DoubleSide });
+  const eye = mat(0xe0f0ff, { unique: true, emissive: 0x9ab8ff, emissiveIntensity: 1.8 });
+  const glow = mat(0xfff4d0, { unique: true, emissive: 0xffe0a0, emissiveIntensity: 1.4, side: THREE.DoubleSide });
+  const r = buildHumanoid({ skin: fur, body: fur, arms: fur2, legs: fur2, boots: fur2, hands: fur2 },
+    { chestW: 0.5, chestD: 0.44, waistW: 0.4, armW: 0.06, legW: 0.07, headW: 0.34, headH: 0.3 });
+  // The head: big eyes and two feathered antennae.
+  for (const s of [-1, 1]) {
+    r.head.add(mesh(ico(0.1, 0), eye, { x: s * 0.13, y: 0.16, z: 0.13, shadow: false }));
+    const ant = group({ x: s * 0.08, y: 0.32, z: 0.08, rz: -s * 0.35, rx: -0.4 });
+    ant.add(mesh(box(0.02, 0.5, 0.02), fur2, { y: 0.25 }));
+    for (let i = 0; i < 5; i++) ant.add(mesh(box(0.16 - Math.abs(i - 2) * 0.03, 0.025, 0.01), fur, { y: 0.12 + i * 0.08 }));
+    r.head.add(ant);
+  }
+  r.torso.add(mesh(box(0.56, 0.22, 0.5), fur, { y: 0.62 })); // a ruff of fur
+  r.hips.add(mesh(box(0.34, 0.9, 0.34), fur2, { y: -0.5, z: -0.1, rx: 0.3 })); // the long abdomen
+  for (let i = 0; i < 4; i++) r.hips.add(mesh(box(0.36, 0.05, 0.36), mat(0x9a8a7a), { y: -0.2 - i * 0.2, z: -0.06 - i * 0.06, rx: 0.3 }));
+  // Forewings along the arms: broad panels, an eye-spot each that glows.
+  const forewing = (arm, s) => {
+    const w = group({ y: -0.15 });
+    w.add(mesh(box(0.02, 1.5, 0.9), wing, { y: -0.6, z: -0.25 }));
+    w.add(mesh(box(0.022, 0.7, 0.5), wingDark, { y: -1.05, z: -0.35 }));
+    w.add(mesh(box(0.024, 0.32, 0.32), glow, { y: -0.75, z: -0.2, shadow: false }));
+    w.add(mesh(box(0.025, 0.14, 0.14), wingDark, { y: -0.75, z: -0.2, x: s * 0.005, shadow: false }));
+    arm.shoulder.add(w);
+    return w;
+  };
+  forewing(r.armR, 1);
+  forewing(r.armL, -1);
+  // Hind wings on the torso, their own groups (they beat a little behind the forewings).
+  const hindR = group({ x: -0.22, y: 0.3, z: -0.18 }), hindL = group({ x: 0.22, y: 0.3, z: -0.18 });
+  for (const [h, s] of [[hindR, -1], [hindL, 1]]) {
+    h.add(mesh(box(0.9, 0.02, 0.7), wing, { x: s * 0.45, z: -0.2 }));
+    h.add(mesh(box(0.4, 0.022, 0.3), wingDark, { x: s * 0.7, z: -0.3 }));
+    r.torso.add(h);
+  }
+  const halo = glowSprite(0xfff0c0, 4, 0.35);
+  halo.position.set(0, 0.4, 0);
+  r.torso.add(halo);
+  mergeHumanoid(r, [hindR, hindL, halo]);
+  return { ...r, eye, glow, halo, hindR, hindL };
+}

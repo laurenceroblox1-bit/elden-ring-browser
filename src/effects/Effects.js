@@ -258,6 +258,58 @@ export class Effects {
     });
   }
 
+  // A pillar of moonlight comes down on (x, z) after `delay` seconds, telegraphed by a pale circle.
+  moonbeam(owner, x, z, delay, o = {}) {
+    const game = this.game;
+    game.net?.coop.fx('moon', owner, o, { x, z, delay });
+    const R = o.radius ?? 2.4, color = o.color ?? 0xe8e0ff;
+    const y = game.world.getHeight(x, z);
+    const ring = new THREE.Mesh(ringGeo, fxMaterial(color, 0));
+    ring.position.set(x, y + 0.12, z);
+    ring.scale.set(R, 1, R);
+    const disc = new THREE.Mesh(discGeo, fxMaterial(color, 0));
+    disc.position.set(x, y + 0.1, z);
+    disc.scale.set(0.01, 1, 0.01);
+    const beamMat = fxMaterial(color, 0);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.85, R * 0.85, 40, 12, 1, true).translate(0, 20, 0), beamMat);
+    beam.position.set(x, y, z);
+    beam.visible = false;
+    game.scene.add(ring, disc, beam);
+    let t = 0, struck = false;
+    const hitSet = new Set();
+    return this.add({
+      update(dt) {
+        t += dt;
+        if (!struck) {
+          const warn = Math.min(1, t / delay);
+          ring.material.opacity = 0.7 * Math.min(1, t * 3);
+          disc.material.opacity = 0.2;
+          disc.scale.set(R * warn, 1, R * warn);
+          if (t >= delay) {
+            struck = true;
+            beam.visible = true;
+            if (o.hit && !o.ghostFx) game.combat.sphere(owner, new THREE.Vector3(x, y + 0.9, z), R, o.hit, hitSet);
+            game.audio.playAt('bellSmall', { x, z }, 60);
+            game.particles.emit({ x, y: y + 0.5, z, count: 36, speed: 4, up: 4, color: 0xffffff, color2: color, life: [0.4, 0.9], size: [0.08, 0.18], drag: 2 });
+          }
+          return true;
+        }
+        const u = t - delay;
+        beamMat.opacity = Math.max(0, 0.75 - u * 1.5);
+        beam.scale.set(1 + u * 0.6, 1, 1 + u * 0.6);
+        ring.material.opacity = disc.material.opacity = Math.max(0, 0.5 - u);
+        return u < 0.6;
+      },
+      dispose() {
+        game.scene.remove(ring, disc, beam);
+        ring.material.dispose();
+        disc.material.dispose();
+        beam.geometry.dispose();
+        beamMat.dispose();
+      },
+    });
+  }
+
   // A spectral bell falls from the sky after `delay` seconds onto a telegraphed circle.
   bellDrop(owner, x, z, delay, o = {}) {
     const game = this.game;

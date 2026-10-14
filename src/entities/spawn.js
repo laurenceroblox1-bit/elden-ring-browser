@@ -39,6 +39,7 @@ import { Gravewarden } from './Gravewarden.js';
 import { OssuaryQueen } from './OssuaryQueen.js';
 import { Mimic } from './Mimic.js';
 import { AshenRider } from './AshenRider.js';
+import { Moth } from './Moth.js';
 
 const KINDS = {
   sentry: Sentry,
@@ -95,6 +96,7 @@ const KINDS = {
   ossuaryqueen: OssuaryQueen, // Vesperine, the Undercroft's boss, in the Bone Chapel
   mimic: Mimic, // a chest with teeth (Game.openChest)
   ashenrider: AshenRider, // Sir Corvel, a night-only field boss on the Vale's old road
+  moth: Moth, // Lumora, Mother of Moths, over the Western Moor
 };
 
 export function createEnemy(game, spawn) {

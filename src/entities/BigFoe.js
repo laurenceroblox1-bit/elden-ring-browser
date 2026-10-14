@@ -15,7 +15,7 @@
 import { Foe } from './Foe.js';
 import { pose, copyPose, applyPose, attackPose, addGait, framePose } from '../models/pose.js';
 import { clamp, damp, dampK, easeOut, angleDiff } from '../core/math.js';
-import { glowSprite } from '../models/kit.js';
+import { updateTell } from './tell.js';
 
 export class BigFoe extends Foe {
   constructor(game, spawn) {
@@ -122,31 +122,9 @@ export class BigFoe extends Foe {
     }
   }
 
-  // The tell: a glint in the striking hand just before a blow lands, gold if it can be parried and red
-  // if it can't (roll it). Only for blows struck with a hand; spells and summons have their own tells.
   _tell(dt) {
-    const M = this.move, hand = this.model.armR?.hand;
-    if (!hand) return;
-    if (!this.tellGlint) {
-      this.tellGlint = glowSprite(0xffffff, 1.6, 0);
-      this.tellGlint.renderOrder = 6;
-      this.tellGlint.position.z = (this.trailLen ?? 0.6) * 0.8;
-      hand.add(this.tellGlint);
-    }
-    const g = this.tellGlint;
-    const lead = M?.melee && this.state === 'attack' ? M.windup - this.t : -1;
-    if (lead > 0 && lead < 0.32) {
-      if (!this.told) {
-        this.told = true;
-        g.material.color.setHex(M.parry ? 0xffe08a : 0xff5a3a);
-      }
-      const k = 1 - lead / 0.32;
-      g.material.opacity = Math.sin(k * Math.PI) * 0.95;
-      g.scale.setScalar((1.2 + k * 1.4) / (this.size ?? 1));
-    } else {
-      if (lead <= 0) this.told = false;
-      g.material.opacity = damp(g.material.opacity, 0, 18, dt);
-    }
+    const M = this.move;
+    updateTell(this, dt, M?.melee && this.state === 'attack' ? M.windup - this.t : null, !!M?.parry);
   }
 
   // Big bosses shake the ground a little at each footfall while they walk or run.
@@ -304,6 +282,7 @@ export class BigFoe extends Foe {
         p.torsoX += Math.sin(this.game.time * 1.3 + this.spawn.x) * 0.03;
       }
     }
+    this._poseExtra?.(p, dt); // a subclass's own layer (wingbeats, a tail)
     // Alive and awake: the head follows you (and the shoulders a little), and the chest breathes.
     const tgt = this.game.player;
     if (this.alive && tgt && this.state !== 'idle' && this.state !== 'dead' && this.state !== 'knockdown') {
